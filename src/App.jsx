@@ -3,6 +3,10 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import { PlusCircle, Trash2, TrendingUp, TrendingDown, DollarSign, LayoutDashboard, List, PieChart as PieChartIcon } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 
+// Firebase imports
+import { db } from './firebase';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+
 const CATEGORIES = [
   'Hardware & Repairs',
   'Printing & Digital Services',
@@ -17,40 +21,59 @@ const CATEGORIES = [
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
 
 function App() {
-  const [transactions, setTransactions] = useState(() => {
-    const saved = localStorage.getItem('transactions');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
   
   const [type, setType] = useState('Expense');
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
 
+  // Fetch from Firebase real-time
   useEffect(() => {
-    localStorage.setItem('transactions', JSON.stringify(transactions));
-  }, [transactions]);
+    const q = query(collection(db, 'transactions'), orderBy('date', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const txData = [];
+      snapshot.forEach((doc) => {
+        txData.push({ id: doc.id, ...doc.data() });
+      });
+      setTransactions(txData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching transactions: ", error);
+      setLoading(false);
+    });
 
-  const handleAddTransaction = (e) => {
+    return () => unsubscribe();
+  }, []);
+
+  const handleAddTransaction = async (e) => {
     e.preventDefault();
     if (!amount || !description) return;
 
-    const newTransaction = {
-      id: crypto.randomUUID(),
-      type,
-      category: type === 'Expense' ? category : 'Income',
-      amount: parseFloat(amount),
-      description,
-      date: new Date().toISOString()
-    };
+    try {
+      await addDoc(collection(db, 'transactions'), {
+        type,
+        category: type === 'Expense' ? category : 'Income',
+        amount: parseFloat(amount),
+        description,
+        date: new Date().toISOString()
+      });
 
-    setTransactions([newTransaction, ...transactions]);
-    setAmount('');
-    setDescription('');
+      setAmount('');
+      setDescription('');
+    } catch (error) {
+      console.error("Error adding document: ", error);
+    }
   };
 
-  const deleteTransaction = (id) => {
-    setTransactions(transactions.filter(t => t.id !== id));
+  const handleDeleteTransaction = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'transactions', id));
+    } catch (error) {
+      console.error("Error deleting document: ", error);
+    }
   };
 
   const totalIncome = transactions
@@ -74,6 +97,14 @@ function App() {
     name: key,
     value: expensesByCategory[key]
   }));
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-gray-100 flex items-center justify-center font-sans">
+        <p className="text-gray-400 text-lg animate-pulse">Loading Firebase data...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-4 md:p-8 font-sans">
@@ -266,7 +297,7 @@ function App() {
                           </td>
                           <td className="py-4 text-right">
                             <button 
-                              onClick={() => deleteTransaction(t.id)}
+                              onClick={() => handleDeleteTransaction(t.id)}
                               className="p-2 text-gray-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
                               title="Delete transaction"
                             >
