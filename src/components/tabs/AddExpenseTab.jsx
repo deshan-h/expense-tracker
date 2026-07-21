@@ -14,6 +14,8 @@ const AddExpenseTab = ({
   setDescription, 
   date,
   setDate,
+  isTracked,
+  setIsTracked,
   categories, 
   category, 
   setCategory, 
@@ -166,6 +168,28 @@ const AddExpenseTab = ({
                         <Plus className="w-4 h-4" />
                       </button>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {type === 'Expense' && (
+                <div className="mb-6">
+                  <p className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">Tracking Status</p>
+                  <div className="flex p-1 bg-gray-900 rounded-xl w-full max-w-[200px] border border-gray-700">
+                    <button 
+                      type="button" 
+                      onClick={() => setIsTracked(true)} 
+                      className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${isTracked ? 'bg-blue-500 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}
+                    >
+                      Tracked
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => setIsTracked(false)} 
+                      className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${!isTracked ? 'bg-gray-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}
+                    >
+                      Untracked
+                    </button>
                   </div>
                 </div>
               )}

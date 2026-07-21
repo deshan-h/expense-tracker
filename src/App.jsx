@@ -45,6 +45,7 @@ function App() {
   const [calcHistory, setCalcHistory] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isTracked, setIsTracked] = useState(true);
 
   // Category Form State
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -57,6 +58,7 @@ function App() {
   const [lentName, setLentName] = useState('');
   const [lentAmount, setLentAmount] = useState('');
   const [lentDescription, setLentDescription] = useState('');
+  const [lentDate, setLentDate] = useState(new Date().toISOString().split('T')[0]);
   const [activeLentTab, setActiveLentTab] = useState('Family');
   const [showPaid, setShowPaid] = useState(false);
 
@@ -134,13 +136,15 @@ function App() {
         subcategory: type === 'Expense' ? subcategory : '',
         amount: parseFloat(finalAmount),
         description,
-        date: new Date(date).toISOString()
+        date: new Date(date).toISOString(),
+        isTracked: type === 'Expense' ? isTracked : true
       });
 
       setAmount('');
       setCalcHistory('');
       setDescription('');
       setDate(new Date().toISOString().split('T')[0]);
+      setIsTracked(true);
       toast.success(`${type} recorded successfully!`);
       playSuccessSound();
     } catch (error) {
@@ -172,13 +176,14 @@ function App() {
         name: lentName,
         amount: parseFloat(lentAmount),
         description: lentDescription,
-        date: new Date().toISOString(),
+        date: new Date(lentDate).toISOString(),
         status: 'pending' // New field for timeline tracking
       });
 
       setLentAmount('');
       setLentName('');
       setLentDescription('');
+      setLentDate(new Date().toISOString().split('T')[0]);
       
       // Auto switch view to the type just added
       setActiveLentTab(lentType);
@@ -402,6 +407,8 @@ function App() {
               setDescription={setDescription}
               date={date}
               setDate={setDate}
+              isTracked={isTracked}
+              setIsTracked={setIsTracked}
               categories={categories}
               category={category}
               setCategory={setCategory}
@@ -414,7 +421,7 @@ function App() {
             />
           </TabsContent>
 
-          {/* TAB 3: MONEY LENT (TIMELINE UPGRADE) */}
+          {/* TAB 3: MONEY LENT */}
           <TabsContent value="lent">
             <MoneyLentTab 
               handleAddLentMoney={handleAddLentMoney}
@@ -426,15 +433,8 @@ function App() {
               setLentName={setLentName}
               lentDescription={lentDescription}
               setLentDescription={setLentDescription}
-              activeLentTab={activeLentTab}
-              setActiveLentTab={setActiveLentTab}
-              totalPendingLent={totalPendingLent}
-              formatLKR={formatLKR}
-              pendingLent={pendingLent}
-              handleMarkPaidLentMoney={handleMarkPaidLentMoney}
-              paidLent={paidLent}
-              showPaid={showPaid}
-              setShowPaid={setShowPaid}
+              lentDate={lentDate}
+              setLentDate={setLentDate}
             />
           </TabsContent>
 
@@ -444,6 +444,14 @@ function App() {
               transactions={transactions}
               formatLKR={formatLKR}
               handleDeleteTransaction={handleDeleteTransaction}
+              activeLentTab={activeLentTab}
+              setActiveLentTab={setActiveLentTab}
+              totalPendingLent={totalPendingLent}
+              pendingLent={pendingLent}
+              handleMarkPaidLentMoney={handleMarkPaidLentMoney}
+              paidLent={paidLent}
+              showPaid={showPaid}
+              setShowPaid={setShowPaid}
             />
           </TabsContent>
 
