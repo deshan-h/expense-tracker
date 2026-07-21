@@ -428,9 +428,11 @@ function App() {
           {/* TAB 1: DASHBOARD */}
           <TabsContent value="dashboard" className="space-y-6">
             <DashboardTab 
+              transactions={transactions}
               totalIncome={totalIncome}
               totalExpense={totalExpense}
               netBalance={netBalance}
+              totalPendingLent={totalPendingLent}
               formatLKR={formatLKR}
               chartData={chartData}
               COLORS={COLORS}

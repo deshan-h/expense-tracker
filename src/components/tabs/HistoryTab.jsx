@@ -122,7 +122,7 @@ const HistoryTab = ({
         <div className="flex flex-col">
           
           <h3 className="text-2xl font-bold mb-6 flex items-center gap-2 text-white">
-            <List className="w-6 h-6 text-emerald-400" /> Premium Expenses Timeline
+            <List className="w-6 h-6 text-emerald-400" /> Expenses Timeline
           </h3>
 
           {/* Advanced Filters Section */}
@@ -280,7 +280,7 @@ const HistoryTab = ({
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between mb-6">
             <h4 className="text-2xl font-bold text-gray-100 flex items-center gap-2">
-              <Users className="w-6 h-6 text-blue-400" /> Premium Owed Tracker
+              <Users className="w-6 h-6 text-blue-400" /> Owed Tracker
             </h4>
           </div>
 
@@ -447,8 +447,14 @@ const HistoryTab = ({
                               Rs. {formatLKR(record.amount)}
                             </div>
                             
-                            <div className="col-span-1 flex justify-center text-gray-600 italic text-sm">
-                              -
+                            <div className="col-span-1 flex justify-center">
+                              <button 
+                                onClick={() => handleDeleteLentMoney(record.id)}
+                                className="p-2 text-gray-600 hover:text-rose-400 hover:bg-rose-400/10 rounded-xl transition-colors cursor-pointer"
+                                title="Delete Record"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
                             </div>
                           </div>
                         </div>

@@ -35,7 +35,7 @@ const CategoriesTab = ({
           
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-3 uppercase tracking-wider">Select Icon</label>
-            <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-10 gap-3 max-h-[160px] overflow-y-auto pr-2 pb-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full">
+            <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-10 gap-3 max-h-[160px] overflow-y-auto p-2 -ml-2 -mt-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full">
               {AVAILABLE_ICONS.map((iconObj) => {
                 const IconComponent = getIconComponent(iconObj.name);
                 const isSelected = newCategoryIcon === iconObj.name;
@@ -44,7 +44,7 @@ const CategoriesTab = ({
                     key={iconObj.name}
                     type="button"
                     onClick={() => setNewCategoryIcon(iconObj.name)}
-                    className={`p-3 rounded-xl flex items-center justify-center transition-all ${isSelected ? 'bg-gray-700 shadow-lg ring-2 ring-blue-400 ring-offset-2 ring-offset-gray-900' : 'bg-gray-800 border border-gray-700 hover:bg-gray-750'} ${!isSelected && iconObj.bg} ${!isSelected && iconObj.color}`}
+                    className={`p-3 rounded-xl flex items-center justify-center transition-all border-2 ${isSelected ? 'bg-gray-800 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)] scale-110 z-10' : 'bg-gray-800 border-gray-700 hover:border-gray-500'} ${!isSelected && iconObj.bg} ${!isSelected && iconObj.color}`}
                     title={iconObj.name}
                   >
                     <IconComponent className={`w-6 h-6 ${isSelected ? iconObj.color : ''}`} />
