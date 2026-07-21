@@ -175,6 +175,7 @@ function App() {
         type: lentType,
         name: lentName,
         amount: parseFloat(lentAmount),
+        paidAmount: 0,
         description: lentDescription,
         date: new Date(lentDate).toISOString(),
         status: 'pending' // New field for timeline tracking
@@ -196,17 +197,61 @@ function App() {
     }
   };
 
-  const handleMarkPaidLentMoney = async (id) => {
+  const handleReceiveLentPayment = async (name, paymentAmount) => {
     try {
-      await updateDoc(doc(db, 'moneyLent', id), {
-        status: 'paid',
-        paidDate: new Date().toISOString()
-      });
-      toast.success("Marked as paid!");
+      let remainingPayment = parseFloat(paymentAmount);
+      if (isNaN(remainingPayment) || remainingPayment <= 0) return;
+
+      const personPendingRecords = lentMoney
+        .filter(r => r.status !== 'paid' && r.name === name)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      for (const record of personPendingRecords) {
+        if (remainingPayment <= 0) break;
+
+        const currentPaid = record.paidAmount || 0;
+        const currentOwed = record.amount - currentPaid;
+
+        if (currentOwed > 0) {
+          let amountToApply = 0;
+          let newStatus = 'pending';
+          let newPaidDate = null;
+
+          if (remainingPayment >= currentOwed) {
+             amountToApply = currentOwed;
+             newStatus = 'paid';
+             newPaidDate = new Date().toISOString();
+          } else {
+             amountToApply = remainingPayment;
+          }
+
+          remainingPayment -= amountToApply;
+
+          await updateDoc(doc(db, 'moneyLent', record.id), {
+            paidAmount: currentPaid + amountToApply,
+            status: newStatus,
+            ...(newPaidDate && { paidDate: newPaidDate })
+          });
+        }
+      }
+
+      toast.success(`Payment of Rs. ${paymentAmount} received from ${name}!`);
       playSuccessSound();
     } catch (error) {
-      console.error("Error marking as paid: ", error);
-      toast.error("Failed to update status.");
+      console.error("Error applying payment: ", error);
+      toast.error("Failed to apply payment.");
+      playErrorSound();
+    }
+  };
+
+  const handleDeleteLentMoney = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'moneyLent', id));
+      toast.success("Record deleted.");
+      playSuccessSound();
+    } catch (error) {
+      console.error("Error deleting lent money: ", error);
+      toast.error("Failed to delete record.");
       playErrorSound();
     }
   };
@@ -335,10 +380,9 @@ function App() {
   const selectedCatObj = categories.find(c => c.name === category);
 
   // Money Lent Tracker Calculations
-  const displayedLentMoney = lentMoney.filter(record => record.type === activeLentTab);
-  const pendingLent = displayedLentMoney.filter(record => record.status !== 'paid');
-  const paidLent = displayedLentMoney.filter(record => record.status === 'paid');
-  const totalPendingLent = pendingLent.reduce((acc, curr) => acc + curr.amount, 0);
+  const pendingLent = lentMoney.filter(record => record.status !== 'paid');
+  const paidLent = lentMoney.filter(record => record.status === 'paid');
+  const totalPendingLent = pendingLent.reduce((acc, curr) => acc + (curr.amount - (curr.paidAmount || 0)), 0);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-4 md:p-8 font-sans">
@@ -435,6 +479,9 @@ function App() {
               setLentDescription={setLentDescription}
               lentDate={lentDate}
               setLentDate={setLentDate}
+              pendingLent={pendingLent}
+              handleReceiveLentPayment={handleReceiveLentPayment}
+              formatLKR={formatLKR}
             />
           </TabsContent>
 
@@ -448,8 +495,8 @@ function App() {
               setActiveLentTab={setActiveLentTab}
               totalPendingLent={totalPendingLent}
               pendingLent={pendingLent}
-              handleMarkPaidLentMoney={handleMarkPaidLentMoney}
               paidLent={paidLent}
+              handleDeleteLentMoney={handleDeleteLentMoney}
               showPaid={showPaid}
               setShowPaid={setShowPaid}
             />
