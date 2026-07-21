@@ -8,6 +8,7 @@ import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, arrayUnion, 
 
 // Utils
 import { formatLKR } from './utils/formatters';
+import { playSuccessSound, playErrorSound } from './utils/sounds';
 
 // Tab Components
 import DashboardTab from './components/tabs/DashboardTab';
@@ -15,16 +16,17 @@ import AddExpenseTab from './components/tabs/AddExpenseTab';
 import HistoryTab from './components/tabs/HistoryTab';
 import MoneyLentTab from './components/tabs/MoneyLentTab';
 import CategoriesTab from './components/tabs/CategoriesTab';
+import toast, { Toaster } from 'react-hot-toast';
 
 const DEFAULT_CATEGORIES = [
-  'Hardware & Repairs',
-  'Printing & Digital Services',
-  'Bill Payments',
-  'Shop Rent',
-  'Fuel & Transport',
-  'Education/NVQ Fees',
-  'Personal',
-  'Other'
+  { name: 'Food & Drinks', icon: 'Utensils' },
+  { name: 'Shopping', icon: 'ShoppingCart' },
+  { name: 'Housing', icon: 'Home' },
+  { name: 'Transportation', icon: 'Bus' },
+  { name: 'Vehicle', icon: 'Car' },
+  { name: 'Life & Entertainment', icon: 'Smile' },
+  { name: 'Communication, PC', icon: 'Monitor' },
+  { name: 'Financial expenses', icon: 'CreditCard' }
 ];
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
@@ -40,10 +42,13 @@ function App() {
   const [category, setCategory] = useState('');
   const [subcategory, setSubcategory] = useState('');
   const [amount, setAmount] = useState('');
+  const [calcHistory, setCalcHistory] = useState('');
   const [description, setDescription] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Category Form State
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryIcon, setNewCategoryIcon] = useState('Folder');
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newSubcategoryNames, setNewSubcategoryNames] = useState({});
 
@@ -106,30 +111,54 @@ function App() {
 
   const handleAddTransaction = async (e) => {
     e.preventDefault();
-    if (!amount || !description) return;
+    
+    let finalAmount = amount;
+    if (calcHistory) {
+      try {
+        const expression = (calcHistory + amount).replace(/[^0-9+\-*/.]/g, '');
+        if (expression) {
+          finalAmount = String(Function('"use strict";return (' + expression + ')')());
+          setAmount(finalAmount);
+        }
+      } catch (err) {
+        console.error("Invalid expression");
+      }
+    }
+
+    if (!finalAmount || isNaN(parseFloat(finalAmount))) return;
 
     try {
       await addDoc(collection(db, 'transactions'), {
         type,
         category: type === 'Expense' ? category : 'Income',
         subcategory: type === 'Expense' ? subcategory : '',
-        amount: parseFloat(amount),
+        amount: parseFloat(finalAmount),
         description,
-        date: new Date().toISOString()
+        date: new Date(date).toISOString()
       });
 
       setAmount('');
+      setCalcHistory('');
       setDescription('');
+      setDate(new Date().toISOString().split('T')[0]);
+      toast.success(`${type} recorded successfully!`);
+      playSuccessSound();
     } catch (error) {
       console.error("Error adding document: ", error);
+      toast.error("Failed to record transaction.");
+      playErrorSound();
     }
   };
 
   const handleDeleteTransaction = async (id) => {
     try {
       await deleteDoc(doc(db, 'transactions', id));
+      toast.success("Transaction deleted.");
+      playSuccessSound();
     } catch (error) {
       console.error("Error deleting document: ", error);
+      toast.error("Failed to delete transaction.");
+      playErrorSound();
     }
   };
 
@@ -153,8 +182,12 @@ function App() {
       
       // Auto switch view to the type just added
       setActiveLentTab(lentType);
+      toast.success("Record added!");
+      playSuccessSound();
     } catch (error) {
       console.error("Error adding lent money: ", error);
+      toast.error("Failed to add record.");
+      playErrorSound();
     }
   };
 
@@ -164,8 +197,12 @@ function App() {
         status: 'paid',
         paidDate: new Date().toISOString()
       });
+      toast.success("Marked as paid!");
+      playSuccessSound();
     } catch (error) {
       console.error("Error marking as paid: ", error);
+      toast.error("Failed to update status.");
+      playErrorSound();
     }
   };
 
@@ -177,12 +214,18 @@ function App() {
     try {
       await addDoc(collection(db, 'categories'), {
         name: newCategoryName.trim(),
+        icon: newCategoryIcon,
         subcategories: [],
         createdAt: serverTimestamp()
       });
       setNewCategoryName('');
+      setNewCategoryIcon('Folder');
+      toast.success("Category added!");
+      playSuccessSound();
     } catch (error) {
       console.error("Error adding category: ", error);
+      toast.error("Failed to add category.");
+      playErrorSound();
     }
     setIsAddingCategory(false);
   };
@@ -190,8 +233,12 @@ function App() {
   const handleDeleteCategory = async (id) => {
     try {
       await deleteDoc(doc(db, 'categories', id));
+      toast.success("Category deleted.");
+      playSuccessSound();
     } catch (error) {
       console.error("Error deleting category: ", error);
+      toast.error("Failed to delete category.");
+      playErrorSound();
     }
   };
 
@@ -208,8 +255,12 @@ function App() {
         subcategories: arrayUnion(subName)
       });
       setNewSubcategoryNames(prev => ({ ...prev, [catId]: '' }));
+      toast.success(`Subcategory "${subName}" added!`);
+      playSuccessSound();
     } catch (error) {
       console.error("Error adding subcategory: ", error);
+      toast.error("Failed to add subcategory.");
+      playErrorSound();
     }
   };
 
@@ -218,8 +269,12 @@ function App() {
       await updateDoc(doc(db, 'categories', catId), {
         subcategories: arrayRemove(subName)
       });
+      toast.success("Subcategory deleted.");
+      playSuccessSound();
     } catch (error) {
       console.error("Error deleting subcategory: ", error);
+      toast.error("Failed to delete subcategory.");
+      playErrorSound();
     }
   };
 
@@ -227,13 +282,18 @@ function App() {
     try {
       for (const cat of DEFAULT_CATEGORIES) {
         await addDoc(collection(db, 'categories'), {
-          name: cat,
+          name: cat.name,
+          icon: cat.icon,
           subcategories: [],
           createdAt: serverTimestamp()
         });
       }
+      toast.success("Default categories seeded!");
+      playSuccessSound();
     } catch (error) {
       console.error("Error seeding categories: ", error);
+      toast.error("Failed to seed categories.");
+      playErrorSound();
     }
   };
 
@@ -277,6 +337,17 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-4 md:p-8 font-sans">
+      <Toaster 
+        position="top-center" 
+        toastOptions={{ 
+          style: { 
+            background: '#1f2937', 
+            color: '#fff', 
+            borderRadius: '16px',
+            border: '1px solid #374151'
+          } 
+        }} 
+      />
       <div className="max-w-6xl mx-auto space-y-8">
         
         <header className="text-center md:text-left">
@@ -294,11 +365,11 @@ function App() {
             <TabsTrigger value="add" className="flex items-center justify-center gap-2 rounded-xl">
               <PlusCircle className="w-4 h-4 hidden sm:block" /> Expense
             </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center justify-center gap-2 rounded-xl">
-              <List className="w-4 h-4 hidden sm:block" /> History
-            </TabsTrigger>
             <TabsTrigger value="lent" className="flex items-center justify-center gap-2 rounded-xl">
               <Handshake className="w-4 h-4 hidden sm:block" /> Lent
+            </TabsTrigger>
+            <TabsTrigger value="history" className="flex items-center justify-center gap-2 rounded-xl">
+              <List className="w-4 h-4 hidden sm:block" /> History
             </TabsTrigger>
             <TabsTrigger value="categories" className="flex items-center justify-center gap-2 rounded-xl">
               <FolderTree className="w-4 h-4 hidden sm:block" /> Categories
@@ -325,14 +396,21 @@ function App() {
               setType={setType}
               amount={amount}
               setAmount={setAmount}
+              calcHistory={calcHistory}
+              setCalcHistory={setCalcHistory}
               description={description}
               setDescription={setDescription}
+              date={date}
+              setDate={setDate}
               categories={categories}
               category={category}
               setCategory={setCategory}
               subcategory={subcategory}
               setSubcategory={setSubcategory}
               selectedCatObj={selectedCatObj}
+              handleAddSubcategory={handleAddSubcategory}
+              newSubcategoryNames={newSubcategoryNames}
+              handleSubcategoryChange={handleSubcategoryChange}
             />
           </TabsContent>
 
@@ -375,6 +453,8 @@ function App() {
               handleAddCategory={handleAddCategory}
               newCategoryName={newCategoryName}
               setNewCategoryName={setNewCategoryName}
+              newCategoryIcon={newCategoryIcon}
+              setNewCategoryIcon={setNewCategoryIcon}
               isAddingCategory={isAddingCategory}
               seedDefaultCategories={seedDefaultCategories}
               categories={categories}
