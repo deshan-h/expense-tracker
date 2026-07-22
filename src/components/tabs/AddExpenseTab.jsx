@@ -67,10 +67,6 @@ const AddExpenseTab = ({
         
         {/* COLUMN 1 */}
         <div className="space-y-8 flex flex-col justify-start">
-          <div className="flex p-1 bg-gray-900 rounded-2xl w-full mx-auto">
-            <button type="button" onClick={() => setType('Expense')} className={`flex-1 py-4 text-sm md:text-base font-semibold rounded-xl transition-all ${type === 'Expense' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'text-gray-400 hover:text-gray-200'}`}>Expense</button>
-            <button type="button" onClick={() => setType('Income')} className={`flex-1 py-4 text-sm md:text-base font-semibold rounded-xl transition-all ${type === 'Income' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-gray-200'}`}>Income</button>
-          </div>
 
           <div className="text-center bg-gray-900/30 p-8 rounded-3xl border border-gray-700/50 relative">
             <p className="text-sm font-medium text-gray-500 mb-4 uppercase tracking-widest">
@@ -95,49 +91,39 @@ const AddExpenseTab = ({
             )}
           </div>
           
-          {type === 'Expense' && (
-            <div className="bg-gray-900/50 p-6 rounded-3xl border border-gray-700/50">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm font-medium text-gray-400 uppercase tracking-wider">Select Category</p>
-                {categories.length === 0 && <p className="text-xs text-rose-400 bg-rose-400/10 px-3 py-1 rounded-full border border-rose-400/20">Add categories first</p>}
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-[300px] overflow-y-auto p-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full">
-                {categories.map(c => {
-                  const CatIcon = getIconComponent(c.icon);
-                  const iconColors = getIconColor(c.icon);
-                  const isSelected = category === c.name;
-                  return (
-                    <button 
-                      key={c.id} 
-                      type="button" 
-                      onClick={() => setCategory(c.name)} 
-                      className={`py-3 px-2 rounded-xl flex flex-col items-center gap-1.5 transition-all active:scale-95 text-center ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-750'}`}
-                    >
-                      <div className={`p-1.5 rounded-lg transition-all ${isSelected ? 'bg-white/20' : iconColors.bg}`}>
-                        <CatIcon className={`w-5 h-5 transition-all ${isSelected ? 'text-white drop-shadow-md scale-110' : iconColors.color}`} />
-                      </div>
-                      <span className={`text-[11px] leading-tight md:text-xs font-medium line-clamp-2 w-full ${isSelected ? 'text-white' : 'text-gray-300'}`}>{c.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
+          <div className="bg-gray-900/50 p-6 rounded-3xl border border-gray-700/50">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-gray-400 uppercase tracking-wider">Select Category</p>
+              {categories.length === 0 && <p className="text-xs text-rose-400 bg-rose-400/10 px-3 py-1 rounded-full border border-rose-400/20">Add categories first</p>}
             </div>
-          )}
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-[300px] overflow-y-auto p-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full">
+              {categories.map(c => {
+                const CatIcon = getIconComponent(c.icon);
+                const iconColors = getIconColor(c.icon);
+                const isSelected = category === c.name;
+                return (
+                  <button 
+                    key={c.id} 
+                    type="button" 
+                    onClick={() => setCategory(c.name)} 
+                    className={`py-3 px-2 rounded-xl flex flex-col items-center gap-1.5 transition-all active:scale-95 text-center ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-750'}`}
+                  >
+                    <div className={`p-1.5 rounded-lg transition-all ${isSelected ? 'bg-white/20' : iconColors.bg}`}>
+                      <CatIcon className={`w-5 h-5 transition-all ${isSelected ? 'text-white drop-shadow-md scale-110' : iconColors.color}`} />
+                    </div>
+                    <span className={`text-[11px] leading-tight md:text-xs font-medium line-clamp-2 w-full ${isSelected ? 'text-white' : 'text-gray-300'}`}>{c.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* COLUMN 2 */}
         <div className="flex flex-col justify-between bg-gray-900/50 p-6 rounded-3xl border border-gray-700/50">
           <div>
-            {type === 'Income' && (
-              <div className="hidden lg:flex flex-col items-center justify-center border-b border-gray-700/50 border-dashed pb-8 mb-8">
-                <TrendingUp className="w-20 h-20 text-emerald-500/20 mb-4" />
-                <p className="text-gray-500 font-medium">Ready to record Income.</p>
-              </div>
-            )}
-            
             <div className="space-y-4">
-              {type === 'Expense' && selectedCatObj && (
+              {selectedCatObj && (
                 <div className="mb-6">
                   <p className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">Subcategory (Optional)</p>
                   <div className="flex flex-wrap gap-3 p-2 -mx-2 items-center">
@@ -172,27 +158,25 @@ const AddExpenseTab = ({
                 </div>
               )}
 
-              {type === 'Expense' && (
-                <div className="mb-6">
-                  <p className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">Tracking Status</p>
-                  <div className="flex p-1 bg-gray-900 rounded-xl w-full max-w-[200px] border border-gray-700">
-                    <button 
-                      type="button" 
-                      onClick={() => setIsTracked(true)} 
-                      className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${isTracked ? 'bg-blue-500 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}
-                    >
-                      Tracked
-                    </button>
-                    <button 
-                      type="button" 
-                      onClick={() => setIsTracked(false)} 
-                      className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${!isTracked ? 'bg-gray-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}
-                    >
-                      Untracked
-                    </button>
-                  </div>
+              <div className="mb-6">
+                <p className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">Tracking Status</p>
+                <div className="flex p-1 bg-gray-900 rounded-xl w-full max-w-[200px] border border-gray-700">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsTracked(true)} 
+                    className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${isTracked ? 'bg-blue-500 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}
+                  >
+                    Tracked
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setIsTracked(false)} 
+                    className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${!isTracked ? 'bg-gray-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}
+                  >
+                    Untracked
+                  </button>
                 </div>
-              )}
+              </div>
               
               <p className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-2">Details</p>
               <div className={`relative bg-gray-900 rounded-2xl border border-gray-700 focus-within:border-${type === 'Expense' ? 'blue' : 'emerald'}-500 focus-within:ring-1 focus-within:ring-${type === 'Expense' ? 'blue' : 'emerald'}-500 transition-all overflow-hidden`}>
@@ -205,14 +189,14 @@ const AddExpenseTab = ({
             </div>
           </div>
 
-          <button type="submit" disabled={type === 'Expense' && categories.length === 0} className={`hidden lg:flex w-full bg-gradient-to-r ${type === 'Expense' ? 'from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-blue-500/20' : 'from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 shadow-emerald-500/20'} text-white font-bold py-5 rounded-2xl transition-all shadow-xl active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed items-center justify-center gap-2 text-xl mt-8`}>
-            <PlusCircle className="w-7 h-7" /> Save {type}
+          <button type="submit" disabled={categories.length === 0} className={`hidden lg:flex w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-blue-500/20 text-white font-bold py-5 rounded-2xl transition-all shadow-xl active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed items-center justify-center gap-2 text-xl mt-8`}>
+            <PlusCircle className="w-7 h-7" /> Save Expense
           </button>
         </div>
 
         {/* MOBILE SAVE BUTTON */}
-        <button type="submit" disabled={type === 'Expense' && categories.length === 0} className={`w-full lg:hidden bg-gradient-to-r ${type === 'Expense' ? 'from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-blue-500/20' : 'from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 shadow-emerald-500/20'} text-white font-bold py-5 rounded-2xl transition-all shadow-xl active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xl mt-4`}>
-          <PlusCircle className="w-7 h-7" /> Save {type}
+        <button type="submit" disabled={categories.length === 0} className={`w-full lg:hidden bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-blue-500/20 text-white font-bold py-5 rounded-2xl transition-all shadow-xl active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xl mt-4`}>
+          <PlusCircle className="w-7 h-7" /> Save Expense
         </button>
       </form>
     </div>

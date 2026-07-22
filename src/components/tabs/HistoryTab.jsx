@@ -183,8 +183,8 @@ const HistoryTab = ({
               {/* Headers */}
               <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-gray-400 uppercase tracking-widest pb-4 border-b border-gray-700/50 mb-6 pl-14">
                 <div className="col-span-2">Category</div>
-                <div className="col-span-3">Description</div>
                 <div className="col-span-2">Subcategory</div>
+                <div className="col-span-3">Description</div>
                 <div className="col-span-2">Date</div>
                 <div className="col-span-1">Status</div>
                 <div className="col-span-2 text-right pr-12">Amount</div>
@@ -216,12 +216,6 @@ const HistoryTab = ({
                             </span>
                           </div>
 
-                          {/* Description */}
-                          <div className="col-span-3">
-                            <div className="font-bold text-gray-100 text-base line-clamp-1">{t.description || 'Untitled'}</div>
-                            <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mt-0.5">{t.type}</div>
-                          </div>
-
                           {/* Subcategory */}
                           <div className="col-span-2">
                             {t.subcategory ? (
@@ -231,6 +225,12 @@ const HistoryTab = ({
                             ) : (
                               <span className="text-gray-600 italic text-sm">-</span>
                             )}
+                          </div>
+
+                          {/* Description */}
+                          <div className="col-span-3">
+                            <div className="font-bold text-gray-100 text-base line-clamp-1">{t.description || 'Untitled'}</div>
+                            <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mt-0.5">{t.type}</div>
                           </div>
 
                           {/* Date */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, LayoutDashboard, List, FolderTree, Handshake } from 'lucide-react';
+import { PlusCircle, LayoutDashboard, List, FolderTree, Handshake, TrendingUp } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 
 // Firebase imports
@@ -13,6 +13,7 @@ import { playSuccessSound, playErrorSound } from './utils/sounds';
 // Tab Components
 import DashboardTab from './components/tabs/DashboardTab';
 import AddExpenseTab from './components/tabs/AddExpenseTab';
+import IncomeTab from './components/tabs/IncomeTab';
 import HistoryTab from './components/tabs/HistoryTab';
 import MoneyLentTab from './components/tabs/MoneyLentTab';
 import CategoriesTab from './components/tabs/CategoriesTab';
@@ -131,13 +132,13 @@ function App() {
 
     try {
       await addDoc(collection(db, 'transactions'), {
-        type,
-        category: type === 'Expense' ? category : 'Income',
-        subcategory: type === 'Expense' ? subcategory : '',
+        type: 'Expense',
+        category: category,
+        subcategory: subcategory,
         amount: parseFloat(finalAmount),
         description,
         date: new Date(date).toISOString(),
-        isTracked: type === 'Expense' ? isTracked : true
+        isTracked: isTracked
       });
 
       setAmount('');
@@ -145,7 +146,49 @@ function App() {
       setDescription('');
       setDate(new Date().toISOString().split('T')[0]);
       setIsTracked(true);
-      toast.success(`${type} recorded successfully!`);
+      toast.success(`Expense recorded successfully!`);
+      playSuccessSound();
+    } catch (error) {
+      console.error("Error adding document: ", error);
+      toast.error("Failed to record transaction.");
+      playErrorSound();
+    }
+  };
+
+  const handleAddIncome = async (e, incomeCategory) => {
+    e.preventDefault();
+    
+    let finalAmount = amount;
+    if (calcHistory) {
+      try {
+        const expression = (calcHistory + amount).replace(/[^0-9+\-*/.]/g, '');
+        if (expression) {
+          finalAmount = String(Function('"use strict";return (' + expression + ')')());
+          setAmount(finalAmount);
+        }
+      } catch (err) {
+        console.error("Invalid expression");
+      }
+    }
+
+    if (!finalAmount || isNaN(parseFloat(finalAmount))) return;
+
+    try {
+      await addDoc(collection(db, 'transactions'), {
+        type: 'Income',
+        category: incomeCategory, // 'Business' or 'Other'
+        subcategory: '',
+        amount: parseFloat(finalAmount),
+        description,
+        date: new Date(date).toISOString(),
+        isTracked: true
+      });
+
+      setAmount('');
+      setCalcHistory('');
+      setDescription('');
+      setDate(new Date().toISOString().split('T')[0]);
+      toast.success(`Income recorded successfully!`);
       playSuccessSound();
     } catch (error) {
       console.error("Error adding document: ", error);
@@ -410,12 +453,15 @@ function App() {
         </header>
 
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 max-w-4xl mx-auto md:mx-0 mb-10 min-h-[72px] bg-gray-900/60 backdrop-blur-xl p-2 rounded-[2rem] border border-gray-700/50 shadow-2xl overflow-x-auto hide-scrollbar">
+          <TabsList className="grid w-full grid-cols-6 max-w-4xl mx-auto md:mx-0 mb-10 min-h-[72px] bg-gray-900/60 backdrop-blur-xl p-2 rounded-[2rem] border border-gray-700/50 shadow-2xl overflow-x-auto hide-scrollbar">
             <TabsTrigger value="dashboard" className="gap-1.5 sm:gap-2">
               <LayoutDashboard className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Dashboard</span>
             </TabsTrigger>
             <TabsTrigger value="add" className="gap-1.5 sm:gap-2">
               <PlusCircle className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Expense</span>
+            </TabsTrigger>
+            <TabsTrigger value="income" className="gap-1.5 sm:gap-2">
+              <TrendingUp className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Income</span>
             </TabsTrigger>
             <TabsTrigger value="lent" className="gap-1.5 sm:gap-2">
               <Handshake className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Lent</span>
@@ -445,9 +491,9 @@ function App() {
           {/* TAB 2: ADD EXPENSE */}
           <TabsContent value="add">
             <AddExpenseTab 
-              handleAddTransaction={handleAddTransaction}
-              type={type}
-              setType={setType}
+              handleAddTransaction={(e) => handleAddTransaction(e)}
+              type="Expense"
+              setType={() => {}}
               amount={amount}
               setAmount={setAmount}
               calcHistory={calcHistory}
@@ -467,6 +513,22 @@ function App() {
               handleAddSubcategory={handleAddSubcategory}
               newSubcategoryNames={newSubcategoryNames}
               handleSubcategoryChange={handleSubcategoryChange}
+            />
+          </TabsContent>
+
+          {/* TAB 3: INCOME */}
+          <TabsContent value="income">
+            <IncomeTab 
+              transactions={transactions}
+              handleAddTransaction={handleAddIncome}
+              amount={amount}
+              setAmount={setAmount}
+              calcHistory={calcHistory}
+              setCalcHistory={setCalcHistory}
+              description={description}
+              setDescription={setDescription}
+              date={date}
+              setDate={setDate}
             />
           </TabsContent>
 
