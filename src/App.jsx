@@ -399,29 +399,32 @@ function App() {
       />
       <div className="max-w-6xl mx-auto space-y-8">
         
-        <header className="text-center md:text-left">
-          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">
-            Expense Tracker
-          </h1>
-          <p className="text-gray-400 mt-2">Manage your finances with ease</p>
+        <header className="text-center md:text-left flex flex-col md:flex-row items-center gap-4">
+          <img src="pwa-192x192.png" alt="Expense Ledger Logo" className="w-16 h-16 rounded-2xl shadow-lg shadow-blue-500/20" />
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">
+              Expense Tracker
+            </h1>
+            <p className="text-gray-400 mt-1">Manage your finances with ease</p>
+          </div>
         </header>
 
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 max-w-3xl mx-auto md:mx-0 mb-8 h-14 bg-gray-800/80 p-1.5 rounded-2xl border border-gray-700 shadow-sm overflow-x-auto">
-            <TabsTrigger value="dashboard" className="flex items-center justify-center gap-2 rounded-xl">
-              <LayoutDashboard className="w-4 h-4 hidden sm:block" /> Dashboard
+          <TabsList className="grid w-full grid-cols-5 max-w-4xl mx-auto md:mx-0 mb-10 min-h-[72px] bg-gray-900/60 backdrop-blur-xl p-2 rounded-[2rem] border border-gray-700/50 shadow-2xl overflow-x-auto hide-scrollbar">
+            <TabsTrigger value="dashboard" className="gap-1.5 sm:gap-2">
+              <LayoutDashboard className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Dashboard</span>
             </TabsTrigger>
-            <TabsTrigger value="add" className="flex items-center justify-center gap-2 rounded-xl">
-              <PlusCircle className="w-4 h-4 hidden sm:block" /> Expense
+            <TabsTrigger value="add" className="gap-1.5 sm:gap-2">
+              <PlusCircle className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Expense</span>
             </TabsTrigger>
-            <TabsTrigger value="lent" className="flex items-center justify-center gap-2 rounded-xl">
-              <Handshake className="w-4 h-4 hidden sm:block" /> Lent
+            <TabsTrigger value="lent" className="gap-1.5 sm:gap-2">
+              <Handshake className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Lent</span>
             </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center justify-center gap-2 rounded-xl">
-              <List className="w-4 h-4 hidden sm:block" /> History
+            <TabsTrigger value="history" className="gap-1.5 sm:gap-2">
+              <List className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">History</span>
             </TabsTrigger>
-            <TabsTrigger value="categories" className="flex items-center justify-center gap-2 rounded-xl">
-              <FolderTree className="w-4 h-4 hidden sm:block" /> Categories
+            <TabsTrigger value="categories" className="gap-1.5 sm:gap-2">
+              <FolderTree className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Categories</span>
             </TabsTrigger>
           </TabsList>
 

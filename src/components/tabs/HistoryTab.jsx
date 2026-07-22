@@ -182,8 +182,8 @@ const HistoryTab = ({
               
               {/* Headers */}
               <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-gray-400 uppercase tracking-widest pb-4 border-b border-gray-700/50 mb-6 pl-14">
-                <div className="col-span-3">Description</div>
                 <div className="col-span-2">Category</div>
+                <div className="col-span-3">Description</div>
                 <div className="col-span-2">Subcategory</div>
                 <div className="col-span-2">Date</div>
                 <div className="col-span-1">Status</div>
@@ -209,17 +209,17 @@ const HistoryTab = ({
                         {/* Row Content */}
                         <div className="py-3 px-2 rounded-xl hover:bg-gray-800/40 transition-colors grid grid-cols-12 gap-4 items-center border-b border-gray-800/50">
                           
-                          {/* Description */}
-                          <div className="col-span-3">
-                            <div className="font-bold text-gray-100 text-base line-clamp-1">{t.description || 'Untitled'}</div>
-                            <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mt-0.5">{t.type}</div>
-                          </div>
-                          
                           {/* Category */}
                           <div className="col-span-2">
                             <span className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-semibold ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'}`}>
                               {t.category}
                             </span>
+                          </div>
+
+                          {/* Description */}
+                          <div className="col-span-3">
+                            <div className="font-bold text-gray-100 text-base line-clamp-1">{t.description || 'Untitled'}</div>
+                            <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mt-0.5">{t.type}</div>
                           </div>
 
                           {/* Subcategory */}
