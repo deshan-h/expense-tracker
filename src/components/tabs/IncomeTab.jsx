@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
 import { PlusCircle, Link, CheckCircle2, TrendingUp } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { fetchNewSalesSum } from '../../utils/posSync';
+import { db } from '../../firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
 const IncomeTab = ({ 
   transactions = [],
@@ -13,16 +17,53 @@ const IncomeTab = ({
   date,
   setDate
 }) => {
-  const [incomeType, setIncomeType] = useState('Business'); // 'Business' or 'Other'
   const [showGuide, setShowGuide] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTimeStr, setLastSyncTimeStr] = useState(localStorage.getItem('lastPosSyncTimestamp'));
 
-  const posTransactions = transactions.filter(t => t.type === 'Income' && t.category === 'Business').sort((a, b) => new Date(b.date) - new Date(a.date));
+  const handleSyncPOS = async () => {
+    setIsSyncing(true);
+    try {
+      const lastSync = localStorage.getItem('lastPosSyncTimestamp');
+      toast.loading('Fetching new POS sales...', { id: 'sync' });
+      
+      const result = await fetchNewSalesSum(lastSync);
+      
+      if (result.success) {
+        if (result.count === 0 || result.sum === 0) {
+          toast.success('No new sales to sync!', { id: 'sync' });
+        } else {
+          await addDoc(collection(db, 'transactions'), {
+            type: 'Income',
+            category: 'Business',
+            subcategory: 'POS Batch Sync',
+            amount: parseFloat(result.sum),
+            description: `Last sync at ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
+            date: new Date().toISOString(),
+            isTracked: true
+          });
+          
+          if (result.latestTimestamp) {
+            localStorage.setItem('lastPosSyncTimestamp', result.latestTimestamp);
+            setLastSyncTimeStr(result.latestTimestamp);
+          }
+          
+          toast.success(`Successfully synced ${result.count} orders for Rs. ${result.sum.toLocaleString()}!`, { id: 'sync' });
+        }
+      } else {
+        toast.error('Failed to connect to POS database', { id: 'sync' });
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('An error occurred while syncing.', { id: 'sync' });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
-  // We are forcing the main transaction type to be 'Income'
-  // and the category to be the selected incomeType.
   const onSubmit = (e) => {
     e.preventDefault();
-    handleAddTransaction(e, 'Income', incomeType);
+    handleAddTransaction(e, 'Income', 'Other'); // Manual entries are always 'Other'
   };
 
   const handleAmountKeyDown = (e) => {
@@ -59,25 +100,50 @@ const IncomeTab = ({
   };
 
   return (
-    <div className="bg-gray-800 p-6 md:p-10 rounded-3xl border border-gray-700 shadow-2xl max-w-full mx-auto overflow-hidden">
-      <div className="flex p-1 bg-gray-900 rounded-2xl w-full max-w-md mx-auto mb-10">
-        <button 
-          type="button" 
-          onClick={() => setIncomeType('Business')} 
-          className={`flex-1 py-4 text-sm md:text-base font-semibold rounded-xl transition-all ${incomeType === 'Business' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}
-        >
-          Business (POS)
-        </button>
-        <button 
-          type="button" 
-          onClick={() => setIncomeType('Other')} 
-          className={`flex-1 py-4 text-sm md:text-base font-semibold rounded-xl transition-all ${incomeType === 'Other' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}
-        >
-          Other Income
-        </button>
+    <div className="bg-gray-800 p-6 md:p-10 rounded-3xl border border-gray-700 shadow-2xl max-w-full mx-auto overflow-hidden flex flex-col gap-10">
+      
+      {/* POS SYNC BLOCK */}
+      <div className="bg-gray-900 p-8 rounded-3xl border border-gray-700/50">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="bg-blue-500/10 p-3 rounded-2xl">
+              <TrendingUp className="w-8 h-8 text-blue-500" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold text-gray-100 flex items-center gap-2">
+                Business POS Sync
+              </h3>
+              <p className="text-gray-400 text-sm mt-1">
+                {lastSyncTimeStr 
+                  ? <span className="text-emerald-400 font-medium">Last sync: {new Date(lastSyncTimeStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                  : 'Manually pull latest POS sales into the tracker'}
+              </p>
+            </div>
+          </div>
+          
+          <button 
+            onClick={handleSyncPOS}
+            disabled={isSyncing}
+            className={`flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-bold text-white transition-all shadow-lg ${isSyncing ? 'bg-gray-700 cursor-not-allowed text-gray-400' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-blue-500/20 active:scale-95'}`}
+          >
+            {isSyncing ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                Syncing...
+              </>
+            ) : (
+              <>
+                <TrendingUp className="w-5 h-5" />
+                Sync New Sales
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
-      {incomeType === 'Other' && (
+      {/* MANUAL INCOME FORM */}
+      <div>
+        <h3 className="text-xl font-bold text-gray-200 mb-6 px-2">Manual Income Entry</h3>
         <form onSubmit={onSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           <div className="space-y-8 flex flex-col justify-start">
             <div className="text-center bg-gray-900/30 p-8 rounded-3xl border border-gray-700/50 relative">
@@ -118,54 +184,7 @@ const IncomeTab = ({
             </button>
           </div>
         </form>
-      )}
-
-      {incomeType === 'Business' && (
-        <div className="bg-gray-900 p-8 rounded-3xl border border-gray-700/50">
-          <div className="flex items-center gap-4 mb-10 border-b border-gray-800 pb-6">
-            <div className="bg-blue-500/10 p-3 rounded-2xl">
-              <TrendingUp className="w-8 h-8 text-blue-500" />
-            </div>
-            <div>
-              <h3 className="text-2xl font-bold text-gray-100 flex items-center gap-2">
-                Business Sync Timeline
-                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-              </h3>
-              <p className="text-gray-400 text-sm mt-1">Live sales synced from your POS system</p>
-            </div>
-          </div>
-          
-          {posTransactions.length === 0 ? (
-            <div className="text-center py-16 px-4 border border-dashed border-gray-700 rounded-3xl">
-              <TrendingUp className="w-12 h-12 text-gray-600 mx-auto mb-4 opacity-50" />
-              <p className="text-gray-400 text-lg font-medium mb-1">Waiting for first sale...</p>
-              <p className="text-gray-500 text-sm">When a sale is completed in the POS, it will appear here instantly.</p>
-            </div>
-          ) : (
-            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full">
-              {posTransactions.map((t) => (
-                <div key={t.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-800/80 rounded-2xl border border-gray-700/50 hover:border-blue-500/40 hover:bg-gray-750 transition-all gap-4">
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="bg-blue-500/10 p-2.5 rounded-xl shrink-0 hidden sm:block">
-                      <TrendingUp className="w-5 h-5 text-blue-500" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-bold text-gray-100 text-base">{t.description || 'POS Sync'}</div>
-                      <div className="text-xs font-semibold text-gray-500 mt-1 uppercase tracking-wider">{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
-                    </div>
-                  </div>
-                  <div className="text-left sm:text-right shrink-0 border-t sm:border-t-0 border-gray-700/50 pt-3 sm:pt-0">
-                    <div className="font-bold text-emerald-400 text-lg">+ Rs. {parseFloat(t.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                    <div className="text-[10px] text-blue-400 font-bold bg-blue-500/10 px-2 py-0.5 rounded uppercase mt-1 inline-block tracking-wider">
-                      {t.subcategory || 'Business'}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      </div>
     </div>
   );
 };

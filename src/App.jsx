@@ -3,8 +3,12 @@ import { PlusCircle, LayoutDashboard, List, FolderTree, Handshake, TrendingUp } 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 
 // Firebase imports
-import { db } from './firebase';
+import { db, auth } from './firebase';
 import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+
+// Auth Component
+import Login from './components/Login';
 
 // Utils
 import { formatLKR } from './utils/formatters';
@@ -37,6 +41,8 @@ function App() {
   const [categories, setCategories] = useState([]);
   const [lentMoney, setLentMoney] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   
   // Transaction Form State
   const [type, setType] = useState('Expense');
@@ -70,6 +76,15 @@ function App() {
 
   // Fetch transactions, categories, and lent money from Firebase
   useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+    });
+
+    if (!user) {
+      setLoading(false);
+      return () => unsubscribeAuth();
+    }
     // Transactions listener
     const qTx = query(collection(db, 'transactions'), orderBy('date', 'desc'));
     const unsubTx = onSnapshot(qTx, (snapshot) => {
@@ -78,6 +93,7 @@ function App() {
         txData.push({ id: doc.id, ...doc.data() });
       });
       setTransactions(txData);
+      setLoading(false); // Stop loading after first fetch
     });
 
     // Categories listener
@@ -102,15 +118,15 @@ function App() {
         lentData.push({ id: doc.id, ...doc.data() });
       });
       setLentMoney(lentData);
-      setLoading(false);
     });
 
     return () => {
       unsubTx();
       unsubCat();
       unsubLent();
+      unsubscribeAuth();
     };
-  }, []);
+  }, [user]);
 
   const handleAddTransaction = async (e) => {
     e.preventDefault();
@@ -412,10 +428,39 @@ function App() {
     value: expensesByCategory[key]
   }));
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center font-sans">
+        <div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mb-4"></div>
+        <p className="text-blue-400/70 text-sm font-medium animate-pulse">Verifying Access...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <>
+        <Toaster 
+          position="top-center" 
+          toastOptions={{ 
+            style: { 
+              background: '#1f2937', 
+              color: '#fff', 
+              borderRadius: '16px',
+              border: '1px solid #374151'
+            } 
+          }} 
+        />
+        <Login />
+      </>
+    );
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 text-gray-100 flex items-center justify-center font-sans">
-        <p className="text-gray-400 text-lg animate-pulse">Loading Firebase data...</p>
+      <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col items-center justify-center font-sans">
+        <div className="w-10 h-10 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin mb-4"></div>
+        <p className="text-emerald-400/80 text-sm animate-pulse">Loading Firebase data...</p>
       </div>
     );
   }
@@ -442,14 +487,22 @@ function App() {
       />
       <div className="max-w-6xl mx-auto space-y-8">
         
-        <header className="text-center md:text-left flex flex-col md:flex-row items-center gap-4">
-          <img src="pwa-192x192.png" alt="Expense Ledger Logo" className="w-16 h-16 rounded-2xl shadow-lg shadow-blue-500/20" />
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">
-              Expense Tracker
-            </h1>
-            <p className="text-gray-400 mt-1">Manage your finances with ease</p>
+        <header className="text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center flex-col md:flex-row gap-4">
+            <img src="pwa-192x192.png" alt="Expense Tracker Logo" className="w-16 h-16 rounded-2xl shadow-lg shadow-blue-500/20" />
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">
+                Expense Tracker
+              </h1>
+              <p className="text-gray-400 mt-1 text-sm md:text-base">Manage your finances with ease</p>
+            </div>
           </div>
+          <button
+            onClick={() => signOut(auth)}
+            className="px-5 py-2.5 bg-gray-800/80 hover:bg-red-500/20 text-gray-300 hover:text-red-400 hover:border-red-500/30 rounded-xl transition-all border border-gray-700 text-sm font-semibold shadow-sm"
+          >
+            Sign Out
+          </button>
         </header>
 
         <Tabs defaultValue="dashboard" className="w-full">
