@@ -108,6 +108,7 @@ const CategoriesTab = ({
           })}
         </div>
       )}
+        </div>
       </div>
     </div>
   );

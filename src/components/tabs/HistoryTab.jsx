@@ -475,6 +475,7 @@ const HistoryTab = ({
 
         </div>
       )}
+        </div>
       </div>
     </div>
   );
