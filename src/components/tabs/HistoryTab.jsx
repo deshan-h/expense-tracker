@@ -97,8 +97,15 @@ const HistoryTab = ({
 
 
   return (
-    <div className="bg-gray-800 p-6 rounded-3xl border border-gray-700 shadow-lg">
-      
+    <div className="relative w-full overflow-hidden">
+      {/* Full-tab Ambient Glows */}
+      <div className="absolute top-[10%] left-[10%] w-[40vw] h-[40vw] bg-emerald-600/10 rounded-full blur-[120px] mix-blend-screen opacity-50 animate-pulse pointer-events-none"></div>
+      <div className="absolute bottom-[10%] right-[10%] w-[40vw] h-[40vw] bg-blue-600/10 rounded-full blur-[120px] mix-blend-screen opacity-50 pointer-events-none"></div>
+
+      <div className="bg-gray-900/40 backdrop-blur-2xl p-6 md:p-10 rounded-[2rem] border border-gray-700/50 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] max-w-full mx-auto relative group transition-all duration-700 hover:border-gray-600/60 z-10">
+        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-[2rem] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+        
+        <div className="relative z-10">
       {/* Top Level History Toggle */}
       <div className="flex p-1 bg-gray-900 rounded-2xl w-full max-w-md mx-auto mb-8">
         <button 
@@ -468,6 +475,7 @@ const HistoryTab = ({
 
         </div>
       )}
+      </div>
     </div>
   );
 };

@@ -473,7 +473,7 @@ function App() {
   const totalPendingLent = pendingLent.reduce((acc, curr) => acc + (curr.amount - (curr.paidAmount || 0)), 0);
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 p-4 md:p-8 font-sans">
+    <div className="min-h-screen bg-gray-900 text-gray-100 px-4 md:px-8 pb-8 font-sans overflow-x-hidden">
       <Toaster 
         position="top-center" 
         toastOptions={{ 
@@ -485,49 +485,46 @@ function App() {
           } 
         }} 
       />
-      <div className="max-w-6xl mx-auto space-y-8">
+      <div className="max-w-6xl mx-auto space-y-6 pt-2">
         
-        <header className="text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center flex-col md:flex-row gap-4">
-            <img src="pwa-192x192.png" alt="Expense Tracker Logo" className="w-16 h-16 rounded-2xl shadow-lg shadow-blue-500/20" />
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">
-                Expense Tracker
-              </h1>
-              <p className="text-gray-400 mt-1 text-sm md:text-base">Manage your finances with ease</p>
+        <Tabs defaultValue="dashboard" className="w-full relative z-10">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-6 mb-6">
+            <div className="relative flex-1 w-full max-w-5xl mx-auto lg:mx-0 group">
+              {/* Premium Animated Glow Behind Tab Bar */}
+              <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 via-blue-500/20 to-purple-500/20 rounded-full blur-xl group-hover:blur-2xl transition-all duration-700 opacity-70 group-hover:opacity-100"></div>
+              
+              <TabsList className="relative grid w-full grid-cols-6 items-center h-auto bg-gray-900/80 backdrop-blur-2xl p-2 rounded-full border border-gray-700/50 shadow-2xl overflow-x-auto lg:overflow-visible hide-scrollbar gap-1 sm:gap-2">
+                <TabsTrigger value="dashboard" className="gap-1.5 sm:gap-2 py-2 rounded-full">
+                  <LayoutDashboard className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Dashboard</span>
+                </TabsTrigger>
+                <TabsTrigger value="add" className="gap-1.5 sm:gap-2 py-2 rounded-full">
+                  <PlusCircle className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Expense</span>
+                </TabsTrigger>
+                <TabsTrigger value="income" className="gap-1.5 sm:gap-2 py-2 rounded-full">
+                  <TrendingUp className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Income</span>
+                </TabsTrigger>
+                <TabsTrigger value="lent" className="gap-1.5 sm:gap-2 py-2 rounded-full">
+                  <Handshake className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Lent</span>
+                </TabsTrigger>
+                <TabsTrigger value="history" className="gap-1.5 sm:gap-2 py-2 rounded-full">
+                  <List className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">History</span>
+                </TabsTrigger>
+                <TabsTrigger value="categories" className="gap-1.5 sm:gap-2 py-2 rounded-full">
+                  <FolderTree className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Categories</span>
+                </TabsTrigger>
+              </TabsList>
             </div>
-          </div>
+
           <button
             onClick={() => signOut(auth)}
-            className="px-5 py-2.5 bg-gray-800/80 hover:bg-red-500/20 text-gray-300 hover:text-red-400 hover:border-red-500/30 rounded-xl transition-all border border-gray-700 text-sm font-semibold shadow-sm"
+            className="px-6 py-4 bg-gray-900/80 hover:bg-red-500/10 text-gray-400 hover:text-red-400 border border-gray-800 hover:border-red-500/30 rounded-full transition-all duration-300 text-sm font-bold shadow-2xl lg:w-auto w-full flex-shrink-0 whitespace-nowrap backdrop-blur-xl flex items-center justify-center gap-2 group"
           >
+            <div className="w-2 h-2 rounded-full bg-red-500/50 group-hover:bg-red-500 group-hover:shadow-[0_0_10px_rgba(239,68,68,0.8)] transition-all"></div>
             Sign Out
           </button>
-        </header>
+        </div>
 
-        <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-6 max-w-4xl mx-auto md:mx-0 mb-10 min-h-[72px] bg-gray-900/60 backdrop-blur-xl p-2 rounded-[2rem] border border-gray-700/50 shadow-2xl overflow-x-auto hide-scrollbar">
-            <TabsTrigger value="dashboard" className="gap-1.5 sm:gap-2">
-              <LayoutDashboard className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Dashboard</span>
-            </TabsTrigger>
-            <TabsTrigger value="add" className="gap-1.5 sm:gap-2">
-              <PlusCircle className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Expense</span>
-            </TabsTrigger>
-            <TabsTrigger value="income" className="gap-1.5 sm:gap-2">
-              <TrendingUp className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Income</span>
-            </TabsTrigger>
-            <TabsTrigger value="lent" className="gap-1.5 sm:gap-2">
-              <Handshake className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Lent</span>
-            </TabsTrigger>
-            <TabsTrigger value="history" className="gap-1.5 sm:gap-2">
-              <List className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">History</span>
-            </TabsTrigger>
-            <TabsTrigger value="categories" className="gap-1.5 sm:gap-2">
-              <FolderTree className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Categories</span>
-            </TabsTrigger>
-          </TabsList>
-
-          {/* TAB 1: DASHBOARD */}
+        {/* TAB 1: DASHBOARD */}
           <TabsContent value="dashboard" className="space-y-6">
             <DashboardTab 
               transactions={transactions}
@@ -535,6 +532,7 @@ function App() {
               totalExpense={totalExpense}
               netBalance={netBalance}
               totalPendingLent={totalPendingLent}
+              lentMoney={lentMoney}
               formatLKR={formatLKR}
               chartData={chartData}
               COLORS={COLORS}
@@ -643,6 +641,15 @@ function App() {
           
         </Tabs>
       </div>
+
+      {/* Footer */}
+      <footer className="w-full flex items-center justify-center gap-3 py-10 mt-8 border-t border-gray-800/30 text-gray-400 text-sm font-medium bg-gray-950/20 backdrop-blur-sm">
+        <span className="tracking-wide">Developed By</span>
+        <div className="flex items-center gap-2 bg-gray-900/50 px-3 py-1.5 rounded-full border border-gray-800 shadow-inner">
+          <img src={`${import.meta.env.BASE_URL}desh-logo.png`} alt="DEH Logo" className="h-6 w-auto object-contain drop-shadow-md" />
+          <span className="text-gray-200 font-black tracking-widest uppercase">Desh</span>
+        </div>
+      </footer>
     </div>
   );
 }
