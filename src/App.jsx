@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, LayoutDashboard, List, FolderTree, Handshake, TrendingUp } from 'lucide-react';
+import { PlusCircle, LayoutDashboard, List, FolderTree, Handshake, TrendingUp, MoreVertical } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 
 // Firebase imports
 import { db, auth } from './firebase';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc, arrayUnion, arrayRemove, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 // Auth Component
@@ -13,6 +13,7 @@ import Login from './components/Login';
 // Utils
 import { formatLKR } from './utils/formatters';
 import { playSuccessSound, playErrorSound } from './utils/sounds';
+import { fetchNewSalesSum } from './utils/posSync';
 
 // Tab Components
 import DashboardTab from './components/tabs/DashboardTab';
@@ -69,6 +70,13 @@ function App() {
   const [activeLentTab, setActiveLentTab] = useState('Family');
   const [showPaid, setShowPaid] = useState(false);
 
+  // Unified POS Sync State
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMetadata, setSyncMetadata] = useState(null);
+
+  // Modal States
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
+
   // Reset subcategory when main category changes
   useEffect(() => {
     setSubcategory('');
@@ -120,10 +128,18 @@ function App() {
       setLentMoney(lentData);
     });
 
+    // POS Sync Metadata listener
+    const unsubMetadata = onSnapshot(doc(db, 'metadata', 'posSync'), (docSnap) => {
+      if (docSnap.exists()) {
+        setSyncMetadata(docSnap.data());
+      }
+    });
+
     return () => {
       unsubTx();
       unsubCat();
       unsubLent();
+      unsubMetadata();
       unsubscribeAuth();
     };
   }, [user]);
@@ -472,6 +488,53 @@ function App() {
   const paidLent = lentMoney.filter(record => record.status === 'paid');
   const totalPendingLent = pendingLent.reduce((acc, curr) => acc + (curr.amount - (curr.paidAmount || 0)), 0);
 
+  // Unified POS Sync Logic
+  const lastSyncTimeStr = syncMetadata?.lastRunTime || null;
+
+  const handleSyncPOS = async () => {
+    setIsSyncing(true);
+    const runTime = new Date().toISOString();
+    try {
+      toast.loading('Fetching new POS sales...', { id: 'sync' });
+      
+      const result = await fetchNewSalesSum(syncMetadata?.posLatestTimestamp || null);
+      let newPosTimestamp = result?.latestTimestamp || syncMetadata?.posLatestTimestamp || null;
+      
+      if (result.success) {
+        if (result.count === 0 || result.sum === 0) {
+          toast.success('No new sales to sync!', { id: 'sync' });
+        } else {
+          await addDoc(collection(db, 'transactions'), {
+            type: 'Income',
+            category: 'Business',
+            subcategory: 'POS Batch Sync',
+            amount: parseFloat(result.sum),
+            description: `Auto-synced POS sales batch`,
+            date: new Date().toISOString(),
+            posLatestTimestamp: newPosTimestamp,
+            isTracked: true
+          });
+          
+          toast.success(`Successfully synced Rs. ${result.sum.toLocaleString()}!`, { id: 'sync' });
+        }
+      } else {
+        toast.error('Failed to connect to POS database', { id: 'sync' });
+      }
+
+      // Always update metadata so the "Last Sync" time on UI reflects this button click
+      await setDoc(doc(db, 'metadata', 'posSync'), {
+        lastRunTime: runTime,
+        posLatestTimestamp: newPosTimestamp
+      });
+
+    } catch (error) {
+      console.error(error);
+      toast.error('An error occurred while syncing.', { id: 'sync' });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 px-4 md:px-8 pb-8 font-sans overflow-x-hidden">
       <Toaster 
@@ -487,8 +550,8 @@ function App() {
       />
       <div className="max-w-6xl mx-auto space-y-6 pt-2">
         
-        <Tabs defaultValue="dashboard" className="w-full relative z-10">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-6 mb-6">
+        <Tabs defaultValue="add" className="w-full relative z-10">
+          <div className="flex flex-row items-center justify-between gap-3 sm:gap-6 mb-6">
             <div className="relative flex-1 w-full max-w-5xl mx-auto lg:mx-0 group">
               {/* Premium Animated Glow Behind Tab Bar */}
               <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 via-blue-500/20 to-purple-500/20 rounded-full blur-xl group-hover:blur-2xl transition-all duration-700 opacity-70 group-hover:opacity-100"></div>
@@ -515,14 +578,16 @@ function App() {
               </TabsList>
             </div>
 
-          <button
-            onClick={() => signOut(auth)}
-            className="px-6 py-4 bg-gray-900/80 hover:bg-red-500/10 text-gray-400 hover:text-red-400 border border-gray-800 hover:border-red-500/30 rounded-full transition-all duration-300 text-sm font-bold shadow-2xl lg:w-auto w-full flex-shrink-0 whitespace-nowrap backdrop-blur-xl flex items-center justify-center gap-2 group"
-          >
-            <div className="w-2 h-2 rounded-full bg-red-500/50 group-hover:bg-red-500 group-hover:shadow-[0_0_10px_rgba(239,68,68,0.8)] transition-all"></div>
-            Sign Out
-          </button>
-        </div>
+            <button
+              onClick={() => setShowSignOutModal(true)}
+              title="Sign Out"
+              className="p-3 sm:px-5 sm:py-3 lg:px-6 lg:py-4 bg-gray-900/80 hover:bg-red-500/10 text-gray-400 hover:text-red-400 border border-gray-800 hover:border-red-500/30 rounded-full transition-all duration-300 text-sm font-bold shadow-2xl flex-shrink-0 backdrop-blur-xl flex items-center justify-center gap-2 group"
+            >
+              <MoreVertical className="w-5 h-5 sm:hidden group-hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] transition-all" />
+              <div className="hidden sm:block w-2 h-2 rounded-full bg-red-500/50 group-hover:bg-red-500 group-hover:shadow-[0_0_10px_rgba(239,68,68,0.8)] transition-all"></div>
+              <span className="hidden sm:inline">Sign Out</span>
+            </button>
+          </div>
 
         {/* TAB 1: DASHBOARD */}
           <TabsContent value="dashboard" className="space-y-6">
@@ -536,6 +601,9 @@ function App() {
               formatLKR={formatLKR}
               chartData={chartData}
               COLORS={COLORS}
+              handleSyncPOS={handleSyncPOS}
+              isSyncing={isSyncing}
+              lastSyncTimeStr={lastSyncTimeStr}
             />
           </TabsContent>
 
@@ -580,6 +648,9 @@ function App() {
               setDescription={setDescription}
               date={date}
               setDate={setDate}
+              handleSyncPOS={handleSyncPOS}
+              isSyncing={isSyncing}
+              lastSyncTimeStr={lastSyncTimeStr}
             />
           </TabsContent>
 
@@ -650,6 +721,39 @@ function App() {
           <span className="text-gray-200 font-black tracking-widest uppercase">Desh</span>
         </div>
       </footer>
+
+      {/* SIGN OUT MODAL */}
+      {showSignOutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-gray-900/90 backdrop-blur-xl border border-gray-700/50 p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden flex flex-col gap-6">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500/80 via-rose-500/80 to-red-500/80"></div>
+            
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto border border-red-500/20 shadow-inner">
+              <MoreVertical className="w-8 h-8 text-red-400 drop-shadow-md" />
+            </div>
+
+            <div>
+              <h3 className="text-xl font-black text-white tracking-wide mb-2">Sign Out</h3>
+              <p className="text-gray-400 text-sm">Are you sure you want to sign out of your account?</p>
+            </div>
+
+            <div className="flex gap-4 w-full mt-2">
+              <button 
+                onClick={() => setShowSignOutModal(false)}
+                className="flex-1 py-3 px-4 bg-gray-800/80 hover:bg-gray-700/80 text-gray-300 rounded-xl font-bold transition-all border border-gray-700 active:scale-95 text-sm"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => signOut(auth)}
+                className="flex-1 py-3 px-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-xl font-bold transition-all shadow-[0_0_15px_-3px_rgba(225,29,72,0.5)] active:scale-95 text-sm uppercase tracking-wider"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

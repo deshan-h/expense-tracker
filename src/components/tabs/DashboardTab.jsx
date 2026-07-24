@@ -1,12 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, AreaChart, Area, XAxis, YAxis, CartesianGrid, BarChart, Bar, LabelList } from 'recharts';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, DollarSign, Activity, Target, Clock, Handshake, RefreshCw } from 'lucide-react';
 import { PieChart as PieChartIcon } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { fetchNewSalesSum } from '../../utils/posSync';
-import { db } from '../../firebase';
-import { collection, addDoc } from 'firebase/firestore';
 
 // Custom Tooltip for AreaChart
 const CustomAreaTooltip = ({ active, payload, label, formatLKR }) => {
@@ -31,49 +27,44 @@ const CustomAreaTooltip = ({ active, payload, label, formatLKR }) => {
   return null;
 };
 
-const DashboardTab = ({ transactions, totalIncome, totalExpense, netBalance, totalPendingLent, lentMoney = [], formatLKR, chartData, COLORS }) => {
+const DashboardTab = ({ 
+  transactions, 
+  totalIncome, 
+  totalExpense, 
+  netBalance, 
+  totalPendingLent, 
+  lentMoney = [], 
+  formatLKR, 
+  chartData, 
+  COLORS,
+  handleSyncPOS,
+  isSyncing,
+  lastSyncTimeStr
+}) => {
 
-  const [isSyncing, setIsSyncing] = useState(false);
+  // Auto-refresh Time Ago
+  const [now, setNow] = useState(Date.now());
+  
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000); // refresh every minute
+    return () => clearInterval(timer);
+  }, []);
 
-  const handleSyncPOS = async () => {
-    setIsSyncing(true);
-    try {
-      const lastSync = localStorage.getItem('lastPosSyncTimestamp');
-      toast.loading('Fetching new POS sales...', { id: 'dash-sync' });
-      
-      const result = await fetchNewSalesSum(lastSync);
-      
-      if (result.success) {
-        if (result.count === 0 || result.sum === 0) {
-          toast.success('No new sales to sync!', { id: 'dash-sync' });
-        } else {
-          await addDoc(collection(db, 'transactions'), {
-            type: 'Income',
-            category: 'Business',
-            subcategory: 'POS Batch Sync',
-            amount: parseFloat(result.sum),
-            description: `Last sync at ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
-            date: new Date().toISOString(),
-            isTracked: true
-          });
-          
-          if (result.latestTimestamp) {
-            localStorage.setItem('lastPosSyncTimestamp', result.latestTimestamp);
-            // Dispatch a custom event to notify IncomeTab to update its UI if needed
-            window.dispatchEvent(new Event('pos-sync-completed'));
-          }
-          
-          toast.success(`Successfully synced Rs. ${result.sum.toLocaleString()}!`, { id: 'dash-sync' });
-        }
-      } else {
-        toast.error('Failed to connect to POS database', { id: 'dash-sync' });
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error('An error occurred while syncing.', { id: 'dash-sync' });
-    } finally {
-      setIsSyncing(false);
-    }
+  const timeAgo = (dateStr) => {
+    if (!dateStr) return 'Never';
+    const seconds = Math.floor((now - new Date(dateStr).getTime()) / 1000);
+    
+    if (seconds < 60) return "Just now";
+    let interval = seconds / 31536000;
+    if (interval >= 1) return Math.floor(interval) + (Math.floor(interval) === 1 ? " yr ago" : " yrs ago");
+    interval = seconds / 2592000;
+    if (interval >= 1) return Math.floor(interval) + (Math.floor(interval) === 1 ? " mo ago" : " mos ago");
+    interval = seconds / 86400;
+    if (interval >= 1) return Math.floor(interval) + (Math.floor(interval) === 1 ? " day ago" : " days ago");
+    interval = seconds / 3600;
+    if (interval >= 1) return Math.floor(interval) + (Math.floor(interval) === 1 ? " hr ago" : " hrs ago");
+    interval = seconds / 60;
+    return Math.floor(interval) + (Math.floor(interval) === 1 ? " min ago" : " mins ago");
   };
 
   // New Metrics Calculations
@@ -245,18 +236,26 @@ const DashboardTab = ({ transactions, totalIncome, totalExpense, netBalance, tot
           <div className="z-10 relative flex-1">
             <div className="flex justify-between items-center mb-1">
               <p className="text-gray-400 text-xs font-bold uppercase tracking-[0.2em] group-hover:text-emerald-300 transition-colors">Total Income</p>
-              <button 
-                onClick={handleSyncPOS} 
-                disabled={isSyncing}
-                className="text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded-md font-bold uppercase tracking-wider flex items-center gap-1 transition-all disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} /> Sync
-              </button>
             </div>
             <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-md">
               <span className="text-sm text-gray-500 mr-1 font-bold">Rs.</span>
               {formatLKR(totalIncome)}
             </h2>
+            
+            <div className="w-full h-px bg-gradient-to-r from-gray-700/80 via-emerald-800/30 to-transparent my-3 rounded-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
+            
+            <div className="flex justify-between items-center mt-2">
+              <span className="text-[11px] text-gray-400 font-medium tracking-wide">
+                Business Sync : {timeAgo(lastSyncTimeStr)}
+              </span>
+              <button 
+                onClick={handleSyncPOS} 
+                disabled={isSyncing}
+                className="text-emerald-400 hover:text-emerald-300 transition-all disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} /> 
+              </button>
+            </div>
           </div>
         </motion.div>
 

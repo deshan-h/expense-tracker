@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import { PlusCircle, Link, CheckCircle2, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { fetchNewSalesSum } from '../../utils/posSync';
-import { db } from '../../firebase';
-import { collection, addDoc } from 'firebase/firestore';
 
 const IncomeTab = ({ 
   transactions = [],
@@ -15,51 +12,12 @@ const IncomeTab = ({
   description, 
   setDescription, 
   date,
-  setDate
+  setDate,
+  handleSyncPOS,
+  isSyncing,
+  lastSyncTimeStr
 }) => {
   const [showGuide, setShowGuide] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [lastSyncTimeStr, setLastSyncTimeStr] = useState(localStorage.getItem('lastPosSyncTimestamp'));
-
-  const handleSyncPOS = async () => {
-    setIsSyncing(true);
-    try {
-      const lastSync = localStorage.getItem('lastPosSyncTimestamp');
-      toast.loading('Fetching new POS sales...', { id: 'sync' });
-      
-      const result = await fetchNewSalesSum(lastSync);
-      
-      if (result.success) {
-        if (result.count === 0 || result.sum === 0) {
-          toast.success('No new sales to sync!', { id: 'sync' });
-        } else {
-          await addDoc(collection(db, 'transactions'), {
-            type: 'Income',
-            category: 'Business',
-            subcategory: 'POS Batch Sync',
-            amount: parseFloat(result.sum),
-            description: `Last sync at ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
-            date: new Date().toISOString(),
-            isTracked: true
-          });
-          
-          if (result.latestTimestamp) {
-            localStorage.setItem('lastPosSyncTimestamp', result.latestTimestamp);
-            setLastSyncTimeStr(result.latestTimestamp);
-          }
-          
-          toast.success(`Successfully synced ${result.count} orders for Rs. ${result.sum.toLocaleString()}!`, { id: 'sync' });
-        }
-      } else {
-        toast.error('Failed to connect to POS database', { id: 'sync' });
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error('An error occurred while syncing.', { id: 'sync' });
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   const onSubmit = (e) => {
     e.preventDefault();
