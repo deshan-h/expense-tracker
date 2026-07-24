@@ -1,6 +1,6 @@
 import React from 'react';
 import { FolderTree, Trash2, X } from 'lucide-react';
-import { AVAILABLE_ICONS, getIconComponent, getIconColor } from '../../utils/icons';
+import { AVAILABLE_ICONS, getIconComponent, getIconColor } from '../utils/icons';
 
 const CategoriesTab = ({
   handleAddCategory,

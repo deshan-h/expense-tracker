@@ -1,49 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { PlusCircle, LayoutDashboard, List, FolderTree, Handshake, TrendingUp, MoreVertical } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
+import { PlusCircle, LayoutDashboard, List, FolderTree, Handshake, TrendingUp, MoreVertical, LogOut } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
-
-// Firebase imports
-import { db, auth } from './firebase';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc, arrayUnion, arrayRemove, query, orderBy, serverTimestamp } from 'firebase/firestore';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
+import { auth } from './firebase';
 
 // Auth Component
 import Login from './components/Login';
 
 // Utils
 import { formatLKR } from './utils/formatters';
-import { playSuccessSound, playErrorSound } from './utils/sounds';
-import { fetchNewSalesSum } from './utils/posSync';
-
-// Tab Components
-import DashboardTab from './components/tabs/DashboardTab';
-import AddExpenseTab from './components/tabs/AddExpenseTab';
-import IncomeTab from './components/tabs/IncomeTab';
-import HistoryTab from './components/tabs/HistoryTab';
-import MoneyLentTab from './components/tabs/MoneyLentTab';
-import CategoriesTab from './components/tabs/CategoriesTab';
 import toast, { Toaster } from 'react-hot-toast';
 
-const DEFAULT_CATEGORIES = [
-  { name: 'Food & Drinks', icon: 'Utensils' },
-  { name: 'Shopping', icon: 'ShoppingCart' },
-  { name: 'Housing', icon: 'Home' },
-  { name: 'Transportation', icon: 'Bus' },
-  { name: 'Vehicle', icon: 'Car' },
-  { name: 'Life & Entertainment', icon: 'Smile' },
-  { name: 'Communication, PC', icon: 'Monitor' },
-  { name: 'Financial expenses', icon: 'CreditCard' }
-];
+// Custom Hooks
+import { useAuth } from './hooks/useAuth';
+import { useTransactions } from './hooks/useTransactions';
+import { useCategories } from './hooks/useCategories';
+import { useLentMoney } from './hooks/useLentMoney';
+import { usePOSSync } from './hooks/usePOSSync';
+
+// Lazy Loaded Pages (Performance Optimization)
+const DashboardTab = lazy(() => import('./pages/DashboardTab'));
+const AddExpenseTab = lazy(() => import('./pages/AddExpenseTab'));
+const IncomeTab = lazy(() => import('./pages/IncomeTab'));
+const HistoryTab = lazy(() => import('./pages/HistoryTab'));
+const MoneyLentTab = lazy(() => import('./pages/MoneyLentTab'));
+const CategoriesTab = lazy(() => import('./pages/CategoriesTab'));
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
 
 function App() {
-  const [transactions, setTransactions] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [lentMoney, setLentMoney] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const { user, authLoading } = useAuth();
   
   // Transaction Form State
   const [type, setType] = useState('Expense');
@@ -70,83 +56,21 @@ function App() {
   const [activeLentTab, setActiveLentTab] = useState('Family');
   const [showPaid, setShowPaid] = useState(false);
 
-  // Unified POS Sync State
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncMetadata, setSyncMetadata] = useState(null);
-
   // Modal States
   const [showSignOutModal, setShowSignOutModal] = useState(false);
 
-  // Reset subcategory when main category changes
+  // Custom Hooks mapped
+  const { transactions, loading: txLoading, addExpense, addIncome, deleteTransaction } = useTransactions(user);
+  const { categories, addCategory: addCat, deleteCategory: delCat, addSubcategory: addSub, deleteSubcategory: delSub, seedDefaultCategories, DEFAULT_CATEGORIES } = useCategories(user, setCategory);
+  const { lentMoney, addLentMoney: addLent, receiveLentPayment: recLent, deleteLentMoney: delLent } = useLentMoney(user);
+  const { syncMetadata, isSyncing, handleSyncPOS } = usePOSSync(user);
+
   useEffect(() => {
     setSubcategory('');
   }, [category]);
 
-  // Fetch transactions, categories, and lent money from Firebase
-  useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setAuthLoading(false);
-    });
-
-    if (!user) {
-      setLoading(false);
-      return () => unsubscribeAuth();
-    }
-    // Transactions listener
-    const qTx = query(collection(db, 'transactions'), orderBy('date', 'desc'));
-    const unsubTx = onSnapshot(qTx, (snapshot) => {
-      const txData = [];
-      snapshot.forEach((doc) => {
-        txData.push({ id: doc.id, ...doc.data() });
-      });
-      setTransactions(txData);
-      setLoading(false); // Stop loading after first fetch
-    });
-
-    // Categories listener
-    const qCat = query(collection(db, 'categories'), orderBy('createdAt', 'asc'));
-    const unsubCat = onSnapshot(qCat, (snapshot) => {
-      const catData = [];
-      snapshot.forEach((doc) => {
-        catData.push({ id: doc.id, ...doc.data() });
-      });
-      setCategories(catData);
-      
-      if (catData.length > 0) {
-        setCategory(prev => prev === '' ? catData[0].name : prev);
-      }
-    });
-
-    // Lent Money listener
-    const qLent = query(collection(db, 'moneyLent'), orderBy('date', 'desc'));
-    const unsubLent = onSnapshot(qLent, (snapshot) => {
-      const lentData = [];
-      snapshot.forEach((doc) => {
-        lentData.push({ id: doc.id, ...doc.data() });
-      });
-      setLentMoney(lentData);
-    });
-
-    // POS Sync Metadata listener
-    const unsubMetadata = onSnapshot(doc(db, 'metadata', 'posSync'), (docSnap) => {
-      if (docSnap.exists()) {
-        setSyncMetadata(docSnap.data());
-      }
-    });
-
-    return () => {
-      unsubTx();
-      unsubCat();
-      unsubLent();
-      unsubMetadata();
-      unsubscribeAuth();
-    };
-  }, [user]);
-
-  const handleAddTransaction = async (e) => {
+  const handleAddTransaction = useCallback(async (e) => {
     e.preventDefault();
-    
     let finalAmount = amount;
     if (calcHistory) {
       try {
@@ -159,37 +83,21 @@ function App() {
         console.error("Invalid expression");
       }
     }
-
     if (!finalAmount || isNaN(parseFloat(finalAmount))) return;
-
-    try {
-      await addDoc(collection(db, 'transactions'), {
-        type: 'Expense',
-        category: category,
-        subcategory: subcategory,
-        amount: parseFloat(finalAmount),
-        description,
-        date: new Date(date).toISOString(),
-        isTracked: isTracked
-      });
-
+    
+    const success = await addExpense({ category, subcategory, amount: parseFloat(finalAmount), description, date, isTracked });
+    
+    if (success) {
       setAmount('');
       setCalcHistory('');
       setDescription('');
       setDate(new Date().toISOString().split('T')[0]);
       setIsTracked(true);
-      toast.success(`Expense recorded successfully!`);
-      playSuccessSound();
-    } catch (error) {
-      console.error("Error adding document: ", error);
-      toast.error("Failed to record transaction.");
-      playErrorSound();
     }
-  };
+  }, [amount, calcHistory, category, subcategory, description, date, isTracked, addExpense]);
 
-  const handleAddIncome = async (e, incomeCategory) => {
+  const handleAddIncomeLocal = useCallback(async (e, incomeCategory) => {
     e.preventDefault();
-    
     let finalAmount = amount;
     if (calcHistory) {
       try {
@@ -202,247 +110,78 @@ function App() {
         console.error("Invalid expression");
       }
     }
-
     if (!finalAmount || isNaN(parseFloat(finalAmount))) return;
-
-    try {
-      await addDoc(collection(db, 'transactions'), {
-        type: 'Income',
-        category: incomeCategory, // 'Business' or 'Other'
-        subcategory: '',
-        amount: parseFloat(finalAmount),
-        description,
-        date: new Date(date).toISOString(),
-        isTracked: true
-      });
-
+    
+    const success = await addIncome({ category: incomeCategory, amount: parseFloat(finalAmount), description, date });
+    
+    if (success) {
       setAmount('');
       setCalcHistory('');
       setDescription('');
       setDate(new Date().toISOString().split('T')[0]);
-      toast.success(`Income recorded successfully!`);
-      playSuccessSound();
-    } catch (error) {
-      console.error("Error adding document: ", error);
-      toast.error("Failed to record transaction.");
-      playErrorSound();
     }
-  };
+  }, [amount, calcHistory, description, date, addIncome]);
 
-  const handleDeleteTransaction = async (id) => {
-    try {
-      await deleteDoc(doc(db, 'transactions', id));
-      toast.success("Transaction deleted.");
-      playSuccessSound();
-    } catch (error) {
-      console.error("Error deleting document: ", error);
-      toast.error("Failed to delete transaction.");
-      playErrorSound();
-    }
-  };
-
-  const handleAddLentMoney = async (e) => {
+  const handleAddLentMoneyLocal = useCallback(async (e) => {
     e.preventDefault();
     if (!lentAmount || !lentName) return;
-
-    try {
-      await addDoc(collection(db, 'moneyLent'), {
-        type: lentType,
-        name: lentName,
-        amount: parseFloat(lentAmount),
-        paidAmount: 0,
-        description: lentDescription,
-        date: new Date(lentDate).toISOString(),
-        status: 'pending' // New field for timeline tracking
-      });
-
+    const success = await addLent({ type: lentType, name: lentName, amount: parseFloat(lentAmount), description: lentDescription, date: lentDate });
+    if (success) {
       setLentAmount('');
       setLentName('');
       setLentDescription('');
       setLentDate(new Date().toISOString().split('T')[0]);
-      
-      // Auto switch view to the type just added
       setActiveLentTab(lentType);
-      toast.success("Record added!");
-      playSuccessSound();
-    } catch (error) {
-      console.error("Error adding lent money: ", error);
-      toast.error("Failed to add record.");
-      playErrorSound();
     }
-  };
+  }, [lentAmount, lentName, lentType, lentDescription, lentDate, addLent]);
 
-  const handleReceiveLentPayment = async (name, paymentAmount) => {
-    try {
-      let remainingPayment = parseFloat(paymentAmount);
-      if (isNaN(remainingPayment) || remainingPayment <= 0) return;
-
-      const personPendingRecords = lentMoney
-        .filter(r => r.status !== 'paid' && r.name === name)
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-      for (const record of personPendingRecords) {
-        if (remainingPayment <= 0) break;
-
-        const currentPaid = record.paidAmount || 0;
-        const currentOwed = record.amount - currentPaid;
-
-        if (currentOwed > 0) {
-          let amountToApply = 0;
-          let newStatus = 'pending';
-          let newPaidDate = null;
-
-          if (remainingPayment >= currentOwed) {
-             amountToApply = currentOwed;
-             newStatus = 'paid';
-             newPaidDate = new Date().toISOString();
-          } else {
-             amountToApply = remainingPayment;
-          }
-
-          remainingPayment -= amountToApply;
-
-          await updateDoc(doc(db, 'moneyLent', record.id), {
-            paidAmount: currentPaid + amountToApply,
-            status: newStatus,
-            ...(newPaidDate && { paidDate: newPaidDate })
-          });
-        }
-      }
-
-      toast.success(`Payment of Rs. ${paymentAmount} received from ${name}!`);
-      playSuccessSound();
-    } catch (error) {
-      console.error("Error applying payment: ", error);
-      toast.error("Failed to apply payment.");
-      playErrorSound();
-    }
-  };
-
-  const handleDeleteLentMoney = async (id) => {
-    try {
-      await deleteDoc(doc(db, 'moneyLent', id));
-      toast.success("Record deleted.");
-      playSuccessSound();
-    } catch (error) {
-      console.error("Error deleting lent money: ", error);
-      toast.error("Failed to delete record.");
-      playErrorSound();
-    }
-  };
-
-  const handleAddCategory = async (e) => {
+  const handleAddCategoryLocal = useCallback(async (e) => {
     e.preventDefault();
     if (!newCategoryName.trim()) return;
-    
     setIsAddingCategory(true);
-    try {
-      await addDoc(collection(db, 'categories'), {
-        name: newCategoryName.trim(),
-        icon: newCategoryIcon,
-        subcategories: [],
-        createdAt: serverTimestamp()
-      });
+    const success = await addCat(newCategoryName.trim(), newCategoryIcon);
+    if (success) {
       setNewCategoryName('');
       setNewCategoryIcon('Folder');
-      toast.success("Category added!");
-      playSuccessSound();
-    } catch (error) {
-      console.error("Error adding category: ", error);
-      toast.error("Failed to add category.");
-      playErrorSound();
     }
     setIsAddingCategory(false);
-  };
+  }, [newCategoryName, newCategoryIcon, addCat]);
 
-  const handleDeleteCategory = async (id) => {
-    try {
-      await deleteDoc(doc(db, 'categories', id));
-      toast.success("Category deleted.");
-      playSuccessSound();
-    } catch (error) {
-      console.error("Error deleting category: ", error);
-      toast.error("Failed to delete category.");
-      playErrorSound();
-    }
-  };
-
-  const handleSubcategoryChange = (catId, value) => {
+  const handleSubcategoryChange = useCallback((catId, value) => {
     setNewSubcategoryNames(prev => ({ ...prev, [catId]: value }));
-  };
+  }, []);
 
-  const handleAddSubcategory = async (catId) => {
+  const handleAddSubcategoryLocal = useCallback(async (catId) => {
     const subName = newSubcategoryNames[catId]?.trim();
     if (!subName) return;
-
-    try {
-      await updateDoc(doc(db, 'categories', catId), {
-        subcategories: arrayUnion(subName)
-      });
+    const success = await addSub(catId, subName);
+    if (success) {
       setNewSubcategoryNames(prev => ({ ...prev, [catId]: '' }));
-      toast.success(`Subcategory "${subName}" added!`);
-      playSuccessSound();
-    } catch (error) {
-      console.error("Error adding subcategory: ", error);
-      toast.error("Failed to add subcategory.");
-      playErrorSound();
     }
-  };
+  }, [newSubcategoryNames, addSub]);
 
-  const handleDeleteSubcategory = async (catId, subName) => {
-    try {
-      await updateDoc(doc(db, 'categories', catId), {
-        subcategories: arrayRemove(subName)
-      });
-      toast.success("Subcategory deleted.");
-      playSuccessSound();
-    } catch (error) {
-      console.error("Error deleting subcategory: ", error);
-      toast.error("Failed to delete subcategory.");
-      playErrorSound();
-    }
-  };
+  // Memoized calculations to optimize rendering
+  const totalIncome = useMemo(() => transactions.filter(t => t.type === 'Income').reduce((acc, curr) => acc + curr.amount, 0), [transactions]);
+  const totalExpense = useMemo(() => transactions.filter(t => t.type === 'Expense').reduce((acc, curr) => acc + curr.amount, 0), [transactions]);
+  const netBalance = useMemo(() => totalIncome - totalExpense, [totalIncome, totalExpense]);
 
-  const seedDefaultCategories = async () => {
-    try {
-      for (const cat of DEFAULT_CATEGORIES) {
-        await addDoc(collection(db, 'categories'), {
-          name: cat.name,
-          icon: cat.icon,
-          subcategories: [],
-          createdAt: serverTimestamp()
-        });
-      }
-      toast.success("Default categories seeded!");
-      playSuccessSound();
-    } catch (error) {
-      console.error("Error seeding categories: ", error);
-      toast.error("Failed to seed categories.");
-      playErrorSound();
-    }
-  };
+  const expensesByCategory = useMemo(() => transactions.filter(t => t.type === 'Expense').reduce((acc, curr) => {
+    acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
+    return acc;
+  }, {}), [transactions]);
 
-  const totalIncome = transactions
-    .filter(t => t.type === 'Income')
-    .reduce((acc, curr) => acc + curr.amount, 0);
-
-  const totalExpense = transactions
-    .filter(t => t.type === 'Expense')
-    .reduce((acc, curr) => acc + curr.amount, 0);
-
-  const netBalance = totalIncome - totalExpense;
-
-  const expensesByCategory = transactions
-    .filter(t => t.type === 'Expense')
-    .reduce((acc, curr) => {
-      acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
-      return acc;
-    }, {});
-
-  const chartData = Object.keys(expensesByCategory).map(key => ({
+  const chartData = useMemo(() => Object.keys(expensesByCategory).map(key => ({
     name: key,
     value: expensesByCategory[key]
-  }));
+  })), [expensesByCategory]);
+
+  const selectedCatObj = useMemo(() => categories.find(c => c.name === category), [categories, category]);
+
+  const pendingLent = useMemo(() => lentMoney.filter(record => record.status !== 'paid'), [lentMoney]);
+  const paidLent = useMemo(() => lentMoney.filter(record => record.status === 'paid'), [lentMoney]);
+  const totalPendingLent = useMemo(() => pendingLent.reduce((acc, curr) => acc + (curr.amount - (curr.paidAmount || 0)), 0), [pendingLent]);
+
+  const lastSyncTimeStr = useMemo(() => syncMetadata?.lastRunTime || null, [syncMetadata]);
 
   if (authLoading) {
     return (
@@ -456,23 +195,13 @@ function App() {
   if (!user) {
     return (
       <>
-        <Toaster 
-          position="top-center" 
-          toastOptions={{ 
-            style: { 
-              background: '#1f2937', 
-              color: '#fff', 
-              borderRadius: '16px',
-              border: '1px solid #374151'
-            } 
-          }} 
-        />
+        <Toaster position="top-center" toastOptions={{ style: { background: '#1f2937', color: '#fff', borderRadius: '16px', border: '1px solid #374151' } }} />
         <Login />
       </>
     );
   }
 
-  if (loading) {
+  if (txLoading) {
     return (
       <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col items-center justify-center font-sans">
         <div className="w-10 h-10 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin mb-4"></div>
@@ -481,78 +210,20 @@ function App() {
     );
   }
 
-  const selectedCatObj = categories.find(c => c.name === category);
-
-  // Money Lent Tracker Calculations
-  const pendingLent = lentMoney.filter(record => record.status !== 'paid');
-  const paidLent = lentMoney.filter(record => record.status === 'paid');
-  const totalPendingLent = pendingLent.reduce((acc, curr) => acc + (curr.amount - (curr.paidAmount || 0)), 0);
-
-  // Unified POS Sync Logic
-  const lastSyncTimeStr = syncMetadata?.lastRunTime || null;
-
-  const handleSyncPOS = async () => {
-    setIsSyncing(true);
-    const runTime = new Date().toISOString();
-    try {
-      toast.loading('Fetching new POS sales...', { id: 'sync' });
-      
-      const result = await fetchNewSalesSum(syncMetadata?.posLatestTimestamp || null);
-      let newPosTimestamp = result?.latestTimestamp || syncMetadata?.posLatestTimestamp || null;
-      
-      if (result.success) {
-        if (result.count === 0 || result.sum === 0) {
-          toast.success('No new sales to sync!', { id: 'sync' });
-        } else {
-          await addDoc(collection(db, 'transactions'), {
-            type: 'Income',
-            category: 'Business',
-            subcategory: 'POS Batch Sync',
-            amount: parseFloat(result.sum),
-            description: `Auto-synced POS sales batch`,
-            date: new Date().toISOString(),
-            posLatestTimestamp: newPosTimestamp,
-            isTracked: true
-          });
-          
-          toast.success(`Successfully synced Rs. ${result.sum.toLocaleString()}!`, { id: 'sync' });
-        }
-      } else {
-        toast.error('Failed to connect to POS database', { id: 'sync' });
-      }
-
-      // Always update metadata so the "Last Sync" time on UI reflects this button click
-      await setDoc(doc(db, 'metadata', 'posSync'), {
-        lastRunTime: runTime,
-        posLatestTimestamp: newPosTimestamp
-      });
-
-    } catch (error) {
-      console.error(error);
-      toast.error('An error occurred while syncing.', { id: 'sync' });
-    } finally {
-      setIsSyncing(false);
-    }
-  };
+  const TabFallback = () => (
+    <div className="w-full flex items-center justify-center p-12">
+      <div className="w-8 h-8 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 px-4 md:px-8 pb-8 font-sans overflow-x-hidden">
-      <Toaster 
-        position="top-center" 
-        toastOptions={{ 
-          style: { 
-            background: '#1f2937', 
-            color: '#fff', 
-            borderRadius: '16px',
-            border: '1px solid #374151'
-          } 
-        }} 
-      />
-      <div className="max-w-6xl mx-auto space-y-6 pt-2">
+      <Toaster position="top-center" toastOptions={{ style: { background: '#1f2937', color: '#fff', borderRadius: '16px', border: '1px solid #374151' } }} />
+      <div className="max-w-6xl mx-auto space-y-6 pt-6">
         
         <Tabs defaultValue="add" className="w-full relative z-10">
           <div className="flex flex-row items-center justify-between gap-3 sm:gap-6 mb-6">
-            <div className="relative flex-1 w-full max-w-5xl mx-auto lg:mx-0 group">
+            <div className="relative flex-1 w-full group">
               {/* Premium Animated Glow Behind Tab Bar */}
               <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 via-blue-500/20 to-purple-500/20 rounded-full blur-xl group-hover:blur-2xl transition-all duration-700 opacity-70 group-hover:opacity-100"></div>
               
@@ -581,133 +252,152 @@ function App() {
             <button
               onClick={() => setShowSignOutModal(true)}
               title="Sign Out"
-              className="p-3 sm:px-5 sm:py-3 lg:px-6 lg:py-4 bg-gray-900/80 hover:bg-red-500/10 text-gray-400 hover:text-red-400 border border-gray-800 hover:border-red-500/30 rounded-full transition-all duration-300 text-sm font-bold shadow-2xl flex-shrink-0 backdrop-blur-xl flex items-center justify-center gap-2 group"
+              className="p-3 sm:px-5 sm:py-3 bg-gray-900/80 hover:bg-red-500/10 text-red-500 hover:text-red-400 border border-gray-700/50 hover:border-red-500/30 rounded-full transition-all duration-300 text-sm font-bold shadow-2xl flex-shrink-0 backdrop-blur-2xl flex items-center justify-center gap-2 group"
             >
-              <MoreVertical className="w-5 h-5 sm:hidden group-hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] transition-all" />
-              <div className="hidden sm:block w-2 h-2 rounded-full bg-red-500/50 group-hover:bg-red-500 group-hover:shadow-[0_0_10px_rgba(239,68,68,0.8)] transition-all"></div>
+              <LogOut className="w-5 h-5 group-hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] transition-all" />
               <span className="hidden sm:inline">Sign Out</span>
             </button>
           </div>
 
         {/* TAB 1: DASHBOARD */}
           <TabsContent value="dashboard" className="space-y-6">
-            <DashboardTab 
-              transactions={transactions}
-              totalIncome={totalIncome}
-              totalExpense={totalExpense}
-              netBalance={netBalance}
-              totalPendingLent={totalPendingLent}
-              lentMoney={lentMoney}
-              formatLKR={formatLKR}
-              chartData={chartData}
-              COLORS={COLORS}
-              handleSyncPOS={handleSyncPOS}
-              isSyncing={isSyncing}
-              lastSyncTimeStr={lastSyncTimeStr}
-            />
+            <Suspense fallback={<TabFallback />}>
+              <DashboardTab 
+                transactions={transactions}
+                totalIncome={totalIncome}
+                totalExpense={totalExpense}
+                netBalance={netBalance}
+                totalPendingLent={totalPendingLent}
+                lentMoney={lentMoney}
+                formatLKR={formatLKR}
+                chartData={chartData}
+                COLORS={COLORS}
+                handleSyncPOS={handleSyncPOS}
+                isSyncing={isSyncing}
+                lastSyncTimeStr={lastSyncTimeStr}
+              />
+            </Suspense>
           </TabsContent>
 
-          {/* TAB 2: ADD EXPENSE */}
+        {/* TAB 2: EXPENSE */}
           <TabsContent value="add">
-            <AddExpenseTab 
-              handleAddTransaction={(e) => handleAddTransaction(e)}
-              type="Expense"
-              setType={() => {}}
-              amount={amount}
-              setAmount={setAmount}
-              calcHistory={calcHistory}
-              setCalcHistory={setCalcHistory}
-              description={description}
-              setDescription={setDescription}
-              date={date}
-              setDate={setDate}
-              isTracked={isTracked}
-              setIsTracked={setIsTracked}
-              categories={categories}
-              category={category}
-              setCategory={setCategory}
-              subcategory={subcategory}
-              setSubcategory={setSubcategory}
-              selectedCatObj={selectedCatObj}
-              handleAddSubcategory={handleAddSubcategory}
-              newSubcategoryNames={newSubcategoryNames}
-              handleSubcategoryChange={handleSubcategoryChange}
-            />
+            <Suspense fallback={<TabFallback />}>
+              <AddExpenseTab 
+                type={type}
+                setType={setType}
+                category={category}
+                setCategory={setCategory}
+                subcategory={subcategory}
+                setSubcategory={setSubcategory}
+                amount={amount}
+                setAmount={setAmount}
+                calcHistory={calcHistory}
+                setCalcHistory={setCalcHistory}
+                description={description}
+                setDescription={setDescription}
+                date={date}
+                setDate={setDate}
+                isTracked={isTracked}
+                setIsTracked={setIsTracked}
+                handleAddTransaction={handleAddTransaction}
+                categories={categories}
+                selectedCatObj={selectedCatObj}
+                newSubcategoryNames={newSubcategoryNames}
+                handleSubcategoryChange={handleSubcategoryChange}
+                handleAddSubcategory={handleAddSubcategoryLocal}
+              />
+            </Suspense>
           </TabsContent>
 
-          {/* TAB 3: INCOME */}
+        {/* TAB 3: INCOME */}
           <TabsContent value="income">
-            <IncomeTab 
-              transactions={transactions}
-              handleAddTransaction={handleAddIncome}
-              amount={amount}
-              setAmount={setAmount}
-              calcHistory={calcHistory}
-              setCalcHistory={setCalcHistory}
-              description={description}
-              setDescription={setDescription}
-              date={date}
-              setDate={setDate}
-              handleSyncPOS={handleSyncPOS}
-              isSyncing={isSyncing}
-              lastSyncTimeStr={lastSyncTimeStr}
-            />
+            <Suspense fallback={<TabFallback />}>
+              <IncomeTab 
+                amount={amount}
+                setAmount={setAmount}
+                calcHistory={calcHistory}
+                setCalcHistory={setCalcHistory}
+                description={description}
+                setDescription={setDescription}
+                date={date}
+                setDate={setDate}
+                handleAddIncome={handleAddIncomeLocal}
+                handleSyncPOS={handleSyncPOS}
+                isSyncing={isSyncing}
+                lastSyncTimeStr={lastSyncTimeStr}
+              />
+            </Suspense>
           </TabsContent>
 
-          {/* TAB 3: MONEY LENT */}
-          <TabsContent value="lent">
-            <MoneyLentTab 
-              handleAddLentMoney={handleAddLentMoney}
-              lentType={lentType}
-              setLentType={setLentType}
-              lentAmount={lentAmount}
-              setLentAmount={setLentAmount}
-              lentName={lentName}
-              setLentName={setLentName}
-              lentDescription={lentDescription}
-              setLentDescription={setLentDescription}
-              lentDate={lentDate}
-              setLentDate={setLentDate}
-              pendingLent={pendingLent}
-              handleReceiveLentPayment={handleReceiveLentPayment}
-              formatLKR={formatLKR}
-            />
-          </TabsContent>
-
-          {/* TAB 4: HISTORY */}
+        {/* TAB 4: HISTORY */}
           <TabsContent value="history">
-            <HistoryTab 
-              transactions={transactions}
-              formatLKR={formatLKR}
-              handleDeleteTransaction={handleDeleteTransaction}
-              activeLentTab={activeLentTab}
-              setActiveLentTab={setActiveLentTab}
-              totalPendingLent={totalPendingLent}
-              pendingLent={pendingLent}
-              paidLent={paidLent}
-              handleDeleteLentMoney={handleDeleteLentMoney}
-              showPaid={showPaid}
-              setShowPaid={setShowPaid}
-            />
+            <Suspense fallback={<TabFallback />}>
+              <HistoryTab 
+                transactions={transactions}
+                formatLKR={formatLKR}
+                handleDeleteTransaction={deleteTransaction}
+                categories={categories}
+                activeLentTab={activeLentTab}
+                setActiveLentTab={setActiveLentTab}
+                totalPendingLent={totalPendingLent}
+                pendingLent={pendingLent}
+                handleDeleteLentMoney={delLent}
+                paidLent={paidLent}
+                showPaid={showPaid}
+                setShowPaid={setShowPaid}
+              />
+            </Suspense>
           </TabsContent>
 
-          {/* TAB 5: CATEGORIES */}
+        {/* TAB 5: LENT MONEY */}
+          <TabsContent value="lent">
+            <Suspense fallback={<TabFallback />}>
+              <MoneyLentTab 
+                lentType={lentType}
+                setLentType={setLentType}
+                lentName={lentName}
+                setLentName={setLentName}
+                lentAmount={lentAmount}
+                setLentAmount={setLentAmount}
+                lentDescription={lentDescription}
+                setLentDescription={setLentDescription}
+                lentDate={lentDate}
+                setLentDate={setLentDate}
+                handleAddLentMoney={handleAddLentMoneyLocal}
+                handleReceiveLentPayment={recLent}
+                formatLKR={formatLKR}
+                handleDeleteTransaction={deleteTransaction}
+                activeLentTab={activeLentTab}
+                setActiveLentTab={setActiveLentTab}
+                totalPendingLent={totalPendingLent}
+                pendingLent={pendingLent}
+                paidLent={paidLent}
+                handleDeleteLentMoney={delLent}
+                showPaid={showPaid}
+                setShowPaid={setShowPaid}
+              />
+            </Suspense>
+          </TabsContent>
+
+        {/* TAB 6: CATEGORIES */}
           <TabsContent value="categories">
-            <CategoriesTab 
-              handleAddCategory={handleAddCategory}
-              newCategoryName={newCategoryName}
-              setNewCategoryName={setNewCategoryName}
-              newCategoryIcon={newCategoryIcon}
-              setNewCategoryIcon={setNewCategoryIcon}
-              isAddingCategory={isAddingCategory}
-              seedDefaultCategories={seedDefaultCategories}
-              categories={categories}
-              handleDeleteCategory={handleDeleteCategory}
-              handleDeleteSubcategory={handleDeleteSubcategory}
-              newSubcategoryNames={newSubcategoryNames}
-              handleSubcategoryChange={handleSubcategoryChange}
-              handleAddSubcategory={handleAddSubcategory}
-            />
+            <Suspense fallback={<TabFallback />}>
+              <CategoriesTab 
+                handleAddCategory={handleAddCategoryLocal}
+                newCategoryName={newCategoryName}
+                setNewCategoryName={setNewCategoryName}
+                newCategoryIcon={newCategoryIcon}
+                setNewCategoryIcon={setNewCategoryIcon}
+                isAddingCategory={isAddingCategory}
+                seedDefaultCategories={seedDefaultCategories}
+                categories={categories}
+                handleDeleteCategory={delCat}
+                handleDeleteSubcategory={delSub}
+                newSubcategoryNames={newSubcategoryNames}
+                handleSubcategoryChange={handleSubcategoryChange}
+                handleAddSubcategory={handleAddSubcategoryLocal}
+              />
+            </Suspense>
           </TabsContent>
           
         </Tabs>

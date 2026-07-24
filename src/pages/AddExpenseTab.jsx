@@ -1,6 +1,6 @@
 import React from 'react';
 import { PlusCircle, TrendingUp, Plus } from 'lucide-react';
-import { getIconComponent, getIconColor } from '../../utils/icons';
+import { getIconComponent, getIconColor } from '../utils/icons';
 
 const AddExpenseTab = ({ 
   handleAddTransaction, 
