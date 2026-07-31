@@ -409,17 +409,13 @@ function App() {
             <Suspense fallback={<TabFallback />}>
               <HistoryTab 
                 transactions={transactions}
+                lentMoney={lentMoney}
+                savings={savings}
                 formatLKR={formatLKR}
                 handleDeleteTransaction={deleteTransaction}
-                categories={categories}
-                activeLentTab={activeLentTab}
-                setActiveLentTab={setActiveLentTab}
-                totalPendingLent={totalPendingLent}
-                pendingLent={pendingLent}
                 handleDeleteLentMoney={delLent}
-                paidLent={paidLent}
-                showPaid={showPaid}
-                setShowPaid={setShowPaid}
+                deleteSaving={deleteSaving}
+                categories={categories}
               />
             </Suspense>
           </TabsContent>

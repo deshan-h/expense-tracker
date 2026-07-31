@@ -1,456 +1,316 @@
-import React, { useState } from 'react';
-import { List, Trash2, Users, CheckCircle2, ChevronDown, ChevronUp, History, Search, Filter, ArrowDownUp, TrendingDown, TrendingUp, Tag, Handshake } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { List, Trash2, Search, Filter, ChevronDown, ChevronUp, ArrowUpCircle, ArrowDownCircle, ArrowRightLeft, Handshake, PiggyBank, CalendarClock, History } from 'lucide-react';
 
 const HistoryTab = ({ 
   transactions, 
+  lentMoney,
+  savings,
   formatLKR, 
   handleDeleteTransaction,
-  activeLentTab,
-  setActiveLentTab,
-  totalPendingLent,
-  pendingLent,
   handleDeleteLentMoney,
-  paidLent,
-  showPaid,
-  setShowPaid
+  deleteSaving,
+  categories
 }) => {
-  const [historyView, setHistoryView] = useState('transactions'); // 'transactions' or 'lent'
-
-  // ============================================
-  // ADVANCED FILTERS STATE - EXPENSES
-  // ============================================
+  // Advanced Filters State
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState('All'); 
-  const [filterCategory, setFilterCategory] = useState('All'); 
-  const [filterStatus, setFilterStatus] = useState('All'); 
+  const [filterSource, setFilterSource] = useState('All'); 
   const [sortBy, setSortBy] = useState('Newest'); 
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
-  // ============================================
-  // ADVANCED FILTERS STATE - LENT MONEY
-  // ============================================
-  const [lentSearchQuery, setLentSearchQuery] = useState('');
-  const [lentFilterType, setLentFilterType] = useState('All'); // 'All', 'Family', 'Friends'
-  const [lentSortBy, setLentSortBy] = useState('Newest'); // 'Newest', 'Oldest', 'Highest', 'Lowest'
+  // Normalize Data
+  const allHistory = useMemo(() => {
+    let combined = [];
 
-  // ============================================
-  // DATA PROCESSING - EXPENSES
-  // ============================================
-  const uniqueCategories = [...new Set(transactions.map(t => t.category))].filter(Boolean);
-  
-  const filteredAndSortedTransactions = transactions
-    .filter(t => {
-      const searchLower = searchQuery.toLowerCase();
-      const matchesSearch = 
-        (t.description && t.description.toLowerCase().includes(searchLower)) || 
-        (t.category && t.category.toLowerCase().includes(searchLower)) ||
-        (t.subcategory && t.subcategory.toLowerCase().includes(searchLower));
+    // Transactions
+    if (transactions) {
+      combined = combined.concat(transactions.map(t => ({
+        id: t.id,
+        source: 'transaction',
+        type: t.type, // 'Expense', 'Income', 'POS Income'
+        amount: t.amount,
+        title: t.description || t.category,
+        subtitle: t.subcategory || t.category,
+        date: t.date,
+        originalRecord: t
+      })));
+    }
+
+    // Savings
+    if (savings) {
+      combined = combined.concat(savings.map(s => ({
+        id: s.id,
+        source: 'saving',
+        type: s.type, // 'Deposit', 'Withdrawal'
+        amount: s.amount,
+        title: s.description || s.type,
+        subtitle: 'Savings',
+        date: s.date,
+        originalRecord: s
+      })));
+    }
+
+    // Lent Money
+    if (lentMoney) {
+      combined = combined.concat(lentMoney.map(l => ({
+        id: l.id,
+        source: 'lent',
+        type: l.status === 'paid' ? 'Lent (Paid)' : 'Lent (Pending)',
+        amount: l.amount,
+        title: l.description || l.name,
+        subtitle: `Lent Money: ${l.type}`,
+        date: l.date,
+        originalRecord: l
+      })));
       
-      const matchesType = filterType === 'All' || t.type === filterType;
-      const matchesCategory = filterCategory === 'All' || t.category === filterCategory;
-      
-      const isTracked = t.isTracked !== undefined ? t.isTracked : true;
-      const matchesStatus = filterStatus === 'All' || 
-                            (filterStatus === 'Tracked' && isTracked) || 
-                            (filterStatus === 'Untracked' && !isTracked);
+      // Extract partial payments
+      lentMoney.forEach(l => {
+        if (l.paymentHistory && l.paymentHistory.length > 0) {
+          l.paymentHistory.forEach(p => {
+             combined.push({
+               id: p.id || `payment-${Math.random()}`,
+               source: 'lent_payment',
+               type: 'Lent Payment Received',
+               amount: p.amount,
+               title: `Payment from ${l.name}`,
+               subtitle: 'Lent Money Repayment',
+               date: p.date,
+               originalRecord: Object.assign({}, p, { parentLentId: l.id })
+             });
+          });
+        }
+      });
+    }
 
-      return matchesSearch && matchesType && matchesCategory && matchesStatus;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'Newest') return new Date(b.date).getTime() - new Date(a.date).getTime();
-      if (sortBy === 'Oldest') return new Date(a.date).getTime() - new Date(b.date).getTime();
-      if (sortBy === 'Highest') return b.amount - a.amount;
-      if (sortBy === 'Lowest') return a.amount - b.amount;
-      return 0;
-    });
+    return combined;
+  }, [transactions, savings, lentMoney]);
 
-
-  // ============================================
-  // DATA PROCESSING - LENT MONEY
-  // ============================================
-  const totalPendingFamily = pendingLent.filter(r => r.type === 'Family').reduce((acc, curr) => acc + curr.amount, 0);
-  const totalPendingFriends = pendingLent.filter(r => r.type === 'Friends').reduce((acc, curr) => acc + curr.amount, 0);
-
-  const filterAndSortLent = (records) => {
-    return records
+  // Apply Filters
+  const filteredAndSortedHistory = useMemo(() => {
+    return allHistory
       .filter(record => {
-        const searchLower = lentSearchQuery.toLowerCase();
+        const searchLower = searchQuery.toLowerCase();
         const matchesSearch = 
-          (record.name && record.name.toLowerCase().includes(searchLower)) ||
-          (record.description && record.description.toLowerCase().includes(searchLower));
+          (record.title && record.title.toLowerCase().includes(searchLower)) || 
+          (record.subtitle && record.subtitle.toLowerCase().includes(searchLower)) ||
+          (record.type && record.type.toLowerCase().includes(searchLower));
         
-        const matchesType = lentFilterType === 'All' || record.type === lentFilterType;
+        const matchesSource = filterSource === 'All' || record.source === filterSource;
         
-        return matchesSearch && matchesType;
+        return matchesSearch && matchesSource;
       })
       .sort((a, b) => {
-        // Always sort by the original lend date
-        if (lentSortBy === 'Newest') return new Date(b.date).getTime() - new Date(a.date).getTime();
-        if (lentSortBy === 'Oldest') return new Date(a.date).getTime() - new Date(b.date).getTime();
-        if (lentSortBy === 'Highest') return b.amount - a.amount;
-        if (lentSortBy === 'Lowest') return a.amount - b.amount;
+        if (sortBy === 'Newest') return new Date(b.date).getTime() - new Date(a.date).getTime();
+        if (sortBy === 'Oldest') return new Date(a.date).getTime() - new Date(b.date).getTime();
+        if (sortBy === 'Highest') return b.amount - a.amount;
+        if (sortBy === 'Lowest') return a.amount - b.amount;
         return 0;
       });
+  }, [allHistory, searchQuery, filterSource, sortBy]);
+
+
+  const getSourceIcon = (source, type) => {
+    if (source === 'transaction') {
+      if (type === 'Expense') return <ArrowDownCircle className="w-4 h-4 text-rose-500" />;
+      if (type === 'Income' || type === 'POS Income') return <ArrowUpCircle className="w-4 h-4 text-emerald-500" />;
+    }
+    if (source === 'saving') {
+      return <PiggyBank className="w-4 h-4 text-pink-500" />;
+    }
+    if (source === 'lent') {
+      return <Handshake className="w-4 h-4 text-blue-500" />;
+    }
+    if (source === 'lent_payment') {
+      return <ArrowUpCircle className="w-4 h-4 text-emerald-500" />;
+    }
+    return <History className="w-4 h-4 text-gray-500" />;
   };
 
-  const processedPendingLent = filterAndSortLent(pendingLent);
-  const processedPaidLent = filterAndSortLent(paidLent);
+  const getSourceColor = (source, type) => {
+    if (source === 'transaction') {
+      if (type === 'Expense') return 'text-rose-500';
+      if (type === 'Income' || type === 'POS Income') return 'text-emerald-500';
+    }
+    if (source === 'saving') return 'text-pink-500';
+    if (source === 'lent') return 'text-blue-500';
+    if (source === 'lent_payment') return 'text-emerald-500';
+    return 'text-gray-500';
+  };
+  
+  const getAmountColor = (source, type) => {
+    if (source === 'transaction') {
+      if (type === 'Expense') return 'text-rose-400';
+      if (type === 'Income' || type === 'POS Income') return 'text-emerald-400';
+    }
+    if (source === 'saving') {
+      if (type === 'Deposit') return 'text-emerald-400';
+      if (type === 'Withdrawal') return 'text-rose-400';
+    }
+    if (source === 'lent') return 'text-rose-400';
+    if (source === 'lent_payment') return 'text-emerald-400';
+    return 'text-gray-400';
+  };
 
+  const getAmountPrefix = (source, type) => {
+    if (source === 'transaction') {
+      if (type === 'Expense') return '-';
+      if (type === 'Income' || type === 'POS Income') return '+';
+    }
+    if (source === 'saving') {
+      if (type === 'Deposit') return '+';
+      if (type === 'Withdrawal') return '-';
+    }
+    if (source === 'lent') return '-';
+    if (source === 'lent_payment') return '+';
+    return '';
+  };
+
+  const handleDelete = (record) => {
+    if (record.source === 'transaction') {
+      handleDeleteTransaction(record.id);
+    } else if (record.source === 'lent') {
+      handleDeleteLentMoney(record.id);
+    } else if (record.source === 'saving') {
+      deleteSaving(record.id);
+    } else if (record.source === 'lent_payment') {
+      alert("Deleting partial payments from history is not supported yet.");
+    }
+  };
 
   return (
-    <div className="relative w-full overflow-hidden">
-      {/* Full-tab Ambient Glows */}
-      <div className="absolute top-[10%] left-[10%] w-[40vw] h-[40vw] bg-emerald-600/10 rounded-full blur-[120px] mix-blend-screen opacity-50 animate-pulse pointer-events-none"></div>
-      <div className="absolute bottom-[10%] right-[10%] w-[40vw] h-[40vw] bg-blue-600/10 rounded-full blur-[120px] mix-blend-screen opacity-50 pointer-events-none"></div>
+    <div className="w-[100vw] relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
+      <div className="px-4 md:px-12 py-4 w-full max-w-full">
+        {/* Full-tab Ambient Glows */}
+        <div className="absolute top-[10%] left-[10%] w-[40vw] h-[40vw] bg-blue-600/10 rounded-full blur-[120px] mix-blend-screen opacity-50 animate-pulse pointer-events-none"></div>
+        <div className="absolute bottom-[10%] right-[10%] w-[40vw] h-[40vw] bg-purple-600/10 rounded-full blur-[120px] mix-blend-screen opacity-50 pointer-events-none"></div>
 
-      <div className="bg-gray-900/40 backdrop-blur-2xl p-6 md:p-10 rounded-[2rem] border border-gray-700/50 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] max-w-full mx-auto relative group transition-all duration-700 hover:border-gray-600/60 z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-[2rem] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
-        
-        <div className="relative z-10">
-      {/* Top Level History Toggle */}
-      <div className="flex p-1 bg-gray-900 rounded-2xl w-full max-w-md mx-auto mb-8">
-        <button 
-          type="button" 
-          onClick={() => setHistoryView('transactions')} 
-          className={`flex-1 py-3 text-sm md:text-base font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${historyView === 'transactions' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}
-        >
-          <History className="w-4 h-4" /> Expenses History
-        </button>
-        <button 
-          type="button" 
-          onClick={() => setHistoryView('lent')} 
-          className={`flex-1 py-3 text-sm md:text-base font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${historyView === 'lent' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}
-        >
-          <Users className="w-4 h-4" /> Lent Money
-        </button>
-      </div>
-
-      {/* ---------------- TRANSACTIONS TIMELINE VIEW ---------------- */}
-      {historyView === 'transactions' && (
-        <div className="flex flex-col">
+        <div className="w-full max-w-5xl mx-auto relative z-10 mt-2">
           
-          <h3 className="text-2xl font-bold mb-6 flex items-center gap-2 text-white">
-            <List className="w-6 h-6 text-emerald-400" /> Expenses Timeline
-          </h3>
-
-          {/* Advanced Filters Section */}
-          <div className="bg-gray-900/50 p-5 rounded-2xl border border-gray-700/50 mb-8 space-y-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Filter className="w-4 h-4 text-blue-400" />
-              <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Advanced Filters</h4>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              <div className="relative col-span-1 md:col-span-2 lg:col-span-1 bg-gray-800 rounded-xl border border-gray-600 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 overflow-hidden flex items-center px-3">
-                <Search className="w-4 h-4 text-gray-400" />
-                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search records..." className="w-full bg-transparent px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none" />
-              </div>
-              <div className="bg-gray-800 rounded-xl border border-gray-600 overflow-hidden flex items-center px-3">
-                <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="w-full bg-transparent py-2 text-sm text-gray-300 focus:outline-none appearance-none cursor-pointer">
-                  <option value="All">All Types</option>
-                  <option value="Expense">Expense Only</option>
-                  <option value="Income">Income Only</option>
-                </select>
-              </div>
-              <div className="bg-gray-800 rounded-xl border border-gray-600 overflow-hidden flex items-center px-3">
-                <Tag className="w-4 h-4 text-gray-400 mr-2" />
-                <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="w-full bg-transparent py-2 text-sm text-gray-300 focus:outline-none appearance-none cursor-pointer">
-                  <option value="All">All Categories</option>
-                  {uniqueCategories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="bg-gray-800 rounded-xl border border-gray-600 overflow-hidden flex items-center px-3">
-                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full bg-transparent py-2 text-sm text-gray-300 focus:outline-none appearance-none cursor-pointer">
-                  <option value="All">All Statuses</option>
-                  <option value="Tracked">Tracked Only</option>
-                  <option value="Untracked">Untracked Only</option>
-                </select>
-              </div>
-              <div className="bg-gray-800 rounded-xl border border-gray-600 overflow-hidden flex items-center px-3">
-                <ArrowDownUp className="w-4 h-4 text-gray-400 mr-2" />
-                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="w-full bg-transparent py-2 text-sm text-gray-300 focus:outline-none appearance-none cursor-pointer">
-                  <option value="Newest">Newest First</option>
-                  <option value="Oldest">Oldest First</option>
-                  <option value="Highest">Highest Amount</option>
-                  <option value="Lowest">Lowest Amount</option>
-                </select>
-              </div>
-            </div>
-            
-            <div className="text-xs text-gray-500 text-right mt-2">
-              Showing {filteredAndSortedTransactions.length} of {transactions.length} records
-            </div>
-          </div>
-
-          {/* Premium Timeline with Headers */}
-          <div className="overflow-x-auto bg-gray-900/30 rounded-2xl border border-gray-700/50 shadow-inner p-6">
-            <div className="min-w-[900px]">
-              
-              {/* Headers */}
-              <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-gray-400 uppercase tracking-widest pb-4 border-b border-gray-700/50 mb-6 pl-14">
-                <div className="col-span-2">Category</div>
-                <div className="col-span-2">Subcategory</div>
-                <div className="col-span-3">Description</div>
-                <div className="col-span-2">Date</div>
-                <div className="col-span-1">Status</div>
-                <div className="col-span-2 text-right pr-12">Amount</div>
-              </div>
-
-              {/* Timeline List */}
-              <div className="relative border-l-2 border-gray-700/50 ml-20 md:ml-24 space-y-2 pb-4 mt-4">
-                {filteredAndSortedTransactions.length === 0 ? (
-                  <p className="text-gray-500 pl-6 pt-2 text-sm italic">No matching transactions found.</p>
-                ) : (
-                  filteredAndSortedTransactions.map(t => {
-                    const isIncome = t.type === 'Income';
-                    const isTracked = t.isTracked !== undefined ? t.isTracked : true;
-                    
-                    return (
-                      <div key={t.id} className="relative pl-6 group">
-                        {/* Date on Left */}
-                        <div className="absolute -left-[5.5rem] md:-left-[6.5rem] top-1/2 -translate-y-1/2 w-20 md:w-24 text-right pr-4 text-xs font-semibold text-gray-400">
-                          {new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </div>
-                        
-                        {/* Timeline Node */}
-                        <div className={`absolute -left-[13px] top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-4 border-gray-900 flex items-center justify-center transition-transform group-hover:scale-125 ${isIncome ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'}`}>
-                          {isIncome ? <TrendingUp className="w-3 h-3 text-gray-900" /> : <TrendingDown className="w-3 h-3 text-gray-900" />}
-                        </div>
-                        
-                        {/* Row Content - Single Line */}
-                        <div className="py-2 px-3 hover:bg-gray-800/40 rounded-lg flex flex-row items-center justify-between border-b border-gray-800/50 transition-colors">
-                          <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0 pr-4">
-                            <span className={`hidden sm:inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest shrink-0 ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'}`}>
-                              {t.category}
-                            </span>
-                            {t.subcategory && (
-                              <span className="hidden lg:inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase bg-gray-700 text-gray-300 border border-gray-600 shrink-0">
-                                {t.subcategory}
-                              </span>
-                            )}
-                            <div className="font-bold text-gray-100 text-sm whitespace-nowrap overflow-hidden text-ellipsis flex-1">
-                              {t.description || t.category || 'Untitled'}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-3 md:gap-6 shrink-0">
-                            {!isIncome && (
-                              <span className={`hidden sm:inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${isTracked ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-gray-600/20 text-gray-400 border-gray-600/30'}`}>
-                                {isTracked ? 'Tracked' : 'Untrack'}
-                              </span>
-                            )}
-                            <span className={`font-black text-sm md:text-base tracking-tight ${isIncome ? 'text-emerald-400' : 'text-rose-400'}`}>
-                              {isIncome ? '+' : '-'}Rs. {formatLKR(t.amount)}
-                            </span>
-                            <button 
-                              onClick={() => handleDeleteTransaction(t.id)} 
-                              className="p-1.5 text-gray-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-colors cursor-pointer"
-                              title="Delete Record"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ---------------- LENT MONEY TIMELINE VIEW ---------------- */}
-      {historyView === 'lent' && (
-        <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between mb-6">
-            <h4 className="text-2xl font-bold text-gray-100 flex items-center gap-2">
-              <Users className="w-6 h-6 text-blue-400" /> Owed Tracker
-            </h4>
-          </div>
-
-          {/* Advanced Filters Section */}
-          <div className="bg-gray-900/50 p-5 rounded-2xl border border-gray-700/50 mb-8 space-y-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Filter className="w-4 h-4 text-blue-400" />
-              <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Advanced Filters</h4>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="relative bg-gray-800 rounded-xl border border-gray-600 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 overflow-hidden flex items-center px-3">
-                <Search className="w-4 h-4 text-gray-400" />
-                <input type="text" value={lentSearchQuery} onChange={(e) => setLentSearchQuery(e.target.value)} placeholder="Search names or notes..." className="w-full bg-transparent px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none" />
-              </div>
-              
-              {/* Type Filter */}
-              <div className="bg-gray-800 rounded-xl border border-gray-600 overflow-hidden flex items-center px-3">
-                <select value={lentFilterType} onChange={(e) => setLentFilterType(e.target.value)} className="w-full bg-transparent py-2 text-sm text-gray-300 focus:outline-none appearance-none cursor-pointer">
-                  <option value="All">All Types</option>
-                  <option value="Family">Family Only</option>
-                  <option value="Friends">Friends Only</option>
-                </select>
-              </div>
-
-              <div className="bg-gray-800 rounded-xl border border-gray-600 overflow-hidden flex items-center px-3">
-                <ArrowDownUp className="w-4 h-4 text-gray-400 mr-2" />
-                <select value={lentSortBy} onChange={(e) => setLentSortBy(e.target.value)} className="w-full bg-transparent py-2 text-sm text-gray-300 focus:outline-none appearance-none cursor-pointer">
-                  <option value="Newest">Newest First</option>
-                  <option value="Oldest">Oldest First</option>
-                  <option value="Highest">Highest Amount</option>
-                  <option value="Lowest">Lowest Amount</option>
-                </select>
-              </div>
-            </div>
-            
-            <div className="text-xs text-gray-500 text-right mt-2">
-              Showing {processedPendingLent.length + processedPaidLent.length} of {pendingLent.length + paidLent.length} records
-            </div>
-          </div>
-
-          {/* PENDING TIMELINE WITH HEADERS */}
-          <div className="overflow-x-auto bg-gray-900/30 rounded-2xl border border-gray-700/50 shadow-inner p-6 mb-8">
-            <div className="min-w-[900px]">
-              
-              <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-gray-400 uppercase tracking-widest pb-4 border-b border-gray-700/50 mb-6 pl-14">
-                <div className="col-span-3">Recipient</div>
-                <div className="col-span-3">Notes</div>
-                <div className="col-span-2">Lent Date</div>
-                <div className="col-span-1 text-center">Status</div>
-                <div className="col-span-2 text-right pr-4">Amount</div>
-                <div className="col-span-1 text-center">Action</div>
-              </div>
-
-              <div className="relative border-l-2 border-gray-700/50 ml-20 md:ml-24 space-y-2 pb-4 mt-4">
-                {processedPendingLent.length === 0 ? (
-                  <p className="text-gray-500 pl-6 pt-2 text-sm italic">No pending lent records found.</p>
-                ) : (
-                  processedPendingLent.map(record => {
-                    const isFamily = record.type === 'Family';
-                    return (
-                      <div key={record.id} className="relative pl-6 group">
-                        
-                        {/* Date on Left */}
-                        <div className="absolute -left-[5.5rem] md:-left-[6.5rem] top-1/2 -translate-y-1/2 w-20 md:w-24 text-right pr-4 text-xs font-semibold text-gray-400">
-                          {new Date(record.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </div>
-
-                        {/* Timeline Node */}
-                        <div className={`absolute -left-[13px] top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-4 border-gray-900 flex items-center justify-center transition-transform group-hover:scale-125 ${isFamily ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]'}`}>
-                           <span className="w-2 h-2 rounded-full bg-gray-900" />
-                        </div>
-                        
-                        {/* Row Content - Single Line */}
-                        <div className="py-2 px-3 hover:bg-gray-800/40 rounded-lg flex flex-row items-center justify-between border-b border-gray-800/50 transition-colors">
-                          
-                          <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0 pr-4">
-                             <div className="font-bold text-gray-100 text-sm whitespace-nowrap shrink-0">{record.name}</div>
-                             <div className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-gray-700/50 text-gray-300 border border-gray-600 shrink-0">{record.type}</div>
-                             {record.description && (
-                               <div className="hidden lg:block font-normal text-gray-400 text-sm whitespace-nowrap overflow-hidden text-ellipsis flex-1">
-                                 {record.description}
-                               </div>
-                             )}
-                          </div>
-                          
-                          <div className="flex items-center gap-3 md:gap-6 shrink-0">
-                              <span className={`hidden sm:inline-block px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${isFamily ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
-                                Pending
-                              </span>
-                              <span className="font-extrabold text-sm md:text-base tracking-tight whitespace-nowrap text-gray-100">
-                                Rs. {formatLKR(record.amount - (record.paidAmount || 0))}
-                              </span>
-                              <button 
-                                onClick={() => handleDeleteLentMoney(record.id)}
-                                className="p-1.5 text-gray-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-colors cursor-pointer"
-                                title="Delete Record"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-            </div>
-          </div>
-
-          {/* PAID HISTORY ACCORDION */}
-          {processedPaidLent.length > 0 && (
-            <div className="pt-4 border-t border-gray-800/80">
+          {/* HEADER & FILTERS */}
+          <div className="mb-8 flex flex-col gap-4 bg-gray-900/60 backdrop-blur-md p-6 rounded-[2rem] border border-gray-700/50 shadow-inner">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                <History className="w-4 h-4 text-blue-500" /> All History
+              </h3>
               <button 
-                onClick={() => setShowPaid(!showPaid)} 
-                className="flex items-center justify-between w-full text-left text-sm font-semibold text-gray-400 hover:text-gray-200 transition-colors py-3 px-2 rounded-xl hover:bg-gray-800 cursor-pointer"
+                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-800/80 hover:bg-gray-700 text-gray-300 rounded-full text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
               >
-                <span>View Paid History ({processedPaidLent.length})</span>
-                {showPaid ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                <Filter className="w-3 h-3" /> Filters
+                {isFiltersOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
               </button>
+            </div>
 
-              {showPaid && (
-                <div className="overflow-x-auto bg-gray-900/10 rounded-2xl border border-gray-800 shadow-inner p-6 mt-4">
-                  <div className="min-w-[900px]">
-                    <div className="relative border-l-2 border-emerald-900/30 ml-20 md:ml-24 space-y-2 pb-4">
-                      {processedPaidLent.map(record => (
-                        <div key={record.id} className="relative pl-6 opacity-50 hover:opacity-100 transition-opacity group">
-                          
-                          {/* Date on Left */}
-                          <div className="absolute -left-[5.5rem] md:-left-[6.5rem] top-1/2 -translate-y-1/2 w-20 md:w-24 text-right pr-4 text-xs font-semibold text-gray-500">
-                             {new Date(record.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                             {record.paidDate && (
-                              <div className="text-[9px] text-emerald-500/80 uppercase mt-0.5">Paid: {new Date(record.paidDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
-                             )}
-                          </div>
+            {/* COLLAPSIBLE FILTER SECTION */}
+            <div className={`overflow-hidden transition-all duration-500 ease-in-out ${isFiltersOpen ? 'max-h-[500px] opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-700/50">
+                {/* Search */}
+                <div className="relative col-span-1 md:col-span-3">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search all records..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-gray-800/50 rounded-2xl border border-gray-700/50 pl-12 pr-4 py-3 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
 
-                          {/* Disabled Timeline Node */}
-                          <div className="absolute -left-[13px] top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-4 border-gray-900 bg-emerald-700 flex items-center justify-center">
-                            <CheckCircle2 className="w-3 h-3 text-gray-900" />
-                          </div>
-                          
-                          {/* Row Content - Single Line */}
-                          <div className="py-2 px-3 hover:bg-gray-800/20 rounded-lg flex flex-row items-center justify-between border-b border-gray-800/50 transition-colors">
-                            
-                            <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0 pr-4">
-                               <div className="font-bold text-gray-500 text-sm whitespace-nowrap line-through decoration-gray-600 shrink-0">{record.name}</div>
-                               <div className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-gray-800 text-gray-500 border border-gray-700 shrink-0">{record.type}</div>
-                               {record.description && (
-                                 <div className="hidden lg:block italic text-gray-600 text-sm whitespace-nowrap overflow-hidden text-ellipsis flex-1">
-                                   {record.description}
-                                 </div>
-                               )}
-                            </div>
+                {/* Filter Source */}
+                <div className="relative">
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 px-2">Record Type</p>
+                  <select
+                    value={filterSource}
+                    onChange={(e) => setFilterSource(e.target.value)}
+                    className="w-full bg-gray-800/50 rounded-xl border border-gray-700/50 px-4 py-2.5 text-sm font-medium text-gray-100 focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
+                  >
+                    <option value="All">All Records</option>
+                    <option value="transaction">Expenses & Income</option>
+                    <option value="saving">Savings</option>
+                    <option value="lent">Money Lent</option>
+                  </select>
+                </div>
 
-                            <div className="flex items-center gap-3 md:gap-6 shrink-0">
-                                <span className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-                                  Paid
-                                </span>
-                                <span className="font-extrabold text-sm md:text-base tracking-tight whitespace-nowrap text-gray-600">
-                                  Rs. {formatLKR(record.amount)}
-                                </span>
-                                <button 
-                                  onClick={() => handleDeleteLentMoney(record.id)}
-                                  className="p-1.5 text-gray-600 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-colors cursor-pointer"
-                                  title="Delete Record"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                            </div>
+                {/* Sort By */}
+                <div className="relative">
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 px-2">Sort By</p>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="w-full bg-gray-800/50 rounded-xl border border-gray-700/50 px-4 py-2.5 text-sm font-medium text-gray-100 focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
+                  >
+                    <option value="Newest">Newest First</option>
+                    <option value="Oldest">Oldest First</option>
+                    <option value="Highest">Highest Amount</option>
+                    <option value="Lowest">Lowest Amount</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* UNIFIED TIMELINE */}
+          <div className="overflow-x-auto lg:overflow-visible">
+            <div className="min-w-[500px] lg:min-w-0 pr-4">
+              {filteredAndSortedHistory.length === 0 ? (
+                <div className="text-center py-20 bg-gray-900/40 rounded-[2rem] border border-gray-800 border-dashed">
+                  <History className="w-16 h-16 text-gray-700 mx-auto mb-4" />
+                  <p className="text-gray-400 font-medium">No records found matching your filters.</p>
+                </div>
+              ) : (
+                <div className="relative border-l-2 border-gray-700/50 ml-40 md:ml-48 space-y-4 pb-12 mt-4">
+                  {filteredAndSortedHistory.map((record) => (
+                    <div key={record.id} className="relative pl-8 md:pl-10 group">
+                      
+                      {/* Date and Time on Left */}
+                      <div className="absolute -left-[10rem] md:-left-[12rem] top-1/2 -translate-y-1/2 w-36 md:w-44 text-right pr-4">
+                        <div className="text-[11px] md:text-xs font-semibold text-gray-400 whitespace-nowrap flex items-center justify-end gap-1.5">
+                          <span>{new Date(record.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                          <span className="text-gray-600">•</span>
+                          <span className="text-[10px] md:text-[11px] font-black text-gray-500 uppercase tracking-widest">{new Date(record.date).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
+                        </div>
+                      </div>
+
+                      {/* Timeline Node */}
+                      <div className="absolute -left-[17px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full border-[4px] border-slate-950 bg-gray-800 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shadow-lg">
+                        {getSourceIcon(record.source, record.type)}
+                      </div>
+
+                      {/* Row Content */}
+                      <div className="py-2 px-3 hover:bg-gray-800/40 rounded-lg flex flex-row items-center justify-between border-b border-gray-800/50 transition-colors">
+                        
+                        <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0 pr-4">
+                            <span className={`hidden sm:inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest shrink-0 ${record.source === 'transaction' && record.type === 'Expense' ? 'bg-rose-500/10 text-rose-500' : 
+                               (record.source === 'transaction' && (record.type === 'Income' || record.type === 'POS Income') ? 'bg-emerald-500/10 text-emerald-500' :
+                               (record.source === 'saving' ? 'bg-pink-500/10 text-pink-500' : 
+                               (record.source === 'lent_payment' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500')))}`}>
+                              {record.type}
+                            </span>
+                            {record.subtitle && (
+                              <span className="hidden lg:inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase bg-gray-700 text-gray-300 border border-gray-600 shrink-0">
+                                {record.subtitle}
+                              </span>
+                            )}
+                          <div className="font-semibold text-gray-200 text-xs md:text-sm whitespace-nowrap overflow-hidden text-ellipsis flex-1">
+                            {record.title}
                           </div>
                         </div>
-                      ))}
+
+                        <div className="flex items-center gap-4 shrink-0">
+                          <p className={`font-black text-sm md:text-base tracking-tight ${getAmountColor(record.source, record.type)}`}>
+                            {getAmountPrefix(record.source, record.type)}Rs. {formatLKR(record.amount)}
+                          </p>
+                          <button onClick={() => handleDelete(record)} className="p-1.5 text-gray-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-md transition-colors cursor-pointer" title="Delete Record">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
               )}
             </div>
-          )}
-
-        </div>
-      )}
+          </div>
         </div>
       </div>
     </div>
