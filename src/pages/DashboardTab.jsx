@@ -38,6 +38,7 @@ const DashboardTab = ({
   thisMonthPlanned: liveThisMonthPlanned = 0,
   schedules: liveSchedules = [],
   lentMoney: liveLentMoney = [], 
+  savings: liveSavings = [],
   formatLKR, 
   chartData, 
   COLORS,
@@ -84,7 +85,8 @@ const DashboardTab = ({
     thisMonthWithdrawals: liveThisMonthWithdrawals,
     thisMonthPlanned: liveThisMonthPlanned,
     schedules: liveSchedules,
-    lentMoney: liveLentMoney
+    lentMoney: liveLentMoney,
+    savings: liveSavings
   };
 
   const [displayData, setDisplayData] = useState(() => {
@@ -118,8 +120,8 @@ const DashboardTab = ({
 
   const currentData = displayData || liveData;
   const {
-    transactions, totalIncome, totalExpense, netBalance, totalPendingLent, 
-    totalSavings, thisMonthWithdrawals, thisMonthPlanned, schedules, lentMoney
+    transactions = [], totalIncome = 0, totalExpense = 0, netBalance = 0, totalPendingLent = 0, 
+    totalSavings = 0, thisMonthWithdrawals = 0, thisMonthPlanned = 0, schedules = [], lentMoney = [], savings = []
   } = currentData;
 
   // New Metrics Calculations
@@ -248,7 +250,7 @@ const DashboardTab = ({
 
   // Process data for Yearly Overview Chart (BarChart)
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const yearlyData = months.map(m => ({ month: m, Income: 0, Expense: 0, Lent: 0 }));
+  const yearlyData = months.map(m => ({ month: m, Income: 0, Expense: 0, Lent: 0, 'Net Savings': 0, Deposit: 0, Withdrawal: 0 }));
 
   const thisYearTransactions = transactions.filter(t => new Date(t.date).getFullYear() === currentYear);
   thisYearTransactions.forEach(t => {
@@ -262,6 +264,25 @@ const DashboardTab = ({
   thisYearLent.forEach(t => {
     const monthIndex = new Date(t.date).getMonth();
     yearlyData[monthIndex].Lent += t.amount;
+  });
+
+  const thisYearSavings = savings.filter(t => {
+    const d = t.date?.toDate ? t.date.toDate() : new Date(t.date);
+    return d.getFullYear() === currentYear;
+  });
+  thisYearSavings.forEach(t => {
+    const d = t.date?.toDate ? t.date.toDate() : new Date(t.date);
+    const monthIndex = d.getMonth();
+    if (t.type === 'Deposit') {
+      yearlyData[monthIndex].Deposit += t.amount;
+    } else if (t.type === 'Withdrawal') {
+      yearlyData[monthIndex].Withdrawal += t.amount;
+    }
+  });
+
+  // Calculate Net Savings for each month
+  yearlyData.forEach(data => {
+    data['Net Savings'] = data.Deposit - data.Withdrawal;
   });
 
   // Process Recent Activity
@@ -628,13 +649,57 @@ const DashboardTab = ({
                 <Bar dataKey="Income" fill="#10b981" radius={[4, 4, 0, 0]} barSize={8} />
                 <Bar dataKey="Expense" fill="#f43f5e" radius={[4, 4, 0, 0]} barSize={8} />
                 <Bar dataKey="Lent" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={8} />
+                <Bar dataKey="Net Savings" fill="#d946ef" radius={[4, 4, 0, 0]} barSize={8} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      {/* 4. DETAILED BREAKDOWNS (SUB-CATEGORIES) */}
+      {/* 4. SAVINGS TREND */}
+      <div className="grid grid-cols-1 gap-6 pb-4 mt-6">
+        <div className="bg-gray-900/40 backdrop-blur-xl p-8 rounded-[1.5rem] border border-gray-800 hover:border-gray-700/80 shadow-xl flex flex-col relative overflow-hidden group transition-all duration-500">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-pink-500/10 rounded-full blur-[80px] group-hover:bg-pink-500/20 transition-all duration-700 pointer-events-none"></div>
+          
+          <div className="flex items-center justify-between mb-8 relative z-10">
+            <h3 className="text-sm font-bold flex items-center gap-3 text-white tracking-[0.1em] uppercase">
+              <div className="p-2 bg-pink-500/10 rounded-xl">
+                <PiggyBank className="w-4 h-4 text-pink-400" />
+              </div>
+              Savings Trend (This Year)
+            </h3>
+          </div>
+          
+          <div className="w-full h-[250px] relative z-10">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={yearlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorDeposit" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorWithdrawal" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="month" stroke="#4b5563" fontSize={11} fontWeight={600} tickLine={false} axisLine={false} dy={10} />
+                <YAxis stroke="#4b5563" fontSize={11} fontWeight={600} tickLine={false} axisLine={false} tickFormatter={(val) => val === 0 ? 'Rs0' : formatCompact(val)} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: 'rgba(17, 24, 39, 0.8)', backdropFilter: 'blur(16px)', borderRadius: '1rem', border: '1px solid rgba(55, 65, 81, 0.5)' }} 
+                  itemStyle={{ color: '#fff', fontWeight: 'bold' }} 
+                  formatter={(value) => `Rs. ${formatLKR(value)}`} 
+                />
+                <Legend wrapperStyle={{ fontSize: '11px', fontWeight: '600', color: '#9ca3af', paddingTop: '20px' }} />
+                <Area type="monotone" dataKey="Deposit" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorDeposit)" activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }} />
+                <Area type="monotone" dataKey="Withdrawal" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorWithdrawal)" activeDot={{ r: 6, strokeWidth: 0, fill: '#f43f5e' }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* 5. DETAILED BREAKDOWNS (SUB-CATEGORIES) */}
       <div className="grid grid-cols-1 gap-6 pb-4 mt-6">
         {/* Expenses by Subcategory Chart */}
         <div className="bg-gray-900/40 backdrop-blur-xl p-8 rounded-[1.5rem] border border-gray-800 hover:border-gray-700/80 shadow-xl flex flex-col relative overflow-hidden group transition-all duration-500">

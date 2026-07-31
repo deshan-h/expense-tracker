@@ -67,18 +67,18 @@ const DateTimePicker = ({ date, setDate, time, setTime, hideTime = false }) => {
     <div className="relative w-full" ref={wrapperRef}>
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-gray-900/80 rounded-2xl border border-gray-700/80 hover:border-pink-500 hover:ring-1 hover:ring-pink-500 transition-all overflow-hidden shadow-inner cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 gap-3 sm:gap-0"
+        className="w-full bg-gray-900/80 rounded-2xl border border-gray-700/80 hover:border-pink-500 hover:ring-1 hover:ring-pink-500 transition-all overflow-hidden shadow-inner cursor-pointer flex flex-row items-center justify-between px-4 sm:px-5 py-4 gap-2"
       >
-        <div className="flex items-center gap-3">
-          <CalendarIcon className="w-5 h-5 text-pink-500 shrink-0" />
-          <span className="text-sm font-medium text-gray-100 whitespace-nowrap">
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+          <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-pink-500 shrink-0" />
+          <span className="text-xs sm:text-sm font-medium text-gray-100 whitespace-nowrap overflow-hidden text-ellipsis">
             {selectedDateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
           </span>
         </div>
         {!hideTime && (
-          <div className="flex items-center gap-2 sm:border-l sm:border-gray-700 sm:pl-4">
-            <Clock className="w-4 h-4 text-purple-400 shrink-0" />
-            <span className="text-sm font-medium text-gray-100">{time || "12:00"}</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 border-l border-gray-700 pl-3 sm:pl-4 shrink-0">
+            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-400 shrink-0" />
+            <span className="text-xs sm:text-sm font-medium text-gray-100">{time || "12:00"}</span>
           </div>
         )}
       </div>

@@ -106,7 +106,7 @@ const AddExpenseTab = ({
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Select Category</p>
               {categories.length === 0 && <p className="text-[10px] font-bold text-rose-400 bg-rose-400/10 px-3 py-1.5 rounded-full border border-rose-400/20 uppercase tracking-wider shadow-inner">Add categories first</p>}
             </div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-[300px] overflow-y-auto p-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-gray-700/50 [&::-webkit-scrollbar-thumb]:rounded-full">
+            <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-3 max-h-[300px] overflow-y-auto p-1 sm:p-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-gray-700/50 [&::-webkit-scrollbar-thumb]:rounded-full">
               {categories.map(c => {
                 const CatIcon = getIconComponent(c.icon);
                 const iconColors = getIconColor(c.icon);
@@ -116,12 +116,12 @@ const AddExpenseTab = ({
                     key={c.id} 
                     type="button" 
                     onClick={() => setCategory(c.name)} 
-                    className={`py-3 px-2 rounded-xl flex flex-col items-center gap-1.5 transition-all active:scale-95 text-center ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-750'}`}
+                    className={`py-2 px-1 md:py-3 md:px-2 rounded-xl flex flex-col items-center gap-1 md:gap-1.5 transition-all active:scale-95 text-center ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-750'}`}
                   >
-                    <div className={`p-1.5 rounded-lg transition-all ${isSelected ? 'bg-white/20' : iconColors.bg}`}>
-                      <CatIcon className={`w-5 h-5 transition-all ${isSelected ? 'text-white drop-shadow-md scale-110' : iconColors.color}`} />
+                    <div className={`p-1 md:p-1.5 rounded-lg transition-all ${isSelected ? 'bg-white/20' : iconColors.bg}`}>
+                      <CatIcon className={`w-4 h-4 md:w-5 md:h-5 transition-all ${isSelected ? 'text-white drop-shadow-md scale-110' : iconColors.color}`} />
                     </div>
-                    <span className={`text-[11px] leading-tight md:text-xs font-medium line-clamp-2 w-full ${isSelected ? 'text-white' : 'text-gray-300'}`}>{c.name}</span>
+                    <span className={`text-[9px] leading-tight md:text-[11px] font-medium line-clamp-2 w-full ${isSelected ? 'text-white' : 'text-gray-300'}`}>{c.name}</span>
                   </button>
                 );
               })}
@@ -136,10 +136,10 @@ const AddExpenseTab = ({
               {selectedCatObj && (
                 <div className="mb-6">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 ml-1">Subcategory (Optional)</p>
-                  <div className="flex flex-wrap gap-3 p-2 -mx-2 items-center">
-                    <button type="button" onClick={() => setSubcategory('')} className={`px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all active:scale-95 ${subcategory === '' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-gray-800/80 text-gray-400 border border-gray-700/80 hover:bg-gray-700 hover:text-white'}`}>General</button>
+                  <div className="flex flex-wrap gap-2 md:gap-3 p-2 -mx-2 items-center">
+                    <button type="button" onClick={() => setSubcategory('')} className={`px-4 py-1.5 md:px-6 md:py-2.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider transition-all active:scale-95 ${subcategory === '' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-gray-800/80 text-gray-400 border border-gray-700/80 hover:bg-gray-700 hover:text-white'}`}>General</button>
                     {selectedCatObj.subcategories?.map(sub => (
-                      <button key={sub} type="button" onClick={() => setSubcategory(sub)} className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all active:scale-95 ${subcategory === sub ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700 hover:text-white'}`}>{sub}</button>
+                      <button key={sub} type="button" onClick={() => setSubcategory(sub)} className={`px-4 py-1.5 md:px-6 md:py-2.5 rounded-full text-xs md:text-sm font-medium transition-all active:scale-95 ${subcategory === sub ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700 hover:text-white'}`}>{sub}</button>
                     ))}
                     <div className="flex items-center bg-gray-800 rounded-full border border-gray-700 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2 focus-within:ring-offset-gray-900 transition-all overflow-hidden ml-1">
                       <input 
@@ -153,15 +153,15 @@ const AddExpenseTab = ({
                           } 
                         }} 
                         placeholder="New sub..." 
-                        className="bg-transparent px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none w-28" 
+                        className="bg-transparent px-3 py-1.5 md:px-4 md:py-2.5 text-xs md:text-sm text-gray-100 placeholder-gray-500 focus:outline-none w-20 md:w-28" 
                       />
                       <button 
                         type="button" 
                         onClick={() => handleAddSubcategory(selectedCatObj.id)} 
                         disabled={!newSubcategoryNames[selectedCatObj.id]?.trim()} 
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white p-2.5 transition-colors disabled:opacity-50 flex items-center justify-center cursor-pointer"
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white p-1.5 md:p-2.5 transition-colors disabled:opacity-50 flex items-center justify-center cursor-pointer"
                       >
-                        <Plus className="w-4 h-4" />
+                        <Plus className="w-3 h-3 md:w-4 md:h-4" />
                       </button>
                     </div>
                   </div>

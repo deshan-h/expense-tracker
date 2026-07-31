@@ -281,47 +281,47 @@ function App() {
       <div className="max-w-6xl mx-auto space-y-6 pt-6 relative z-50">
         
         <Tabs defaultValue="add" className="w-full relative z-10">
-          <div className="flex flex-row items-center justify-between gap-3 sm:gap-6 mb-6">
-            <div className="relative flex-1 w-full group">
-              {/* Premium Animated Glow Behind Tab Bar */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 via-blue-500/20 to-purple-500/20 rounded-full blur-xl group-hover:blur-2xl transition-all duration-700 opacity-70 group-hover:opacity-100"></div>
-              
-              <TabsList className="relative grid w-full grid-cols-4 md:grid-cols-8 items-center h-auto bg-gray-900/80 backdrop-blur-2xl p-2 rounded-full border border-gray-700/50 shadow-2xl overflow-x-auto lg:overflow-visible hide-scrollbar gap-1 sm:gap-2">
-                <TabsTrigger value="dashboard" className="gap-1.5 sm:gap-2 py-2 rounded-full">
-                  <LayoutDashboard className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Dashboard</span>
-                </TabsTrigger>
-                <TabsTrigger value="add" className="gap-1.5 sm:gap-2 py-2 rounded-full">
-                  <PlusCircle className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Expense</span>
-                </TabsTrigger>
-                <TabsTrigger value="income" className="gap-1.5 sm:gap-2 py-2 rounded-full">
-                  <TrendingUp className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Income</span>
-                </TabsTrigger>
-                <TabsTrigger value="lent" className="gap-1.5 sm:gap-2 py-2 rounded-full">
-                  <Handshake className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Lent</span>
-                </TabsTrigger>
-                <TabsTrigger value="scheduled" className="gap-1.5 sm:gap-2 py-2 rounded-full">
-                  <CalendarClock className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Planned</span>
-                </TabsTrigger>
-                <TabsTrigger value="savings" className="gap-1.5 sm:gap-2 py-2 rounded-full">
-                  <PiggyBank className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Savings</span>
-                </TabsTrigger>
-                <TabsTrigger value="history" className="gap-1.5 sm:gap-2 py-2 rounded-full">
-                  <List className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">History</span>
-                </TabsTrigger>
-                <TabsTrigger value="categories" className="gap-1.5 sm:gap-2 py-2 rounded-full">
-                  <FolderTree className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Categories</span>
-                </TabsTrigger>
-              </TabsList>
-            </div>
+          <div className="w-[100vw] relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] bg-gray-900/90 border-b border-gray-800/80 backdrop-blur-xl mb-6 shadow-xl z-50">
+            <div className="max-w-6xl mx-auto flex flex-row items-center justify-between gap-3 sm:gap-6 px-4 md:px-8 py-3">
+              <div className="relative flex-1 w-full overflow-x-auto hide-scrollbar">
+                
+                <TabsList className="relative flex w-max md:w-full items-center h-auto bg-transparent p-0 gap-1 sm:gap-2">
+                  <TabsTrigger value="dashboard" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
+                    <LayoutDashboard className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Dashboard</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="add" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
+                    <PlusCircle className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Expense</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="income" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
+                    <TrendingUp className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Income</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="lent" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
+                    <Handshake className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Lent</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="scheduled" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
+                    <CalendarClock className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Planned</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="savings" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
+                    <PiggyBank className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Savings</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="history" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
+                    <List className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">History</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="categories" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
+                    <FolderTree className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Categories</span>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
-            <button
-              onClick={() => setShowSignOutModal(true)}
-              title="Sign Out"
-              className="p-3 sm:px-5 sm:py-3 bg-gray-900/80 hover:bg-red-500/10 text-red-500 hover:text-red-400 border border-gray-700/50 hover:border-red-500/30 rounded-full transition-all duration-300 text-sm font-bold shadow-2xl flex-shrink-0 backdrop-blur-2xl flex items-center justify-center gap-2 group"
-            >
-              <LogOut className="w-5 h-5 group-hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] transition-all" />
-              <span className="hidden sm:inline">Sign Out</span>
-            </button>
+              <button
+                onClick={() => setShowSignOutModal(true)}
+                title="Sign Out"
+                className="p-2 sm:px-4 sm:py-2 bg-gray-800/80 hover:bg-red-500/10 text-red-500 hover:text-red-400 border border-gray-700/50 hover:border-red-500/30 rounded-md transition-all duration-300 text-sm font-bold shadow-md flex-shrink-0 flex items-center justify-center gap-2 group"
+              >
+                <LogOut className="w-5 h-5 group-hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] transition-all" />
+                <span className="hidden sm:inline">Sign Out</span>
+              </button>
+            </div>
           </div>
 
         {/* TAB 1: DASHBOARD */}
@@ -338,6 +338,7 @@ function App() {
                 thisMonthPlanned={thisMonthPlanned}
                 schedules={schedules}
                 lentMoney={lentMoney}
+                savings={savings}
                 formatLKR={formatLKR}
                 chartData={chartData}
                 COLORS={COLORS}
