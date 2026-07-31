@@ -65,13 +65,13 @@ const AddExpenseTab = ({
   };
 
   return (
-    <div className="relative w-full overflow-hidden">
+    <div className="w-[100vw] relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
+      <div className="px-4 md:px-12 py-4 w-full max-w-full">
       {/* Full-tab Ambient Glows */}
       <div className="absolute top-[10%] left-[10%] w-[40vw] h-[40vw] bg-blue-600/10 rounded-full blur-[120px] mix-blend-screen opacity-50 animate-pulse pointer-events-none"></div>
       <div className="absolute bottom-[10%] right-[10%] w-[40vw] h-[40vw] bg-purple-600/10 rounded-full blur-[120px] mix-blend-screen opacity-50 pointer-events-none"></div>
 
-      <div className="bg-gray-900/40 backdrop-blur-2xl p-6 md:p-10 rounded-[2rem] border border-gray-700/50 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] max-w-full mx-auto relative group transition-all duration-700 hover:border-gray-600/60 z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-[2rem] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+      <div className="w-full relative z-10 mt-2">
         
         <form onSubmit={handleAddTransaction} className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
           
@@ -168,25 +168,7 @@ const AddExpenseTab = ({
                 </div>
               )}
 
-              <div className="mb-6">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 ml-1">Tracking Status</p>
-                <div className="flex p-1 bg-gray-900/80 rounded-xl w-full max-w-[200px] border border-gray-700/80 shadow-inner">
-                  <button 
-                    type="button" 
-                    onClick={() => setIsTracked(true)} 
-                    className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${isTracked ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}
-                  >
-                    Tracked
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => setIsTracked(false)} 
-                    className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${!isTracked ? 'bg-gray-700 text-white shadow-md' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}
-                  >
-                    Untracked
-                  </button>
-                </div>
-              </div>
+
               
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Details</p>
               <div className={`relative bg-gray-900/80 rounded-2xl border border-gray-700/80 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all overflow-hidden shadow-inner`}>
@@ -210,6 +192,7 @@ const AddExpenseTab = ({
         </button>
       </form>
     </div>
+      </div>
     </div>
   );
 };

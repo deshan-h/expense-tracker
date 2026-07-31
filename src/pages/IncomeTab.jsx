@@ -61,14 +61,14 @@ const IncomeTab = ({
   };
 
   return (
-    <div className="relative w-full overflow-hidden flex flex-col gap-10">
+    <div className="w-[100vw] relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] flex flex-col gap-10">
+      <div className="px-4 md:px-12 py-4 w-full max-w-full">
       {/* Full-tab Ambient Glows */}
       <div className="absolute top-[10%] left-[10%] w-[40vw] h-[40vw] bg-emerald-600/10 rounded-full blur-[120px] mix-blend-screen opacity-50 animate-pulse pointer-events-none"></div>
       <div className="absolute bottom-[10%] right-[10%] w-[40vw] h-[40vw] bg-teal-600/10 rounded-full blur-[120px] mix-blend-screen opacity-50 pointer-events-none"></div>
 
       {/* POS SYNC BLOCK */}
-      <div className="bg-gray-900/40 backdrop-blur-2xl p-8 rounded-[2rem] border border-gray-700/50 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] relative group transition-all duration-700 hover:border-gray-600/60 z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-[2rem] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+      <div className="w-full relative z-10 mt-2">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative z-10">
           <div className="flex items-center gap-5">
             <div className="bg-blue-500/10 p-4 rounded-2xl border border-blue-500/20 shadow-inner">
@@ -107,8 +107,7 @@ const IncomeTab = ({
       </div>
 
       {/* MANUAL INCOME FORM */}
-      <div className="bg-gray-900/40 backdrop-blur-2xl p-6 md:p-10 rounded-[2rem] border border-gray-700/50 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] relative group transition-all duration-700 hover:border-gray-600/60 z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-[2rem] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+      <div className="w-full relative z-10">
         <h3 className="text-sm font-bold text-gray-300 mb-8 px-2 uppercase tracking-[0.2em] relative z-10">Manual Income Entry</h3>
         <form onSubmit={onSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
           <div className="space-y-8 flex flex-col justify-start">
