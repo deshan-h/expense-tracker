@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const DateTimePicker = ({ date, setDate, time, setTime }) => {
+const DateTimePicker = ({ date, setDate, time, setTime, hideTime = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   
@@ -75,10 +75,12 @@ const DateTimePicker = ({ date, setDate, time, setTime }) => {
             {selectedDateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
           </span>
         </div>
-        <div className="flex items-center gap-2 sm:border-l sm:border-gray-700 sm:pl-4">
-          <Clock className="w-4 h-4 text-purple-400 shrink-0" />
-          <span className="text-sm font-medium text-gray-100">{time || "12:00"}</span>
-        </div>
+        {!hideTime && (
+          <div className="flex items-center gap-2 sm:border-l sm:border-gray-700 sm:pl-4">
+            <Clock className="w-4 h-4 text-purple-400 shrink-0" />
+            <span className="text-sm font-medium text-gray-100">{time || "12:00"}</span>
+          </div>
+        )}
       </div>
 
       <AnimatePresence>
@@ -109,17 +111,19 @@ const DateTimePicker = ({ date, setDate, time, setTime }) => {
             </div>
 
             {/* Time Picker */}
-            <div className="flex items-center justify-between px-2 mb-4">
-              <div className="flex items-center gap-2 text-gray-400 text-sm font-semibold">
-                <Clock className="w-4 h-4" /> Time
+            {!hideTime && (
+              <div className="flex items-center justify-between px-2 mb-4">
+                <div className="flex items-center gap-2 text-gray-400 text-sm font-semibold">
+                  <Clock className="w-4 h-4" /> Time
+                </div>
+                <input 
+                  type="time" 
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm font-medium text-gray-100 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 [color-scheme:dark]"
+                />
               </div>
-              <input 
-                type="time" 
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm font-medium text-gray-100 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 [color-scheme:dark]"
-              />
-            </div>
+            )}
 
             {/* Calendar Toggle */}
             <button 

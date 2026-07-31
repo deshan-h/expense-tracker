@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Handshake, Users, PlusCircle, CreditCard } from 'lucide-react';
+import DateTimePicker from '../components/ui/DateTimePicker';
 
 const MoneyLentTab = ({
   handleAddLentMoney,
@@ -13,6 +14,8 @@ const MoneyLentTab = ({
   setLentDescription,
   lentDate,
   setLentDate,
+  lentTime,
+  setLentTime,
   pendingLent,
   handleReceiveLentPayment,
   formatLKR
@@ -135,8 +138,8 @@ const MoneyLentTab = ({
                 <input type="text" value={lentDescription} onChange={(e) => setLentDescription(e.target.value)} className="w-full bg-transparent px-5 py-4 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder="Notes (Optional)" />
               </div>
 
-              <div className={`relative bg-gray-900/80 rounded-2xl border border-gray-700/80 focus-within:border-${lentType === 'Family' ? 'amber' : 'blue'}-500 focus-within:ring-1 focus-within:ring-${lentType === 'Family' ? 'amber' : 'blue'}-500 transition-all overflow-hidden shadow-inner mt-4`}>
-                <input type="date" required value={lentDate} onChange={(e) => setLentDate(e.target.value)} className="w-full bg-transparent px-5 py-4 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none [color-scheme:dark]" />
+              <div className="mt-4">
+                <DateTimePicker date={lentDate} setDate={setLentDate} time={lentTime} setTime={setLentTime} />
               </div>
             </div>
 

@@ -43,6 +43,7 @@ function App() {
   const [calcHistory, setCalcHistory] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [time, setTime] = useState(new Date().toTimeString().slice(0, 5));
   const [isTracked, setIsTracked] = useState(true);
 
   // Category Form State
@@ -57,6 +58,7 @@ function App() {
   const [lentAmount, setLentAmount] = useState('');
   const [lentDescription, setLentDescription] = useState('');
   const [lentDate, setLentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [lentTime, setLentTime] = useState(new Date().toTimeString().slice(0, 5));
   const [activeLentTab, setActiveLentTab] = useState('Family');
   const [showPaid, setShowPaid] = useState(false);
 
@@ -91,16 +93,18 @@ function App() {
     }
     if (!finalAmount || isNaN(parseFloat(finalAmount))) return;
     
-    const success = await addExpense({ category, subcategory, amount: parseFloat(finalAmount), description, date, isTracked });
+    const fullDate = `${date}T${time}`;
+    const success = await addExpense({ category, subcategory, amount: parseFloat(finalAmount), description, date: fullDate, isTracked });
     
     if (success) {
       setAmount('');
       setCalcHistory('');
       setDescription('');
       setDate(new Date().toISOString().split('T')[0]);
+      setTime(new Date().toTimeString().slice(0, 5));
       setIsTracked(true);
     }
-  }, [amount, calcHistory, category, subcategory, description, date, isTracked, addExpense]);
+  }, [amount, calcHistory, category, subcategory, description, date, time, isTracked, addExpense]);
 
   const handleAddIncomeLocal = useCallback(async (e, incomeCategory) => {
     e.preventDefault();
@@ -118,25 +122,29 @@ function App() {
     }
     if (!finalAmount || isNaN(parseFloat(finalAmount))) return;
     
-    const success = await addIncome({ category: incomeCategory, amount: parseFloat(finalAmount), description, date });
+    const fullDate = `${date}T${time}`;
+    const success = await addIncome({ category: incomeCategory, amount: parseFloat(finalAmount), description, date: fullDate });
     
     if (success) {
       setAmount('');
       setCalcHistory('');
       setDescription('');
       setDate(new Date().toISOString().split('T')[0]);
+      setTime(new Date().toTimeString().slice(0, 5));
     }
-  }, [amount, calcHistory, description, date, addIncome]);
+  }, [amount, calcHistory, description, date, time, addIncome]);
 
   const handleAddLentMoneyLocal = useCallback(async (e) => {
     e.preventDefault();
     if (!lentAmount || !lentName) return;
-    const success = await addLent({ type: lentType, name: lentName, amount: parseFloat(lentAmount), description: lentDescription, date: lentDate });
+    const fullDate = `${lentDate}T${lentTime}`;
+    const success = await addLent({ type: lentType, name: lentName, amount: parseFloat(lentAmount), description: lentDescription, date: fullDate });
     if (success) {
       setLentAmount('');
       setLentName('');
       setLentDescription('');
       setLentDate(new Date().toISOString().split('T')[0]);
+      setLentTime(new Date().toTimeString().slice(0, 5));
       setActiveLentTab(lentType);
     }
   }, [lentAmount, lentName, lentType, lentDescription, lentDate, addLent]);
@@ -192,6 +200,45 @@ function App() {
     if (curr.type === 'Withdrawal') return acc - curr.amount;
     return acc;
   }, 0), [savings]);
+
+  const thisMonthPlanned = useMemo(() => {
+    const activeSchedules = schedules.filter(s => s.status === 'active');
+    let estimated = 0;
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+    activeSchedules.forEach(schedule => {
+      let d = new Date(schedule.nextDate);
+      let safetyCounter = 0; 
+      while (d <= endOfMonth && safetyCounter < 100) {
+        safetyCounter++;
+        if (d >= startOfMonth) {
+          estimated += schedule.amount;
+        }
+        if (schedule.frequency === 'Once') break;
+        else if (schedule.frequency === 'Daily') d.setDate(d.getDate() + 1);
+        else if (schedule.frequency === 'Weekly') d.setDate(d.getDate() + 7);
+        else if (schedule.frequency === 'Monthly') d.setMonth(d.getMonth() + 1);
+        else if (schedule.frequency === 'Yearly') d.setFullYear(d.getFullYear() + 1);
+        else break;
+      }
+    });
+    return estimated;
+  }, [schedules]);
+
+  const thisMonthWithdrawals = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    return savings.reduce((acc, curr) => {
+      const d = curr.date?.toDate ? curr.date.toDate() : new Date(curr.date);
+      if (curr.type === 'Withdrawal' && d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+        return acc + curr.amount;
+      }
+      return acc;
+    }, 0);
+  }, [savings]);
 
   const lastSyncTimeStr = useMemo(() => syncMetadata?.lastRunTime || null, [syncMetadata]);
 
@@ -287,6 +334,9 @@ function App() {
                 netBalance={netBalance}
                 totalPendingLent={totalPendingLent}
                 totalSavings={totalSavings}
+                thisMonthWithdrawals={thisMonthWithdrawals}
+                thisMonthPlanned={thisMonthPlanned}
+                schedules={schedules}
                 lentMoney={lentMoney}
                 formatLKR={formatLKR}
                 chartData={chartData}
@@ -316,6 +366,8 @@ function App() {
                 setDescription={setDescription}
                 date={date}
                 setDate={setDate}
+                time={time}
+                setTime={setTime}
                 isTracked={isTracked}
                 setIsTracked={setIsTracked}
                 handleAddTransaction={handleAddTransaction}
@@ -340,6 +392,8 @@ function App() {
                 setDescription={setDescription}
                 date={date}
                 setDate={setDate}
+                time={time}
+                setTime={setTime}
                 handleAddIncome={handleAddIncomeLocal}
                 handleSyncPOS={handleSyncPOS}
                 isSyncing={isSyncing}
@@ -382,6 +436,8 @@ function App() {
                 setLentDescription={setLentDescription}
                 lentDate={lentDate}
                 setLentDate={setLentDate}
+                lentTime={lentTime}
+                setLentTime={setLentTime}
                 handleAddLentMoney={handleAddLentMoneyLocal}
                 handleReceiveLentPayment={recLent}
                 formatLKR={formatLKR}

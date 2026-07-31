@@ -1,6 +1,7 @@
 import React from 'react';
 import { PlusCircle, TrendingUp, Plus } from 'lucide-react';
 import { getIconComponent, getIconColor } from '../utils/icons';
+import DateTimePicker from '../components/ui/DateTimePicker';
 
 const AddExpenseTab = ({ 
   handleAddTransaction, 
@@ -14,6 +15,8 @@ const AddExpenseTab = ({
   setDescription, 
   date,
   setDate,
+  time,
+  setTime,
   isTracked,
   setIsTracked,
   categories, 
@@ -190,8 +193,8 @@ const AddExpenseTab = ({
                 <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full bg-transparent px-5 py-4 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder={`What was this ${type.toLowerCase()} for?`} />
               </div>
               
-              <div className={`relative bg-gray-900/80 rounded-2xl border border-gray-700/80 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all overflow-hidden shadow-inner mt-4`}>
-                <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-transparent px-5 py-4 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none [color-scheme:dark]" />
+              <div className="mt-4">
+                <DateTimePicker date={date} setDate={setDate} time={time} setTime={setTime} />
               </div>
             </div>
           </div>
