@@ -77,9 +77,16 @@ export const useLentMoney = (user) => {
 
           remainingPayment -= amountToApply;
 
+          const currentHistory = record.paymentHistory || [];
+          const newPayment = {
+            date: new Date().toISOString(),
+            amount: amountToApply
+          };
+
           await updateDoc(doc(db, 'moneyLent', record.id), {
             paidAmount: currentPaid + amountToApply,
             status: newStatus,
+            paymentHistory: [...currentHistory, newPayment],
             ...(newPaidDate && { paidDate: newPaidDate })
           });
         }

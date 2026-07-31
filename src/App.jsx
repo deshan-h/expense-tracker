@@ -278,7 +278,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 px-4 md:px-8 pb-8 font-sans overflow-x-hidden">
       <Toaster position="top-center" toastOptions={{ style: { background: '#1f2937', color: '#fff', borderRadius: '16px', border: '1px solid #374151' } }} />
-      <div className="max-w-6xl mx-auto space-y-6 pt-6">
+      <div className="max-w-6xl mx-auto space-y-6 pt-6 relative z-50">
         
         <Tabs defaultValue="add" className="w-full relative z-10">
           <div className="flex flex-row items-center justify-between gap-3 sm:gap-6 mb-6">
@@ -398,6 +398,8 @@ function App() {
                 handleSyncPOS={handleSyncPOS}
                 isSyncing={isSyncing}
                 lastSyncTimeStr={lastSyncTimeStr}
+                transactions={transactions}
+                formatLKR={formatLKR}
               />
             </Suspense>
           </TabsContent>
@@ -500,7 +502,7 @@ function App() {
       </div>
 
       {/* Footer */}
-      <footer className="w-full flex items-center justify-center gap-3 py-10 mt-8 border-t border-gray-800/30 text-gray-400 text-sm font-medium bg-gray-950/20 backdrop-blur-sm">
+      <footer className="w-full relative z-0 flex items-center justify-center gap-3 py-10 mt-8 border-t border-gray-800/30 text-gray-400 text-sm font-medium bg-gray-950/20 backdrop-blur-sm">
         <span className="tracking-wide">Developed By</span>
         <div className="flex items-center gap-2 bg-gray-900/50 px-3 py-1.5 rounded-full border border-gray-800 shadow-inner">
           <img src={`${import.meta.env.BASE_URL}desh-logo.png`} alt="DEH Logo" className="h-6 w-auto object-contain drop-shadow-md" />
