@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
-import { PlusCircle, LayoutDashboard, List, FolderTree, Handshake, TrendingUp, MoreVertical, LogOut } from 'lucide-react';
+import { PlusCircle, LayoutDashboard, List, FolderTree, Handshake, TrendingUp, MoreVertical, LogOut, PiggyBank, CalendarClock } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { signOut } from 'firebase/auth';
 import { auth } from './firebase';
@@ -17,6 +17,8 @@ import { useTransactions } from './hooks/useTransactions';
 import { useCategories } from './hooks/useCategories';
 import { useLentMoney } from './hooks/useLentMoney';
 import { usePOSSync } from './hooks/usePOSSync';
+import { useSavings } from './hooks/useSavings';
+import { useScheduled } from './hooks/useScheduled';
 
 // Lazy Loaded Pages (Performance Optimization)
 const DashboardTab = lazy(() => import('./pages/DashboardTab'));
@@ -25,6 +27,8 @@ const IncomeTab = lazy(() => import('./pages/IncomeTab'));
 const HistoryTab = lazy(() => import('./pages/HistoryTab'));
 const MoneyLentTab = lazy(() => import('./pages/MoneyLentTab'));
 const CategoriesTab = lazy(() => import('./pages/CategoriesTab'));
+const SavingsTab = lazy(() => import('./pages/SavingsTab'));
+const ScheduledTab = lazy(() => import('./pages/ScheduledTab'));
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
 
@@ -64,6 +68,8 @@ function App() {
   const { categories, addCategory: addCat, deleteCategory: delCat, addSubcategory: addSub, deleteSubcategory: delSub, seedDefaultCategories, DEFAULT_CATEGORIES } = useCategories(user, setCategory);
   const { lentMoney, addLentMoney: addLent, receiveLentPayment: recLent, deleteLentMoney: delLent } = useLentMoney(user);
   const { syncMetadata, isSyncing, handleSyncPOS } = usePOSSync(user);
+  const { savings, addSaving, deleteSaving } = useSavings(user);
+  const { schedules, addSchedule, deleteSchedule } = useScheduled(user, addExpense);
 
   useEffect(() => {
     setSubcategory('');
@@ -181,6 +187,12 @@ function App() {
   const paidLent = useMemo(() => lentMoney.filter(record => record.status === 'paid'), [lentMoney]);
   const totalPendingLent = useMemo(() => pendingLent.reduce((acc, curr) => acc + (curr.amount - (curr.paidAmount || 0)), 0), [pendingLent]);
 
+  const totalSavings = useMemo(() => savings.reduce((acc, curr) => {
+    if (curr.type === 'Deposit') return acc + curr.amount;
+    if (curr.type === 'Withdrawal') return acc - curr.amount;
+    return acc;
+  }, 0), [savings]);
+
   const lastSyncTimeStr = useMemo(() => syncMetadata?.lastRunTime || null, [syncMetadata]);
 
   if (authLoading) {
@@ -227,7 +239,7 @@ function App() {
               {/* Premium Animated Glow Behind Tab Bar */}
               <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 via-blue-500/20 to-purple-500/20 rounded-full blur-xl group-hover:blur-2xl transition-all duration-700 opacity-70 group-hover:opacity-100"></div>
               
-              <TabsList className="relative grid w-full grid-cols-6 items-center h-auto bg-gray-900/80 backdrop-blur-2xl p-2 rounded-full border border-gray-700/50 shadow-2xl overflow-x-auto lg:overflow-visible hide-scrollbar gap-1 sm:gap-2">
+              <TabsList className="relative grid w-full grid-cols-4 md:grid-cols-8 items-center h-auto bg-gray-900/80 backdrop-blur-2xl p-2 rounded-full border border-gray-700/50 shadow-2xl overflow-x-auto lg:overflow-visible hide-scrollbar gap-1 sm:gap-2">
                 <TabsTrigger value="dashboard" className="gap-1.5 sm:gap-2 py-2 rounded-full">
                   <LayoutDashboard className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Dashboard</span>
                 </TabsTrigger>
@@ -239,6 +251,12 @@ function App() {
                 </TabsTrigger>
                 <TabsTrigger value="lent" className="gap-1.5 sm:gap-2 py-2 rounded-full">
                   <Handshake className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Lent</span>
+                </TabsTrigger>
+                <TabsTrigger value="scheduled" className="gap-1.5 sm:gap-2 py-2 rounded-full">
+                  <CalendarClock className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Planned</span>
+                </TabsTrigger>
+                <TabsTrigger value="savings" className="gap-1.5 sm:gap-2 py-2 rounded-full">
+                  <PiggyBank className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Savings</span>
                 </TabsTrigger>
                 <TabsTrigger value="history" className="gap-1.5 sm:gap-2 py-2 rounded-full">
                   <List className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">History</span>
@@ -268,6 +286,7 @@ function App() {
                 totalExpense={totalExpense}
                 netBalance={netBalance}
                 totalPendingLent={totalPendingLent}
+                totalSavings={totalSavings}
                 lentMoney={lentMoney}
                 formatLKR={formatLKR}
                 chartData={chartData}
@@ -396,6 +415,27 @@ function App() {
                 newSubcategoryNames={newSubcategoryNames}
                 handleSubcategoryChange={handleSubcategoryChange}
                 handleAddSubcategory={handleAddSubcategoryLocal}
+              />
+            </Suspense>
+          </TabsContent>
+          <TabsContent value="savings" className="space-y-6">
+            <Suspense fallback={<TabFallback />}>
+              <SavingsTab 
+                savings={savings}
+                addSaving={addSaving}
+                deleteSaving={deleteSaving}
+                formatLKR={formatLKR}
+              />
+            </Suspense>
+          </TabsContent>
+          <TabsContent value="scheduled" className="space-y-6">
+            <Suspense fallback={<TabFallback />}>
+              <ScheduledTab 
+                schedules={schedules}
+                addSchedule={addSchedule}
+                deleteSchedule={deleteSchedule}
+                categories={categories}
+                formatLKR={formatLKR}
               />
             </Suspense>
           </TabsContent>

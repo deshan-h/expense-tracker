@@ -198,7 +198,7 @@ const HistoryTab = ({
               </div>
 
               {/* Timeline List */}
-              <div className="relative border-l-2 border-gray-700/50 ml-4 space-y-4 pb-4">
+              <div className="relative border-l-2 border-gray-700/50 ml-20 md:ml-24 space-y-2 pb-4 mt-4">
                 {filteredAndSortedTransactions.length === 0 ? (
                   <p className="text-gray-500 pl-6 pt-2 text-sm italic">No matching transactions found.</p>
                 ) : (
@@ -207,69 +207,50 @@ const HistoryTab = ({
                     const isTracked = t.isTracked !== undefined ? t.isTracked : true;
                     
                     return (
-                      <div key={t.id} className="relative pl-10 group">
+                      <div key={t.id} className="relative pl-6 group">
+                        {/* Date on Left */}
+                        <div className="absolute -left-[5.5rem] md:-left-[6.5rem] top-1/2 -translate-y-1/2 w-20 md:w-24 text-right pr-4 text-xs font-semibold text-gray-400">
+                          {new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </div>
+                        
                         {/* Timeline Node */}
                         <div className={`absolute -left-[13px] top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-4 border-gray-900 flex items-center justify-center transition-transform group-hover:scale-125 ${isIncome ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'}`}>
                           {isIncome ? <TrendingUp className="w-3 h-3 text-gray-900" /> : <TrendingDown className="w-3 h-3 text-gray-900" />}
                         </div>
                         
-                        {/* Row Content */}
-                        <div className="py-3 px-2 rounded-xl hover:bg-gray-800/40 transition-colors grid grid-cols-12 gap-4 items-center border-b border-gray-800/50">
-                          
-                          {/* Category */}
-                          <div className="col-span-2">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-semibold ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'}`}>
+                        {/* Row Content - Single Line */}
+                        <div className="py-2 px-3 hover:bg-gray-800/40 rounded-lg flex flex-row items-center justify-between border-b border-gray-800/50 transition-colors">
+                          <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0 pr-4">
+                            <span className={`hidden sm:inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest shrink-0 ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'}`}>
                               {t.category}
                             </span>
-                          </div>
-
-                          {/* Subcategory */}
-                          <div className="col-span-2">
-                            {t.subcategory ? (
-                              <span className="inline-flex items-center px-3 py-1 rounded-md text-xs font-semibold bg-gray-700 text-gray-300 border border-gray-600">
+                            {t.subcategory && (
+                              <span className="hidden lg:inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase bg-gray-700 text-gray-300 border border-gray-600 shrink-0">
                                 {t.subcategory}
                               </span>
-                            ) : (
-                              <span className="text-gray-600 italic text-sm">-</span>
                             )}
+                            <div className="font-bold text-gray-100 text-sm whitespace-nowrap overflow-hidden text-ellipsis flex-1">
+                              {t.description || t.category || 'Untitled'}
+                            </div>
                           </div>
 
-                          {/* Description */}
-                          <div className="col-span-3">
-                            <div className="font-bold text-gray-100 text-base line-clamp-1">{t.description || 'Untitled'}</div>
-                            <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mt-0.5">{t.type}</div>
-                          </div>
-
-                          {/* Date */}
-                          <div className="col-span-2 text-gray-300 text-sm font-medium">
-                            {new Date(t.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                          </div>
-
-                          {/* Status */}
-                          <div className="col-span-1">
-                            {!isIncome ? (
-                               <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${isTracked ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-gray-600/20 text-gray-400 border-gray-600/30'}`}>
-                                 {isTracked ? 'Tracked' : 'Untrack'}
-                               </span>
-                            ) : (
-                               <span className="text-gray-600 italic text-sm">-</span>
+                          <div className="flex items-center gap-3 md:gap-6 shrink-0">
+                            {!isIncome && (
+                              <span className={`hidden sm:inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${isTracked ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-gray-600/20 text-gray-400 border-gray-600/30'}`}>
+                                {isTracked ? 'Tracked' : 'Untrack'}
+                              </span>
                             )}
-                          </div>
-
-                          {/* Amount & Actions */}
-                          <div className="col-span-2 flex items-center justify-end gap-3">
-                            <span className={`font-extrabold text-lg whitespace-nowrap ${isIncome ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            <span className={`font-black text-sm md:text-base tracking-tight ${isIncome ? 'text-emerald-400' : 'text-rose-400'}`}>
                               {isIncome ? '+' : '-'}Rs. {formatLKR(t.amount)}
                             </span>
                             <button 
                               onClick={() => handleDeleteTransaction(t.id)} 
-                              className="p-2 text-gray-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-xl transition-colors cursor-pointer"
+                              className="p-1.5 text-gray-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-colors cursor-pointer"
                               title="Delete Record"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
-
                         </div>
                       </div>
                     );
@@ -342,58 +323,53 @@ const HistoryTab = ({
                 <div className="col-span-1 text-center">Action</div>
               </div>
 
-              <div className="relative border-l-2 border-gray-700/50 ml-4 space-y-4 pb-4">
+              <div className="relative border-l-2 border-gray-700/50 ml-20 md:ml-24 space-y-2 pb-4 mt-4">
                 {processedPendingLent.length === 0 ? (
                   <p className="text-gray-500 pl-6 pt-2 text-sm italic">No pending lent records found.</p>
                 ) : (
                   processedPendingLent.map(record => {
                     const isFamily = record.type === 'Family';
                     return (
-                      <div key={record.id} className="relative pl-10 group">
+                      <div key={record.id} className="relative pl-6 group">
                         
+                        {/* Date on Left */}
+                        <div className="absolute -left-[5.5rem] md:-left-[6.5rem] top-1/2 -translate-y-1/2 w-20 md:w-24 text-right pr-4 text-xs font-semibold text-gray-400">
+                          {new Date(record.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </div>
+
+                        {/* Timeline Node */}
                         <div className={`absolute -left-[13px] top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-4 border-gray-900 flex items-center justify-center transition-transform group-hover:scale-125 ${isFamily ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]'}`}>
                            <span className="w-2 h-2 rounded-full bg-gray-900" />
                         </div>
                         
-                        <div className="py-3 px-2 rounded-xl hover:bg-gray-800/40 transition-colors grid grid-cols-12 gap-4 items-center border-b border-gray-800/50">
+                        {/* Row Content - Single Line */}
+                        <div className="py-2 px-3 hover:bg-gray-800/40 rounded-lg flex flex-row items-center justify-between border-b border-gray-800/50 transition-colors">
                           
-                          <div className="col-span-3">
-                            <div className="font-bold text-gray-100 text-base line-clamp-1">{record.name}</div>
-                            <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mt-0.5">{record.type}</div>
-                          </div>
-                          
-                          <div className="col-span-3">
-                            {record.description ? (
-                              <span className="text-gray-400 text-sm line-clamp-1" title={record.description}>{record.description}</span>
-                            ) : (
-                              <span className="text-gray-600 italic text-sm">-</span>
-                            )}
-                          </div>
-
-                          <div className="col-span-2 text-gray-300 text-sm font-medium">
-                             {new Date(record.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                          </div>
-
-                          <div className="col-span-1 flex justify-center">
-                               <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${isFamily ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
-                                 Pending
-                               </span>
-                          </div>
-
-                          <div className="col-span-2 text-right pr-4 font-extrabold text-lg whitespace-nowrap text-gray-100">
-                            Rs. {formatLKR(record.amount - (record.paidAmount || 0))}
+                          <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0 pr-4">
+                             <div className="font-bold text-gray-100 text-sm whitespace-nowrap shrink-0">{record.name}</div>
+                             <div className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-gray-700/50 text-gray-300 border border-gray-600 shrink-0">{record.type}</div>
+                             {record.description && (
+                               <div className="hidden lg:block font-normal text-gray-400 text-sm whitespace-nowrap overflow-hidden text-ellipsis flex-1">
+                                 {record.description}
+                               </div>
+                             )}
                           </div>
                           
-                          <div className="col-span-1 flex justify-center">
+                          <div className="flex items-center gap-3 md:gap-6 shrink-0">
+                              <span className={`hidden sm:inline-block px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${isFamily ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
+                                Pending
+                              </span>
+                              <span className="font-extrabold text-sm md:text-base tracking-tight whitespace-nowrap text-gray-100">
+                                Rs. {formatLKR(record.amount - (record.paidAmount || 0))}
+                              </span>
                               <button 
                                 onClick={() => handleDeleteLentMoney(record.id)}
-                                className="p-2 text-gray-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-xl transition-colors cursor-pointer"
+                                className="p-1.5 text-gray-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-colors cursor-pointer"
                                 title="Delete Record"
                               >
-                                <Trash2 className="w-5 h-5" />
+                                <Trash2 className="w-4 h-4" />
                               </button>
                           </div>
-
                         </div>
                       </div>
                     );
@@ -418,50 +394,50 @@ const HistoryTab = ({
               {showPaid && (
                 <div className="overflow-x-auto bg-gray-900/10 rounded-2xl border border-gray-800 shadow-inner p-6 mt-4">
                   <div className="min-w-[900px]">
-                    <div className="relative border-l-2 border-emerald-900/30 ml-4 space-y-4 pb-4">
+                    <div className="relative border-l-2 border-emerald-900/30 ml-20 md:ml-24 space-y-2 pb-4">
                       {processedPaidLent.map(record => (
-                        <div key={record.id} className="relative pl-10 opacity-50 hover:opacity-100 transition-opacity">
+                        <div key={record.id} className="relative pl-6 opacity-50 hover:opacity-100 transition-opacity group">
                           
+                          {/* Date on Left */}
+                          <div className="absolute -left-[5.5rem] md:-left-[6.5rem] top-1/2 -translate-y-1/2 w-20 md:w-24 text-right pr-4 text-xs font-semibold text-gray-500">
+                             {new Date(record.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                             {record.paidDate && (
+                              <div className="text-[9px] text-emerald-500/80 uppercase mt-0.5">Paid: {new Date(record.paidDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
+                             )}
+                          </div>
+
                           {/* Disabled Timeline Node */}
                           <div className="absolute -left-[13px] top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-4 border-gray-900 bg-emerald-700 flex items-center justify-center">
                             <CheckCircle2 className="w-3 h-3 text-gray-900" />
                           </div>
                           
-                          <div className="py-3 px-2 rounded-xl transition-colors grid grid-cols-12 gap-4 items-center border-b border-gray-800/50 hover:bg-gray-800/20">
-                            <div className="col-span-3">
-                              <div className="font-bold text-gray-500 text-base line-clamp-1 line-through decoration-gray-600">{record.name}</div>
-                              <div className="text-[10px] text-gray-600 uppercase tracking-wider font-bold mt-0.5">{record.type}</div>
-                            </div>
+                          {/* Row Content - Single Line */}
+                          <div className="py-2 px-3 hover:bg-gray-800/20 rounded-lg flex flex-row items-center justify-between border-b border-gray-800/50 transition-colors">
                             
-                            <div className="col-span-3 text-gray-600 italic text-sm line-clamp-1">
-                              {record.description || '-'}
-                            </div>
-
-                            <div className="col-span-2 text-gray-500 text-sm font-medium">
-                               {new Date(record.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                               {record.paidDate && (
-                                <div className="text-[10px] text-emerald-500/80 uppercase mt-0.5">Paid: {new Date(record.paidDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
+                            <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0 pr-4">
+                               <div className="font-bold text-gray-500 text-sm whitespace-nowrap line-through decoration-gray-600 shrink-0">{record.name}</div>
+                               <div className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-gray-800 text-gray-500 border border-gray-700 shrink-0">{record.type}</div>
+                               {record.description && (
+                                 <div className="hidden lg:block italic text-gray-600 text-sm whitespace-nowrap overflow-hidden text-ellipsis flex-1">
+                                   {record.description}
+                                 </div>
                                )}
                             </div>
 
-                            <div className="col-span-1 flex justify-center">
-                               <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-emerald-500/10 text-emerald-400 border-emerald-500/20 flex items-center gap-1">
-                                 Paid
-                               </span>
-                            </div>
-
-                            <div className="col-span-2 text-right pr-4 font-extrabold text-lg whitespace-nowrap text-gray-600">
-                              Rs. {formatLKR(record.amount)}
-                            </div>
-                            
-                            <div className="col-span-1 flex justify-center">
-                              <button 
-                                onClick={() => handleDeleteLentMoney(record.id)}
-                                className="p-2 text-gray-600 hover:text-rose-400 hover:bg-rose-400/10 rounded-xl transition-colors cursor-pointer"
-                                title="Delete Record"
-                              >
-                                <Trash2 className="w-5 h-5" />
-                              </button>
+                            <div className="flex items-center gap-3 md:gap-6 shrink-0">
+                                <span className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                                  Paid
+                                </span>
+                                <span className="font-extrabold text-sm md:text-base tracking-tight whitespace-nowrap text-gray-600">
+                                  Rs. {formatLKR(record.amount)}
+                                </span>
+                                <button 
+                                  onClick={() => handleDeleteLentMoney(record.id)}
+                                  className="p-1.5 text-gray-600 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-colors cursor-pointer"
+                                  title="Delete Record"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
                             </div>
                           </div>
                         </div>

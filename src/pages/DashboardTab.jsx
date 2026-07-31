@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, AreaChart, Area, XAxis, YAxis, CartesianGrid, BarChart, Bar, LabelList } from 'recharts';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, DollarSign, Activity, Target, Clock, Handshake, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Activity, Target, Clock, Handshake, RefreshCw, PiggyBank } from 'lucide-react';
 import { PieChart as PieChartIcon } from 'lucide-react';
 
 // Custom Tooltip for AreaChart
@@ -33,6 +33,7 @@ const DashboardTab = ({
   totalExpense, 
   netBalance, 
   totalPendingLent, 
+  totalSavings = 0,
   lentMoney = [], 
   formatLKR, 
   chartData, 
@@ -176,6 +177,14 @@ const DashboardTab = ({
   }
 
   // Process Recent Activity
+  const formatCompact = (value) => {
+    if (!value) return "0.00";
+    if (Math.abs(value) >= 1000) {
+      return new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(value);
+    }
+    return formatLKR(value);
+  };
+
   const recentTransactions = transactions.slice(0, 5);
 
   return (
@@ -183,7 +192,7 @@ const DashboardTab = ({
       <div className="px-4 md:px-8 py-8 space-y-8 w-full max-w-full">
       
         {/* 1. TOP ROW: COMMAND CENTER METRICS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-8 mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 md:gap-4 mx-auto">
         
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -195,11 +204,11 @@ const DashboardTab = ({
           <div className="p-4 bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border border-gray-700 shadow-inner group-hover:scale-110 group-hover:border-rose-500/50 transition-all duration-500 z-10 flex-shrink-0">
             <Clock className="w-7 h-7 text-rose-400 drop-shadow-md" />
           </div>
-          <div className="z-10 relative">
-            <p className="text-gray-400 text-xs font-bold uppercase tracking-[0.2em] mb-1 group-hover:text-rose-300 transition-colors">Today Expenses</p>
-            <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-md">
+          <div className="z-10 relative flex-1 min-w-0">
+            <p className="text-gray-400 text-xs font-bold uppercase tracking-[0.2em] mb-1 group-hover:text-rose-300 transition-colors truncate">Today Expenses</p>
+            <h2 title={`Rs. ${formatLKR(todayExpenses)}`} className="text-xl sm:text-2xl lg:text-3xl xl:text-xl 2xl:text-2xl font-black text-white tracking-tight drop-shadow-md truncate">
               <span className="text-sm text-gray-500 mr-1 font-bold">Rs.</span>
-              {formatLKR(todayExpenses)}
+              {formatCompact(todayExpenses)}
             </h2>
           </div>
         </motion.div>
@@ -214,11 +223,11 @@ const DashboardTab = ({
           <div className="p-4 bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border border-gray-700 shadow-inner group-hover:scale-110 group-hover:border-orange-500/50 transition-all duration-500 z-10 flex-shrink-0">
             <TrendingDown className="w-7 h-7 text-orange-400 drop-shadow-md" />
           </div>
-          <div className="z-10 relative">
-            <p className="text-gray-400 text-xs font-bold uppercase tracking-[0.2em] mb-1 group-hover:text-orange-300 transition-colors">This Month</p>
-            <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-md">
+          <div className="z-10 relative flex-1 min-w-0">
+            <p className="text-gray-400 text-xs font-bold uppercase tracking-[0.2em] mb-1 group-hover:text-orange-300 transition-colors truncate">This Month</p>
+            <h2 title={`Rs. ${formatLKR(thisMonthExpenses)}`} className="text-xl sm:text-2xl lg:text-3xl xl:text-xl 2xl:text-2xl font-black text-white tracking-tight drop-shadow-md truncate">
               <span className="text-sm text-gray-500 mr-1 font-bold">Rs.</span>
-              {formatLKR(thisMonthExpenses)}
+              {formatCompact(thisMonthExpenses)}
             </h2>
           </div>
         </motion.div>
@@ -233,13 +242,13 @@ const DashboardTab = ({
           <div className="p-4 bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border border-gray-700 shadow-inner group-hover:scale-110 group-hover:border-emerald-500/50 transition-all duration-500 z-10 flex-shrink-0">
             <TrendingUp className="w-7 h-7 text-emerald-400 drop-shadow-md" />
           </div>
-          <div className="z-10 relative flex-1">
+          <div className="z-10 relative flex-1 min-w-0">
             <div className="flex justify-between items-center mb-1">
-              <p className="text-gray-400 text-xs font-bold uppercase tracking-[0.2em] group-hover:text-emerald-300 transition-colors">Total Income</p>
+              <p className="text-gray-400 text-xs font-bold uppercase tracking-[0.2em] group-hover:text-emerald-300 transition-colors truncate">Total Income</p>
             </div>
-            <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-md">
+            <h2 title={`Rs. ${formatLKR(totalIncome)}`} className="text-xl sm:text-2xl lg:text-3xl xl:text-xl 2xl:text-2xl font-black text-white tracking-tight drop-shadow-md truncate">
               <span className="text-sm text-gray-500 mr-1 font-bold">Rs.</span>
-              {formatLKR(totalIncome)}
+              {formatCompact(totalIncome)}
             </h2>
             
             <div className="w-full h-px bg-gradient-to-r from-gray-700/80 via-emerald-800/30 to-transparent my-3 rounded-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
@@ -269,11 +278,30 @@ const DashboardTab = ({
           <div className="p-4 bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border border-gray-700 shadow-inner group-hover:scale-110 group-hover:border-blue-500/50 transition-all duration-500 z-10 flex-shrink-0">
             <Handshake className="w-7 h-7 text-blue-400 drop-shadow-md" />
           </div>
-          <div className="z-10 relative">
-            <p className="text-gray-400 text-xs font-bold uppercase tracking-[0.2em] mb-1 group-hover:text-blue-300 transition-colors">Total Lent</p>
-            <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-md">
+          <div className="z-10 relative flex-1 min-w-0">
+            <p className="text-gray-400 text-xs font-bold uppercase tracking-[0.2em] mb-1 group-hover:text-blue-300 transition-colors truncate">Total Lent</p>
+            <h2 title={`Rs. ${formatLKR(totalPendingLent)}`} className="text-xl sm:text-2xl lg:text-3xl xl:text-xl 2xl:text-2xl font-black text-white tracking-tight drop-shadow-md truncate">
               <span className="text-sm text-gray-500 mr-1 font-bold">Rs.</span>
-              {formatLKR(totalPendingLent)}
+              {formatCompact(totalPendingLent)}
+            </h2>
+          </div>
+        </motion.div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+          className="bg-gray-900/40 backdrop-blur-xl p-5 md:p-6 rounded-[1.5rem] border border-gray-800 hover:border-pink-500/40 hover:bg-gray-800/60 shadow-xl relative overflow-hidden group transition-all duration-500 flex items-center gap-5"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-pink-500/20 rounded-full blur-[60px] group-hover:bg-pink-500/30 transition-all duration-700"></div>
+          <div className="p-4 bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border border-gray-700 shadow-inner group-hover:scale-110 group-hover:border-pink-500/50 transition-all duration-500 z-10 flex-shrink-0">
+            <PiggyBank className="w-7 h-7 text-pink-400 drop-shadow-md" />
+          </div>
+          <div className="z-10 relative flex-1 min-w-0">
+            <p className="text-gray-400 text-xs font-bold uppercase tracking-[0.2em] mb-1 group-hover:text-pink-300 transition-colors truncate">Total Savings</p>
+            <h2 title={`Rs. ${formatLKR(totalSavings)}`} className="text-xl sm:text-2xl lg:text-3xl xl:text-xl 2xl:text-2xl font-black text-white tracking-tight drop-shadow-md truncate">
+              <span className="text-sm text-gray-500 mr-1 font-bold">Rs.</span>
+              {formatCompact(totalSavings)}
             </h2>
           </div>
         </motion.div>
