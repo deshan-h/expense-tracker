@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
-import { PlusCircle, LayoutDashboard, List, FolderTree, Handshake, TrendingUp, MoreVertical, LogOut, PiggyBank, CalendarClock } from 'lucide-react';
+import { PlusCircle, LayoutDashboard, List, FolderTree, Handshake, TrendingUp, MoreVertical, LogOut, PiggyBank, CalendarClock, Settings } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { signOut } from 'firebase/auth';
 import { auth } from './firebase';
@@ -19,6 +19,7 @@ import { useLentMoney } from './hooks/useLentMoney';
 import { usePOSSync } from './hooks/usePOSSync';
 import { useSavings } from './hooks/useSavings';
 import { useScheduled } from './hooks/useScheduled';
+import { useTemplates } from './hooks/useTemplates';
 
 // Lazy Loaded Pages (Performance Optimization)
 const DashboardTab = lazy(() => import('./pages/DashboardTab'));
@@ -26,7 +27,7 @@ const AddExpenseTab = lazy(() => import('./pages/AddExpenseTab'));
 const IncomeTab = lazy(() => import('./pages/IncomeTab'));
 const HistoryTab = lazy(() => import('./pages/HistoryTab'));
 const MoneyLentTab = lazy(() => import('./pages/MoneyLentTab'));
-const CategoriesTab = lazy(() => import('./pages/CategoriesTab'));
+const SettingsTab = lazy(() => import('./pages/SettingsTab'));
 const SavingsTab = lazy(() => import('./pages/SavingsTab'));
 const ScheduledTab = lazy(() => import('./pages/ScheduledTab'));
 
@@ -34,6 +35,7 @@ const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 
 function App() {
   const { user, authLoading } = useAuth();
+  const { templates, addTemplate, deleteTemplate, updateTemplate } = useTemplates(user);
   
   // Transaction Form State
   const [type, setType] = useState('Expense');
@@ -307,8 +309,8 @@ function App() {
                   <TabsTrigger value="history" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
                     <List className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">History</span>
                   </TabsTrigger>
-                  <TabsTrigger value="categories" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
-                    <FolderTree className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Categories</span>
+                  <TabsTrigger value="settings" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
+                    <Settings className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Settings</span>
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -345,6 +347,7 @@ function App() {
                 handleSyncPOS={handleSyncPOS}
                 isSyncing={isSyncing}
                 lastSyncTimeStr={lastSyncTimeStr}
+                categories={categories}
               />
             </Suspense>
           </TabsContent>
@@ -377,6 +380,8 @@ function App() {
                 newSubcategoryNames={newSubcategoryNames}
                 handleSubcategoryChange={handleSubcategoryChange}
                 handleAddSubcategory={handleAddSubcategoryLocal}
+                templates={templates}
+                addTemplate={addTemplate}
               />
             </Suspense>
           </TabsContent>
@@ -453,10 +458,10 @@ function App() {
             </Suspense>
           </TabsContent>
 
-        {/* TAB 6: CATEGORIES */}
-          <TabsContent value="categories">
+        {/* TAB 6: SETTINGS */}
+          <TabsContent value="settings">
             <Suspense fallback={<TabFallback />}>
-              <CategoriesTab 
+              <SettingsTab 
                 handleAddCategory={handleAddCategoryLocal}
                 newCategoryName={newCategoryName}
                 setNewCategoryName={setNewCategoryName}
@@ -470,6 +475,9 @@ function App() {
                 newSubcategoryNames={newSubcategoryNames}
                 handleSubcategoryChange={handleSubcategoryChange}
                 handleAddSubcategory={handleAddSubcategoryLocal}
+                templates={templates}
+                deleteTemplate={deleteTemplate}
+                updateTemplate={updateTemplate}
               />
             </Suspense>
           </TabsContent>

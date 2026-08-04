@@ -3,6 +3,7 @@ import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, 
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, DollarSign, Activity, Target, Clock, Handshake, RefreshCw, PiggyBank, CalendarClock } from 'lucide-react';
 import { PieChart as PieChartIcon } from 'lucide-react';
+import { getIconComponent, getIconColor } from '../utils/icons';
 
 // Custom Tooltip for AreaChart
 const CustomAreaTooltip = ({ active, payload, label, formatLKR }) => {
@@ -44,7 +45,8 @@ const DashboardTab = ({
   COLORS,
   handleSyncPOS,
   isSyncing,
-  lastSyncTimeStr
+  lastSyncTimeStr,
+  categories = []
 }) => {
 
   // Auto-refresh Time Ago
@@ -103,6 +105,7 @@ const DashboardTab = ({
   });
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [cashFlowFilter, setCashFlowFilter] = useState('month'); // 'week' | 'month'
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -190,27 +193,153 @@ const DashboardTab = ({
     }
   });
 
-  // Generate all dates from 1st to today
+  // --- THIS WEEK CALCULATIONS ---
+  const startOfWeek = new Date(today);
+  const dayOfWeek = startOfWeek.getDay();
+  const diffToMonday = startOfWeek.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+  startOfWeek.setDate(diffToMonday);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(endOfWeek.getDate() + 6);
+  endOfWeek.setHours(23, 59, 59, 999);
+
+  let thisWeekIncome = 0;
+  let thisWeekExpense = 0;
+  let thisWeekLent = 0;
+  let thisWeekPlanned = 0;
+
+  // Generate Cash Flow Data based on filter
   const cashFlowArray = [];
-  const currentDate = today.getDate(); // 1 to 31
   
-  for (let i = 1; i <= currentDate; i++) {
-    const d = new Date(currentYear, currentMonth, i);
-    const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    const dayStr = String(i).padStart(2, '0');
-    if (groupedFlow[dateStr]) {
+  if (cashFlowFilter === 'month') {
+    const currentDate = today.getDate(); // 1 to 31
+    for (let i = 1; i <= currentDate; i++) {
+      const d = new Date(currentYear, currentMonth, i);
+      const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      const dayStr = String(i).padStart(2, '0');
+      if (groupedFlow[dateStr]) {
+        cashFlowArray.push({
+          date: dateStr,
+          day: dayStr,
+          Income: groupedFlow[dateStr].Income || 0,
+          Expense: groupedFlow[dateStr].Expense || 0,
+          Lent: groupedFlow[dateStr].Lent || 0,
+          Planned: groupedFlow[dateStr].Planned || 0
+        });
+      } else {
+        cashFlowArray.push({ date: dateStr, day: dayStr, Income: 0, Expense: 0, Lent: 0, Planned: 0 });
+      }
+    }
+    
+    // Still need to calculate thisWeek* for the UI if week is selected
+    transactions.forEach(t => {
+      const d = new Date(t.date);
+      if (d >= startOfWeek && d <= endOfWeek) {
+        if (t.type === 'Income' || t.type === 'POS Income') thisWeekIncome += t.amount;
+        else if (t.type === 'Expense') thisWeekExpense += t.amount;
+      }
+    });
+    
+    lentMoney.forEach(t => {
+      const d = new Date(t.date);
+      if (d >= startOfWeek && d <= endOfWeek) {
+        thisWeekLent += t.amount;
+      }
+    });
+    
+    activeSchedules.forEach(schedule => {
+      let d = new Date(schedule.nextDate);
+      let safetyCounter = 0; 
+      while (d <= endOfWeek && safetyCounter < 100) {
+        safetyCounter++;
+        if (d >= startOfWeek && d <= endOfWeek) {
+          thisWeekPlanned += schedule.amount;
+        }
+        if (schedule.frequency === 'Once') break;
+        else if (schedule.frequency === 'Daily') d.setDate(d.getDate() + 1);
+        else if (schedule.frequency === 'Weekly') d.setDate(d.getDate() + 7);
+        else if (schedule.frequency === 'Monthly') d.setMonth(d.getMonth() + 1);
+        else if (schedule.frequency === 'Yearly') d.setFullYear(d.getFullYear() + 1);
+        else break;
+      }
+    });
+
+  } else {
+    // Week
+    const currentDayOfWeek = today.getDay() || 7; // 1-7 (Mon-Sun)
+    for (let i = 0; i < currentDayOfWeek; i++) {
+      const d = new Date(startOfWeek);
+      d.setDate(d.getDate() + i);
+      const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      const dayStr = d.toLocaleDateString(undefined, { weekday: 'short' }); // Mon, Tue, etc
+      
+      // Calculate data for this specific day using all transactions
+      let dayIncome = 0;
+      let dayExpense = 0;
+      let dayLent = 0;
+      let dayPlanned = 0;
+      
+      transactions.forEach(t => {
+        const td = new Date(t.date);
+        if (td.toDateString() === d.toDateString()) {
+          if (t.type === 'Income' || t.type === 'POS Income') dayIncome += t.amount;
+          else if (t.type === 'Expense') dayExpense += t.amount;
+        }
+      });
+      
+      lentMoney.forEach(t => {
+        const td = new Date(t.date);
+        if (td.toDateString() === d.toDateString()) {
+          dayLent += t.amount;
+        }
+      });
+      
+      activeSchedules.forEach(schedule => {
+        let sd = new Date(schedule.nextDate);
+        let safetyCounter = 0; 
+        while (sd <= d && safetyCounter < 100) {
+          safetyCounter++;
+          if (sd.toDateString() === d.toDateString()) {
+            dayPlanned += schedule.amount;
+          }
+          if (schedule.frequency === 'Once') break;
+          else if (schedule.frequency === 'Daily') sd.setDate(sd.getDate() + 1);
+          else if (schedule.frequency === 'Weekly') sd.setDate(sd.getDate() + 7);
+          else if (schedule.frequency === 'Monthly') sd.setMonth(sd.getMonth() + 1);
+          else if (schedule.frequency === 'Yearly') sd.setFullYear(sd.getFullYear() + 1);
+          else break;
+        }
+      });
+      
+      thisWeekIncome += dayIncome;
+      thisWeekExpense += dayExpense;
+      thisWeekLent += dayLent;
+      thisWeekPlanned += dayPlanned;
+      
       cashFlowArray.push({
         date: dateStr,
         day: dayStr,
-        Income: groupedFlow[dateStr].Income || 0,
-        Expense: groupedFlow[dateStr].Expense || 0,
-        Lent: groupedFlow[dateStr].Lent || 0,
-        Planned: groupedFlow[dateStr].Planned || 0
+        Income: dayIncome,
+        Expense: dayExpense,
+        Lent: dayLent,
+        Planned: dayPlanned
       });
-    } else {
-      cashFlowArray.push({ date: dateStr, day: dayStr, Income: 0, Expense: 0, Lent: 0, Planned: 0 });
     }
   }
+
+  // Calculate This Month totals
+  let thisMonthIncome = 0;
+  let thisMonthLentSum = 0;
+  Object.values(groupedFlow).forEach(dayData => {
+    thisMonthIncome += dayData.Income;
+    thisMonthLentSum += dayData.Lent;
+  });
+
+  const displayedIncome = cashFlowFilter === 'week' ? thisWeekIncome : thisMonthIncome;
+  const displayedExpense = cashFlowFilter === 'week' ? thisWeekExpense : thisMonthExpenses;
+  const displayedLent = cashFlowFilter === 'week' ? thisWeekLent : thisMonthLentSum;
+  const displayedPlanned = cashFlowFilter === 'week' ? thisWeekPlanned : thisMonthPlanned;
 
   // Process data for Expenses by Category (This Month)
   const thisMonthExpensesTransactions = transactions.filter(t => {
@@ -219,34 +348,45 @@ const DashboardTab = ({
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   });
 
-  const expensesByCategory = thisMonthExpensesTransactions.reduce((acc, curr) => {
-    const cat = curr.category || 'Other';
-    acc[cat] = (acc[cat] || 0) + curr.amount;
-    return acc;
-  }, {});
+  const categoryBreakdownData = {};
+  
+  thisMonthExpensesTransactions.forEach(t => {
+    const cat = t.category || 'Other';
+    const subcat = t.subcategory || 'Other';
+    
+    if (!categoryBreakdownData[cat]) {
+      categoryBreakdownData[cat] = {
+        total: 0,
+        subcategories: {}
+      };
+    }
+    
 
-  const pieChartData = Object.keys(expensesByCategory)
-    .map((key, index) => ({
-      name: key,
-      value: expensesByCategory[key],
-      color: COLORS[index % COLORS.length]
-    }))
-    .sort((a, b) => b.value - a.value); // Sort highest first
+    categoryBreakdownData[cat].total += t.amount;
+    categoryBreakdownData[cat].subcategories[subcat] = (categoryBreakdownData[cat].subcategories[subcat] || 0) + t.amount;
+  });
 
-  const expensesBySubCategory = thisMonthExpensesTransactions.reduce((acc, curr) => {
-    const subcat = curr.subcategory || 'Other';
-    acc[subcat] = (acc[subcat] || 0) + curr.amount;
-    return acc;
-  }, {});
-
-  const subCategoryChartData = Object.keys(expensesBySubCategory)
-    .map((key, index) => ({
-      name: key,
-      value: expensesBySubCategory[key],
-      color: COLORS[index % COLORS.length]
-    }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 10); // Show top 10
+  const advancedCategoryCards = Object.entries(categoryBreakdownData)
+    .sort((a, b) => b[1].total - a[1].total)
+    .map(([catName, data], catIndex) => {
+      const catObj = categories.find(c => c.name === catName);
+      const iconName = catObj ? catObj.icon : 'Folder';
+      
+      const subcats = Object.entries(data.subcategories)
+        .sort((a, b) => b[1] - a[1])
+        .map(([subName, val], index) => ({
+          name: subName,
+          value: val,
+          color: COLORS[(catIndex * 3 + index) % COLORS.length]
+        }));
+      
+      return {
+        category: catName,
+        icon: iconName,
+        total: data.total,
+        subcategories: subcats
+      };
+    });
 
   // Process data for Yearly Overview Chart (BarChart)
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -472,14 +612,48 @@ const DashboardTab = ({
         <div className="bg-gray-900/40 backdrop-blur-xl p-6 rounded-[1.5rem] border border-gray-800 hover:border-gray-700/80 shadow-xl lg:col-span-2 relative overflow-hidden group transition-all duration-500">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] group-hover:bg-blue-500/20 transition-all duration-700"></div>
           
-          <div className="flex items-center justify-between mb-8 relative z-10">
-            <h3 className="text-xl font-bold flex items-center gap-3 text-white">
-              <div className="p-2 bg-blue-500/10 rounded-xl">
-                <Activity className="w-5 h-5 text-blue-400" />
+          <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between mb-8 relative z-10 gap-6">
+            <div className="flex flex-col gap-3">
+              <h3 className="text-[13px] md:text-sm font-bold tracking-[0.15em] uppercase text-gray-200">
+                Cash Flow Overview <span className="text-gray-500">({cashFlowFilter === 'week' ? 'THIS WEEK' : 'THIS MONTH'})</span>
+              </h3>
+              <div className="flex bg-[#0f172a] rounded-lg p-1 border border-gray-800/80 w-max shadow-inner">
+                <button 
+                  onClick={() => setCashFlowFilter('week')}
+                  className={`px-4 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all ${cashFlowFilter === 'week' ? 'bg-[#064e3b] text-[#34d399]' : 'text-gray-500 hover:text-gray-300'}`}
+                >
+                  THIS WEEK
+                </button>
+                <button 
+                  onClick={() => setCashFlowFilter('month')}
+                  className={`px-4 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all ${cashFlowFilter === 'month' ? 'bg-[#064e3b] text-[#34d399]' : 'text-gray-500 hover:text-gray-300'}`}
+                >
+                  THIS MONTH
+                </button>
               </div>
-              Cash Flow Overview
-            </h3>
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-4 py-1.5 rounded-full border border-blue-500/20">This Month</span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-4 bg-[#0f172a]/80 py-3 px-5 rounded-xl border border-gray-800/60 shadow-lg w-full xl:w-auto overflow-x-auto hide-scrollbar">
+              <div className="flex flex-col">
+                <span className="text-[9px] md:text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Total Income</span>
+                <span className="text-sm md:text-base font-black text-[#34d399] whitespace-nowrap">Rs {formatLKR(displayedIncome)}</span>
+              </div>
+              <div className="w-px h-8 bg-gray-700/50 hidden sm:block"></div>
+              <div className="flex flex-col">
+                <span className="text-[9px] md:text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Total Expenses</span>
+                <span className="text-sm md:text-base font-black text-rose-400 whitespace-nowrap">Rs {formatLKR(displayedExpense)}</span>
+              </div>
+              <div className="w-px h-8 bg-gray-700/50 hidden sm:block"></div>
+              <div className="flex flex-col">
+                <span className="text-[9px] md:text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Total Lent</span>
+                <span className="text-sm md:text-base font-black text-blue-400 whitespace-nowrap">Rs {formatLKR(displayedLent)}</span>
+              </div>
+              <div className="w-px h-8 bg-gray-700/50 hidden md:block"></div>
+              <div className="flex flex-col">
+                <span className="text-[9px] md:text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Total Planned</span>
+                <span className="text-sm md:text-base font-black text-amber-500 whitespace-nowrap">Rs {formatLKR(displayedPlanned)}</span>
+              </div>
+            </div>
           </div>
           
           <div className="h-[350px] w-full relative z-10">
@@ -564,64 +738,93 @@ const DashboardTab = ({
       </div>
 
       {/* 3. BOTTOM ROW: INSIGHTS & ACTIVITY */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-4">
+      
+      {/* EXPENSE BREAKDOWN */}
+      <div className="w-full mb-10 mt-6 relative z-10 bg-gray-900/40 backdrop-blur-xl p-6 md:p-8 rounded-[1.5rem] border border-gray-800 shadow-xl overflow-hidden group">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] group-hover:bg-indigo-500/20 transition-all duration-700 pointer-events-none"></div>
+        <h3 className="text-[13px] md:text-sm font-bold tracking-[0.15em] uppercase text-gray-200 mb-8 flex items-center gap-2 pl-2">
+          <PieChartIcon className="w-4 h-4 text-indigo-400" />
+          EXPENSE BREAKDOWN <span className="text-gray-500">(THIS MONTH)</span>
+        </h3>
         
-        {/* Expenses by Category Widget */}
-        <div className="bg-gray-900/40 backdrop-blur-xl p-6 rounded-[1.5rem] border border-gray-800 hover:border-gray-700/80 shadow-xl flex flex-col relative overflow-hidden group lg:col-span-1 transition-all duration-500">
-          <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-orange-500/10 rounded-full blur-3xl group-hover:bg-orange-500/20 transition-all duration-700"></div>
-          
-          <div className="relative z-10 mb-2">
-            <h3 className="text-xl font-bold flex items-center gap-3 text-white">
-              <div className="p-2 bg-orange-500/10 rounded-xl">
-                <PieChartIcon className="w-5 h-5 text-orange-400" />
-              </div>
-              Expense Breakdown
-            </h3>
-          </div>
-
-          <div className="flex-1 min-h-[220px] relative z-10 -ml-4 flex items-center justify-center">
-            {pieChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <RechartsPieChart>
-                  <Pie
-                    data={pieChartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                    stroke="none"
-                  >
-                    {pieChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+        {advancedCategoryCards.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
+            {advancedCategoryCards.map((cat, idx) => {
+              const IconComp = getIconComponent(cat.icon);
+              const iconColors = getIconColor(cat.icon);
+              return (
+              <div key={idx} className="bg-[#0b1120] border border-gray-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xl hover:border-gray-700/60 transition-colors">
+                {/* Card Header */}
+                <div className="flex justify-between items-center p-4 pb-3 border-b border-gray-800/40 bg-[#0f172a]/30">
+                  <div className="flex items-center gap-3 text-sm font-bold text-gray-200">
+                    <div className={`p-1.5 rounded-md ${iconColors.bg}`}>
+                      <IconComp className={`w-3.5 h-3.5 ${iconColors.color}`} />
+                    </div>
+                    {cat.category}
+                  </div>
+                  <div className="text-sm font-black text-rose-400 tracking-wide">
+                    Rs {formatCompact(cat.total)}
+                  </div>
+                </div>
+                
+                {/* Card Body */}
+                <div className="p-5 flex items-center gap-6">
+                  {/* Donut Chart */}
+                  <div className="w-[100px] h-[100px] flex-shrink-0 relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPieChart>
+                        <Pie
+                          data={cat.subcategories}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={28}
+                          outerRadius={44}
+                          paddingAngle={3}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {cat.subcategories.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: 'rgba(17, 24, 39, 0.95)', backdropFilter: 'blur(16px)', borderRadius: '0.75rem', border: '1px solid rgba(55, 65, 81, 0.5)', padding: '6px 10px' }} 
+                          itemStyle={{ color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
+                          formatter={(value) => `Rs. ${formatCompact(value)}`} 
+                        />
+                      </RechartsPieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  {/* Subcategories List */}
+                  <div className="flex-1 flex flex-col gap-3 overflow-y-auto max-h-[110px] hide-scrollbar pr-1">
+                    {cat.subcategories.map((sub, sIdx) => (
+                      <div key={sIdx} className="flex justify-between items-center text-xs">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: sub.color }}></div>
+                          <span className="text-gray-400 truncate tracking-wide">{sub.name}</span>
+                        </div>
+                        <span className="text-gray-300 font-bold ml-3 flex-shrink-0">Rs {formatCompact(sub.value)}</span>
+                      </div>
                     ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: 'rgba(17, 24, 39, 0.8)', backdropFilter: 'blur(16px)', borderRadius: '1rem', border: '1px solid rgba(55, 65, 81, 0.5)' }} 
-                    itemStyle={{ color: '#fff', fontWeight: 'bold' }} 
-                    formatter={(value) => `Rs. ${formatLKR(value)}`} 
-                  />
-                  <Legend 
-                    layout="vertical" 
-                    verticalAlign="middle" 
-                    align="right"
-                    iconType="circle"
-                    wrapperStyle={{ fontSize: '11px', fontWeight: '600', color: '#9ca3af' }}
-                  />
-                </RechartsPieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full w-full flex flex-col items-center justify-center text-gray-500 text-sm bg-gray-900/30 rounded-2xl border border-dashed border-gray-700 ml-4">
-                <PieChartIcon className="w-12 h-12 text-gray-700 mb-4" />
-                <p>No expenses this month.</p>
+                  </div>
+                </div>
               </div>
-            )}
+              );
+            })}
           </div>
-        </div>
+        ) : (
+           <div className="w-full flex flex-col items-center justify-center text-gray-500 text-sm bg-gray-900/30 rounded-2xl border border-dashed border-gray-700 py-12">
+             <PieChartIcon className="w-12 h-12 text-gray-700 mb-4" />
+             <p>No expenses this month.</p>
+           </div>
+        )}
+      </div>
+      
+      <div className="grid grid-cols-1 gap-6 pb-4">
         
         {/* Yearly Overview Chart */}
-        <div className="bg-gray-900/40 backdrop-blur-xl p-6 rounded-[1.5rem] border border-gray-800 hover:border-gray-700/80 shadow-xl lg:col-span-2 relative overflow-hidden group transition-all duration-500">
+        <div className="bg-gray-900/40 backdrop-blur-xl p-6 rounded-[1.5rem] border border-gray-800 hover:border-gray-700/80 shadow-xl relative overflow-hidden group transition-all duration-500">
           <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-[80px] group-hover:bg-cyan-500/20 transition-all duration-700"></div>
           
           <div className="flex items-center justify-between mb-8 relative z-10">
@@ -699,39 +902,7 @@ const DashboardTab = ({
         </div>
       </div>
 
-      {/* 5. DETAILED BREAKDOWNS (SUB-CATEGORIES) */}
-      <div className="grid grid-cols-1 gap-6 pb-4 mt-6">
-        {/* Expenses by Subcategory Chart */}
-        <div className="bg-gray-900/40 backdrop-blur-xl p-8 rounded-[1.5rem] border border-gray-800 hover:border-gray-700/80 shadow-xl flex flex-col relative overflow-hidden group transition-all duration-500">
-          <div className="flex items-center justify-between mb-8 relative z-10">
-            <h3 className="text-sm font-bold flex items-center gap-3 text-white tracking-[0.1em] uppercase">
-              Expense By Subcategory (This Month)
-            </h3>
-          </div>
-          
-          <div className="w-full relative z-10">
-            {subCategoryChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={Math.max(300, subCategoryChartData.length * 45 + 50)}>
-                 <BarChart layout="vertical" data={subCategoryChartData} margin={{ top: 0, right: 80, left: 20, bottom: 0 }}>
-                    <XAxis type="number" hide />
-                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={150} tick={{ fill: '#9ca3af', fontSize: 13, fontWeight: 600 }} />
-                    <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: 'rgba(17, 24, 39, 0.8)', backdropFilter: 'blur(16px)', borderRadius: '1rem', border: '1px solid rgba(55, 65, 81, 0.5)' }} itemStyle={{ color: '#fff', fontWeight: 'bold' }} formatter={(value) => `Rs. ${formatLKR(value)}`} />
-                    <Bar dataKey="value" radius={[4, 4, 4, 4]} barSize={24}>
-                      {subCategoryChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                      <LabelList dataKey="value" position="right" formatter={(val) => `Rs ${val}`} fill="#f3f4f6" fontSize={13} fontWeight={600} />
-                    </Bar>
-                 </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[200px] flex flex-col items-center justify-center text-gray-500 text-sm bg-gray-900/30 rounded-2xl border border-dashed border-gray-700">
-                <p>No subcategory expenses this month.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+
 
       </div>
     </div>

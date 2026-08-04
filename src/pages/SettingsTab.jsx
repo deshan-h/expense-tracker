@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { FolderTree, Trash2, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { FolderTree, Trash2, X, ChevronDown, ChevronUp, Settings, Bookmark, Edit2, Check } from 'lucide-react';
 import { AVAILABLE_ICONS, getIconComponent, getIconColor } from '../utils/icons';
 
-const CategoriesTab = ({
+const SettingsTab = ({
   handleAddCategory,
   newCategoryName,
   setNewCategoryName,
@@ -15,9 +15,30 @@ const CategoriesTab = ({
   handleDeleteSubcategory,
   newSubcategoryNames,
   handleSubcategoryChange,
-  handleAddSubcategory
+  handleAddSubcategory,
+  templates,
+  deleteTemplate,
+  updateTemplate
 }) => {
   const [isIconSelectorOpen, setIsIconSelectorOpen] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState(null);
+  const [editFormData, setEditFormData] = useState({ name: '', amount: '', category: '', subcategory: '' });
+
+  const handleEditClick = (tpl) => {
+    setEditingTemplateId(tpl.id);
+    setEditFormData({
+      name: tpl.name || '',
+      amount: tpl.amount || '',
+      category: tpl.category || '',
+      subcategory: tpl.subcategory || ''
+    });
+  };
+
+  const handleSaveEdit = async (id) => {
+    if (!editFormData.name.trim() || !editFormData.category) return;
+    await updateTemplate(id, editFormData);
+    setEditingTemplateId(null);
+  };
   
   const SelectedIcon = newCategoryIcon ? getIconComponent(newCategoryIcon) : null;
   const selectedIconColors = newCategoryIcon ? getIconColor(newCategoryIcon) : { bg: 'bg-gray-800', color: 'text-gray-400' };
@@ -31,8 +52,12 @@ const CategoriesTab = ({
       <div className="px-4 md:px-8 py-4 w-full max-w-full relative z-10">
         <div className="flex flex-col mb-8 gap-6">
           <h3 className="text-2xl font-bold flex items-center gap-3 text-white">
-            <FolderTree className="w-7 h-7 text-blue-400" /> Category Management
+            <Settings className="w-7 h-7 text-blue-400" /> Settings
           </h3>
+          
+          <h4 className="text-xl font-semibold flex items-center gap-3 text-gray-200 mt-2">
+            <FolderTree className="w-6 h-6 text-emerald-400" /> Category Management
+          </h4>
           
           <form onSubmit={handleAddCategory} className="bg-gray-900/50 p-6 rounded-2xl border border-gray-700/80 shadow-lg space-y-4">
             <div>
@@ -139,9 +164,91 @@ const CategoriesTab = ({
             })}
           </div>
         )}
+
+        <div className="flex flex-col mt-12 gap-6">
+          <h4 className="text-xl font-semibold flex items-center gap-3 text-gray-200 border-t border-gray-800 pt-8">
+            <Bookmark className="w-6 h-6 text-purple-400" /> Expense Templates
+          </h4>
+          
+          {!templates || templates.length === 0 ? (
+            <div className="bg-gray-900/30 border border-dashed border-gray-700 rounded-2xl p-8 text-center">
+              <p className="text-gray-500">No templates saved yet. You can save templates when adding a new expense.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
+              {templates.map(tpl => {
+                if (editingTemplateId === tpl.id) {
+                  const selectedCat = categories.find(c => c.name === editFormData.category);
+                  return (
+                    <div key={tpl.id} className="bg-gray-800/80 backdrop-blur-sm border border-blue-500/50 rounded-2xl overflow-hidden shadow-[0_0_15px_rgba(59,130,246,0.15)] flex flex-col p-4 animate-in fade-in zoom-in-95 duration-200">
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1 block">Name</label>
+                          <input type="text" value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-blue-500" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1 block">Amount (Optional)</label>
+                          <input type="text" inputMode="decimal" value={editFormData.amount} onChange={e => setEditFormData({...editFormData, amount: e.target.value.replace(/[^0-9.]/g, '')})} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-blue-500" placeholder="0.00" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1 block">Category</label>
+                          <select value={editFormData.category} onChange={e => setEditFormData({...editFormData, category: e.target.value, subcategory: ''})} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-blue-500 [&>option]:bg-gray-900">
+                            <option value="" disabled>Select Category</option>
+                            {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                          </select>
+                        </div>
+                        {selectedCat && selectedCat.subcategories && selectedCat.subcategories.length > 0 && (
+                          <div>
+                            <label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1 block">Subcategory</label>
+                            <select value={editFormData.subcategory} onChange={e => setEditFormData({...editFormData, subcategory: e.target.value})} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-blue-500 [&>option]:bg-gray-900">
+                              <option value="">General</option>
+                              {selectedCat.subcategories.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                          </div>
+                        )}
+                        <div className="flex gap-2 pt-2 mt-2 border-t border-gray-700/50">
+                          <button onClick={() => setEditingTemplateId(null)} className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-colors">Cancel</button>
+                          <button onClick={() => handleSaveEdit(tpl.id)} disabled={!editFormData.name.trim() || !editFormData.category} className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50">Save</button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div key={tpl.id} className="bg-gray-900/60 backdrop-blur-sm border border-gray-700/80 rounded-2xl overflow-hidden shadow-lg flex flex-col group hover:border-gray-600 transition-all">
+                    <div className="p-4 flex items-start justify-between border-b border-gray-800/80 bg-gradient-to-r from-gray-800/50 to-transparent">
+                      <div>
+                        <h5 className="font-bold text-gray-200 text-lg">{tpl.name}</h5>
+                        <div className="text-sm text-gray-400 mt-1 flex items-center gap-2">
+                          <span className="bg-gray-800 px-2 py-0.5 rounded text-xs">{tpl.category}</span>
+                          {tpl.subcategory && <span className="bg-gray-800 px-2 py-0.5 rounded text-xs">{tpl.subcategory}</span>}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <button onClick={() => handleEditClick(tpl)} className="p-1.5 text-gray-500 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors cursor-pointer" title="Edit Template">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => deleteTemplate(tpl.id)} className="p-1.5 text-gray-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-colors cursor-pointer" title="Delete Template">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    {tpl.amount && (
+                      <div className="p-4 bg-gray-900/40">
+                        <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Amount</p>
+                        <p className="text-gray-200 font-mono text-lg">{tpl.amount}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
-export default CategoriesTab;
+export default SettingsTab;

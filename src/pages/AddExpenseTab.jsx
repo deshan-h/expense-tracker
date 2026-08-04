@@ -1,5 +1,5 @@
-import React from 'react';
-import { PlusCircle, TrendingUp, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { PlusCircle, TrendingUp, Plus, Bookmark } from 'lucide-react';
 import { getIconComponent, getIconColor } from '../utils/icons';
 import DateTimePicker from '../components/ui/DateTimePicker';
 
@@ -27,8 +27,27 @@ const AddExpenseTab = ({
   selectedCatObj,
   handleAddSubcategory,
   newSubcategoryNames,
-  handleSubcategoryChange
+  handleSubcategoryChange,
+  templates,
+  addTemplate
 }) => {
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+
+  const onSubmitForm = async (e) => {
+    e.preventDefault();
+    if (isSavingTemplate && templateName.trim()) {
+      await addTemplate({
+        name: templateName,
+        amount: amount || '',
+        category: category,
+        subcategory: subcategory
+      });
+      setIsSavingTemplate(false);
+      setTemplateName('');
+    }
+    handleAddTransaction(e);
+  };
   const handleAmountKeyDown = (e) => {
     const operators = ['+', '-', '*', '/'];
     
@@ -73,10 +92,34 @@ const AddExpenseTab = ({
 
       <div className="w-full relative z-10 mt-2">
         
-        <form onSubmit={handleAddTransaction} className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
+        <form onSubmit={onSubmitForm} className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
           
           {/* COLUMN 1 */}
-          <div className="space-y-8 flex flex-col justify-start">
+          <div className="space-y-6 flex flex-col justify-start">
+
+            {templates && templates.length > 0 && (
+              <div className="mb-2">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1 flex items-center gap-2">
+                  <Bookmark className="w-3.5 h-3.5 text-purple-400" /> Quick Add
+                </p>
+                <div className="flex gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full">
+                  {templates.map(tpl => (
+                    <button 
+                      key={tpl.id} 
+                      type="button" 
+                      onClick={() => {
+                        if (tpl.amount) setAmount(tpl.amount);
+                        if (tpl.category) setCategory(tpl.category);
+                        if (tpl.subcategory) setSubcategory(tpl.subcategory);
+                      }}
+                      className="whitespace-nowrap px-4 py-2 bg-gray-800/80 border border-gray-700 hover:border-purple-500/50 hover:bg-gray-750 text-gray-200 text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2"
+                    >
+                      {tpl.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="text-center bg-gray-900/60 backdrop-blur-md p-8 rounded-3xl border border-gray-700/50 relative shadow-inner">
               <p className="text-xs font-bold text-gray-400 mb-4 uppercase tracking-[0.2em]">
@@ -112,17 +155,17 @@ const AddExpenseTab = ({
                 const iconColors = getIconColor(c.icon);
                 const isSelected = category === c.name;
                 return (
-                  <button 
-                    key={c.id} 
-                    type="button" 
-                    onClick={() => setCategory(c.name)} 
-                    className={`py-2 px-1 md:py-3 md:px-2 rounded-xl flex flex-col items-center gap-1 md:gap-1.5 transition-all active:scale-95 text-center ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-750'}`}
-                  >
-                    <div className={`p-1 md:p-1.5 rounded-lg transition-all ${isSelected ? 'bg-white/20' : iconColors.bg}`}>
-                      <CatIcon className={`w-4 h-4 md:w-5 md:h-5 transition-all ${isSelected ? 'text-white drop-shadow-md scale-110' : iconColors.color}`} />
-                    </div>
-                    <span className={`text-[9px] leading-tight md:text-[11px] font-medium line-clamp-2 w-full ${isSelected ? 'text-white' : 'text-gray-300'}`}>{c.name}</span>
-                  </button>
+                    <button 
+                      key={c.id} 
+                      type="button" 
+                      onClick={() => setCategory(c.name)} 
+                      className={`py-2 px-1 md:py-3 md:px-2 rounded-xl flex flex-col items-center gap-1 md:gap-1.5 transition-all text-center ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'bg-gray-800 text-gray-400 border border-gray-700 md:hover:bg-gray-750'}`}
+                    >
+                      <div className={`p-1 md:p-1.5 rounded-lg transition-all ${isSelected ? 'bg-white/20' : iconColors.bg}`}>
+                        <CatIcon className={`w-4 h-4 md:w-5 md:h-5 transition-all ${isSelected ? 'text-white drop-shadow-md scale-110' : iconColors.color}`} />
+                      </div>
+                      <span className={`text-[9px] leading-tight md:text-[11px] font-medium line-clamp-2 w-full ${isSelected ? 'text-white' : 'text-gray-300'}`}>{c.name}</span>
+                    </button>
                 );
               })}
             </div>
@@ -137,9 +180,9 @@ const AddExpenseTab = ({
                 <div className="mb-6">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 ml-1">Subcategory (Optional)</p>
                   <div className="flex flex-wrap gap-2 md:gap-3 p-2 -mx-2 items-center">
-                    <button type="button" onClick={() => setSubcategory('')} className={`px-4 py-1.5 md:px-6 md:py-2.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider transition-all active:scale-95 ${subcategory === '' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-gray-800/80 text-gray-400 border border-gray-700/80 hover:bg-gray-700 hover:text-white'}`}>General</button>
+                    <button type="button" onClick={() => setSubcategory('')} className={`px-4 py-1.5 md:px-6 md:py-2.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider transition-all ${subcategory === '' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-gray-800/80 text-gray-400 border border-gray-700/80 md:hover:bg-gray-700 md:hover:text-white'}`}>General</button>
                     {selectedCatObj.subcategories?.map(sub => (
-                      <button key={sub} type="button" onClick={() => setSubcategory(sub)} className={`px-4 py-1.5 md:px-6 md:py-2.5 rounded-full text-xs md:text-sm font-medium transition-all active:scale-95 ${subcategory === sub ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700 hover:text-white'}`}>{sub}</button>
+                      <button key={sub} type="button" onClick={() => setSubcategory(sub)} className={`px-4 py-1.5 md:px-6 md:py-2.5 rounded-full text-xs md:text-sm font-medium transition-all ${subcategory === sub ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-gray-800 text-gray-400 border border-gray-700 md:hover:bg-gray-700 md:hover:text-white'}`}>{sub}</button>
                     ))}
                     <div className="flex items-center bg-gray-800 rounded-full border border-gray-700 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2 focus-within:ring-offset-gray-900 transition-all overflow-hidden ml-1">
                       <input 
@@ -177,6 +220,33 @@ const AddExpenseTab = ({
               
               <div className="mt-4">
                 <DateTimePicker date={date} setDate={setDate} time={time} setTime={setTime} />
+              </div>
+
+              {/* SAVE AS TEMPLATE */}
+              <div className="mt-6 bg-gray-900/40 p-5 rounded-2xl border border-gray-700/50 transition-all">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={isSavingTemplate} 
+                    onChange={(e) => setIsSavingTemplate(e.target.checked)} 
+                    className="w-5 h-5 rounded border-gray-600 bg-gray-800 text-blue-500 focus:ring-blue-500/50 focus:ring-offset-gray-900 cursor-pointer" 
+                  />
+                  <span className="text-sm font-bold text-gray-300 uppercase tracking-widest flex items-center gap-2">
+                    <Bookmark className="w-4 h-4 text-purple-400" /> Save as Template
+                  </span>
+                </label>
+                {isSavingTemplate && (
+                  <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <input 
+                      type="text" 
+                      value={templateName} 
+                      onChange={(e) => setTemplateName(e.target.value)} 
+                      required={isSavingTemplate} 
+                      placeholder="Template Name (e.g. Daily Coffee)" 
+                      className="w-full bg-gray-800/80 px-4 py-3 text-sm text-gray-100 rounded-xl border border-gray-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" 
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
