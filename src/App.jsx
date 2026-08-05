@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
-import { PlusCircle, LayoutDashboard, List, FolderTree, Handshake, TrendingUp, MoreVertical, LogOut, PiggyBank, CalendarClock, Settings } from 'lucide-react';
+import { PlusCircle, LayoutDashboard, List, FolderTree, Handshake, TrendingUp, MoreVertical, LogOut, PiggyBank, CalendarClock, Settings, Target } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { signOut } from 'firebase/auth';
 import { auth } from './firebase';
@@ -20,6 +20,7 @@ import { usePOSSync } from './hooks/usePOSSync';
 import { useSavings } from './hooks/useSavings';
 import { useScheduled } from './hooks/useScheduled';
 import { useTemplates } from './hooks/useTemplates';
+import { useWishlist } from './hooks/useWishlist';
 
 // Lazy Loaded Pages (Performance Optimization)
 const DashboardTab = lazy(() => import('./pages/DashboardTab'));
@@ -30,6 +31,7 @@ const MoneyLentTab = lazy(() => import('./pages/MoneyLentTab'));
 const SettingsTab = lazy(() => import('./pages/SettingsTab'));
 const SavingsTab = lazy(() => import('./pages/SavingsTab'));
 const ScheduledTab = lazy(() => import('./pages/ScheduledTab'));
+const WishlistTab = lazy(() => import('./pages/WishlistTab'));
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
 
@@ -74,6 +76,7 @@ function App() {
   const { syncMetadata, isSyncing, handleSyncPOS } = usePOSSync(user);
   const { savings, addSaving, deleteSaving } = useSavings(user);
   const { schedules, addSchedule, deleteSchedule } = useScheduled(user, addExpense);
+  const { wishlistItems, loading: wishlistLoading, addWishlistItem, completeWishlistItem, deleteWishlistItem, addSubItemToWishlist } = useWishlist(user, addExpense);
 
   useEffect(() => {
     setSubcategory('');
@@ -284,10 +287,10 @@ function App() {
         
         <Tabs defaultValue="add" className="w-full relative z-10">
           <div className="w-[100vw] relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] bg-gray-900/90 border-b border-gray-800/80 backdrop-blur-xl mb-6 shadow-xl z-50">
-            <div className="max-w-6xl mx-auto flex flex-row items-center justify-between gap-3 sm:gap-6 px-4 md:px-8 py-3">
+            <div className="w-full flex flex-row items-center justify-between gap-3 sm:gap-6 px-4 md:px-8 lg:px-12 py-3">
               <div className="relative flex-1 w-full overflow-x-auto hide-scrollbar">
                 
-                <TabsList className="relative flex w-max md:w-full items-center h-auto bg-transparent p-0 gap-1 sm:gap-2">
+                <TabsList className="relative flex w-max md:w-full items-center h-auto bg-transparent p-0 gap-1 sm:gap-2 pr-4 md:pr-0">
                   <TabsTrigger value="dashboard" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
                     <LayoutDashboard className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Dashboard</span>
                   </TabsTrigger>
@@ -297,14 +300,17 @@ function App() {
                   <TabsTrigger value="income" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
                     <TrendingUp className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Income</span>
                   </TabsTrigger>
-                  <TabsTrigger value="lent" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
-                    <Handshake className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Lent</span>
-                  </TabsTrigger>
                   <TabsTrigger value="scheduled" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
                     <CalendarClock className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Planned</span>
                   </TabsTrigger>
+                  <TabsTrigger value="wishlist" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
+                    <Target className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Wishlist</span>
+                  </TabsTrigger>
                   <TabsTrigger value="savings" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
                     <PiggyBank className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Savings</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="lent" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
+                    <Handshake className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Lent</span>
                   </TabsTrigger>
                   <TabsTrigger value="history" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
                     <List className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">History</span>
@@ -341,6 +347,7 @@ function App() {
                 schedules={schedules}
                 lentMoney={lentMoney}
                 savings={savings}
+                wishlistItems={wishlistItems}
                 formatLKR={formatLKR}
                 chartData={chartData}
                 COLORS={COLORS}
@@ -458,10 +465,10 @@ function App() {
             </Suspense>
           </TabsContent>
 
-        {/* TAB 6: SETTINGS */}
-          <TabsContent value="settings">
+          <TabsContent value="settings" className="space-y-6">
             <Suspense fallback={<TabFallback />}>
-              <SettingsTab 
+              <SettingsTab
+                categories={categories}
                 handleAddCategory={handleAddCategoryLocal}
                 newCategoryName={newCategoryName}
                 setNewCategoryName={setNewCategoryName}
@@ -469,7 +476,6 @@ function App() {
                 setNewCategoryIcon={setNewCategoryIcon}
                 isAddingCategory={isAddingCategory}
                 seedDefaultCategories={seedDefaultCategories}
-                categories={categories}
                 handleDeleteCategory={delCat}
                 handleDeleteSubcategory={delSub}
                 newSubcategoryNames={newSubcategoryNames}
@@ -481,6 +487,8 @@ function App() {
               />
             </Suspense>
           </TabsContent>
+
+          {/* TAB 7: SAVINGS */}
           <TabsContent value="savings" className="space-y-6">
             <Suspense fallback={<TabFallback />}>
               <SavingsTab 
@@ -491,6 +499,8 @@ function App() {
               />
             </Suspense>
           </TabsContent>
+
+          {/* TAB 8: PLANNED */}
           <TabsContent value="scheduled" className="space-y-6">
             <Suspense fallback={<TabFallback />}>
               <ScheduledTab 
@@ -502,7 +512,22 @@ function App() {
               />
             </Suspense>
           </TabsContent>
-          
+
+          {/* TAB 9: WISHLIST */}
+          <TabsContent value="wishlist" className="space-y-6">
+            <Suspense fallback={<TabFallback />}>
+              <WishlistTab
+                wishlistItems={wishlistItems}
+                loading={wishlistLoading}
+                addWishlistItem={addWishlistItem}
+                completeWishlistItem={completeWishlistItem}
+                deleteWishlistItem={deleteWishlistItem}
+                addSubItemToWishlist={addSubItemToWishlist}
+                categories={categories}
+              />
+            </Suspense>
+          </TabsContent>
+
         </Tabs>
       </div>
 
@@ -522,7 +547,7 @@ function App() {
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500/80 via-rose-500/80 to-red-500/80"></div>
             
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto border border-red-500/20 shadow-inner">
-              <MoreVertical className="w-8 h-8 text-red-400 drop-shadow-md" />
+              <LogOut className="w-8 h-8 text-red-400 drop-shadow-md" />
             </div>
 
             <div>
@@ -538,7 +563,10 @@ function App() {
                 Cancel
               </button>
               <button 
-                onClick={() => signOut(auth)}
+                onClick={() => {
+                  setShowSignOutModal(false);
+                  signOut(auth);
+                }}
                 className="flex-1 py-3 px-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-xl font-bold transition-all shadow-[0_0_15px_-3px_rgba(225,29,72,0.5)] active:scale-95 text-sm uppercase tracking-wider"
               >
                 Sign Out
