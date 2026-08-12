@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PlusCircle, TrendingUp, Plus, Bookmark } from 'lucide-react';
+import { PlusCircle, TrendingUp, TrendingDown, Plus, Bookmark, Clock } from 'lucide-react';
 import { getIconComponent, getIconColor } from '../utils/icons';
 import DateTimePicker from '../components/ui/DateTimePicker';
 
@@ -29,7 +29,9 @@ const AddExpenseTab = ({
   newSubcategoryNames,
   handleSubcategoryChange,
   templates,
-  addTemplate
+  addTemplate,
+  transactions = [],
+  formatLKR
 }) => {
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [templateName, setTemplateName] = useState('');
@@ -83,6 +85,8 @@ const AddExpenseTab = ({
     }
   };
 
+  const recentTransactions = transactions.filter(t => t.type === 'Expense').slice(0, 10);
+
   return (
     <div className="w-[100vw] relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
       <div className="px-4 md:px-12 py-4 w-full max-w-full">
@@ -92,7 +96,8 @@ const AddExpenseTab = ({
 
       <div className="w-full relative z-10 mt-2">
         
-        <form onSubmit={onSubmitForm} className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-3 xl:gap-4 relative z-10">
+          <form onSubmit={onSubmitForm} className="grid grid-cols-1 lg:grid-cols-2 gap-6 xl:col-span-3">
           
           {/* COLUMN 1 */}
           <div className="space-y-6 flex flex-col justify-start">
@@ -261,7 +266,93 @@ const AddExpenseTab = ({
           <PlusCircle className="w-6 h-6" /> SAVE EXPENSE
         </button>
       </form>
+
+      {/* COLUMN 3: Recent Activity */}
+      <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-5 rounded-[1rem] border border-gray-800 hover:border-gray-700/80 shadow-xl flex flex-col h-full relative overflow-hidden group transition-all duration-500">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/10 rounded-full blur-[60px] group-hover:bg-purple-500/20 transition-all duration-700"></div>
+
+        <div className="flex items-center justify-between mb-4 flex-shrink-0 relative z-10">
+          <h3 className="text-xs font-bold tracking-[0.2em] uppercase flex items-center gap-2 text-gray-300">
+            <div className="p-1.5 bg-purple-500/10 rounded-lg">
+              <Clock className="w-3.5 h-3.5 text-purple-400" />
+            </div>
+            Recent Added
+          </h3>
+        </div>
+
+        <div className="relative overflow-y-auto hide-scrollbar flex-1 pr-1 z-10 pt-1">
+          <div className="absolute left-[56px] top-3 bottom-3 w-px bg-gray-700/50"></div>
+          
+          <div className="space-y-3">
+            {recentTransactions.length === 0 ? (
+              <p className="text-gray-500 italic text-[11px] pl-[72px]">No recent transactions.</p>
+            ) : (
+              recentTransactions.map((t, i) => {
+                const isIncome = t.type === 'Income';
+                const d = new Date(t.date);
+                const isToday = d.toDateString() === new Date().toDateString();
+                
+                let mainText, subText;
+                if (isToday) {
+                  if (t.time) {
+                    const [hours, minutes] = t.time.split(':');
+                    const h = parseInt(hours, 10);
+                    mainText = `${h % 12 || 12}:${minutes}`;
+                    subText = h >= 12 ? 'PM' : 'AM';
+                  } else {
+                    const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+                    const parts = timeStr.split(' ');
+                    mainText = parts[0];
+                    subText = parts[1] || '';
+                  }
+                } else {
+                  mainText = d.getDate().toString();
+                  subText = d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase();
+                }
+                
+                return (
+                  <div key={t.id} className="relative flex items-start">
+                    {/* Left side: Date / Time */}
+                    <div className="w-12 flex-shrink-0 text-right pt-0.5 pr-2">
+                      <p className="text-[11px] font-black text-gray-300 leading-tight">{mainText}</p>
+                      <p className="text-[8px] font-bold text-gray-500 tracking-wider mt-0.5">{subText}</p>
+                    </div>
+
+                    {/* Timeline Dot */}
+                    <div className="relative w-4 h-full flex flex-col items-center justify-start pt-1.5 flex-shrink-0">
+                      <div className={`w-2 h-2 rounded-full border border-gray-900 z-10 relative ${isIncome ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.8)]'}`}></div>
+                    </div>
+                    
+                    {/* Activity Content (No Box) */}
+                    <div className="flex-1 ml-3 flex items-start justify-between pb-1 group cursor-default">
+                      <div className="flex items-start gap-2.5">
+                        <div className={`mt-0.5 ${isIncome ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {isIncome ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-200 text-[11px] md:text-xs flex items-center gap-2 group-hover:text-white transition-colors">
+                            <span className="line-clamp-1 max-w-[130px]">{t.subcategory || t.category}</span>
+                            {isToday && (
+                              <span className="px-1.5 py-0.5 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 text-[7px] font-black tracking-widest uppercase shadow-sm">Today</span>
+                            )}
+                          </h4>
+                          <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">{t.category}</p>
+                        </div>
+                      </div>
+                      <div className={`font-black whitespace-nowrap text-[11px] md:text-xs pt-0.5 ${isIncome ? 'text-emerald-400' : 'text-gray-300'}`}>
+                        {isIncome ? '+' : '-'}Rs. {formatLKR(t.amount)}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
+
     </div>
+        </div>
       </div>
     </div>
   );

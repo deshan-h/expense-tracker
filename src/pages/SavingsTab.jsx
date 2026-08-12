@@ -34,7 +34,7 @@ const SavingsTab = ({
   };
 
   const totalSavings = savings.reduce((acc, curr) => {
-    if (curr.type === 'Deposit') return acc + curr.amount;
+    if (curr.type === 'Deposit' || curr.type === 'Initial') return acc + curr.amount;
     if (curr.type === 'Withdrawal') return acc - curr.amount;
     return acc;
   }, 0);
@@ -57,6 +57,11 @@ const SavingsTab = ({
 
               <form onSubmit={handleSubmit} className="flex flex-col gap-6">
                 <div className="flex p-1 bg-gray-900 rounded-2xl w-full mx-auto">
+                  {savings.length === 0 && (
+                    <button type="button" onClick={() => setType('Initial')} className={`flex-1 py-4 text-sm md:text-base font-semibold rounded-xl transition-all ${type === 'Initial' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
+                      <PlusCircle className="w-4 h-4 inline mr-2" /> Initial
+                    </button>
+                  )}
                   <button type="button" onClick={() => setType('Deposit')} className={`flex-1 py-4 text-sm md:text-base font-semibold rounded-xl transition-all ${type === 'Deposit' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
                     <ArrowUpCircle className="w-4 h-4 inline mr-2" /> Deposit
                   </button>
@@ -95,7 +100,7 @@ const SavingsTab = ({
                     </div>
                   </div>
 
-                  <button type="submit" className={`w-full bg-gradient-to-r ${type === 'Deposit' ? 'from-emerald-500 via-teal-500 to-emerald-600 shadow-[0_0_20px_-5px_rgba(16,185,129,0.5)]' : 'from-rose-500 via-pink-500 to-rose-600 shadow-[0_0_20px_-5px_rgba(244,63,94,0.5)]'} hover:bg-right bg-[length:200%_auto] text-white font-black tracking-widest uppercase py-5 rounded-2xl transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-3 text-lg mt-8`}>
+                  <button type="submit" className={`w-full bg-gradient-to-r ${type === 'Deposit' ? 'from-emerald-500 via-teal-500 to-emerald-600 shadow-[0_0_20px_-5px_rgba(16,185,129,0.5)]' : type === 'Withdrawal' ? 'from-rose-500 via-pink-500 to-rose-600 shadow-[0_0_20px_-5px_rgba(244,63,94,0.5)]' : 'from-indigo-500 via-purple-500 to-indigo-600 shadow-[0_0_20px_-5px_rgba(99,102,241,0.5)]'} hover:bg-right bg-[length:200%_auto] text-white font-black tracking-widest uppercase py-5 rounded-2xl transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-3 text-lg mt-8`}>
                     <PlusCircle className="w-6 h-6" /> SAVE RECORD
                   </button>
                 </div>
@@ -136,8 +141,8 @@ const SavingsTab = ({
                           </div>
 
                           {/* Timeline Node */}
-                          <div className={`absolute -left-[13px] top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-4 border-gray-900 flex items-center justify-center transition-transform group-hover:scale-125 ${record.type === 'Deposit' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'}`}>
-                            {record.type === 'Deposit' ? <ArrowUpCircle className="w-3 h-3 text-gray-900" /> : <ArrowDownCircle className="w-3 h-3 text-gray-900" />}
+                          <div className={`absolute -left-[13px] top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-4 border-gray-900 flex items-center justify-center transition-transform group-hover:scale-125 ${record.type === 'Deposit' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : record.type === 'Withdrawal' ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]' : 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]'}`}>
+                            {record.type === 'Deposit' ? <ArrowUpCircle className="w-3 h-3 text-gray-900" /> : record.type === 'Withdrawal' ? <ArrowDownCircle className="w-3 h-3 text-gray-900" /> : <PlusCircle className="w-3 h-3 text-gray-900" />}
                           </div>
 
                           {/* Row Content - Single Line */}
@@ -147,8 +152,8 @@ const SavingsTab = ({
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
                               <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 hidden sm:block">{record.type}</p>
-                              <p className={`font-black text-sm md:text-base tracking-tight ${record.type === 'Deposit' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                {record.type === 'Deposit' ? '+' : '-'}Rs. {formatLKR(record.amount)}
+                              <p className={`font-black text-sm md:text-base tracking-tight ${record.type === 'Deposit' ? 'text-emerald-400' : record.type === 'Withdrawal' ? 'text-rose-400' : 'text-indigo-400'}`}>
+                                {record.type === 'Withdrawal' ? '-' : '+'}Rs. {formatLKR(record.amount)}
                               </p>
                               <button onClick={() => deleteSaving(record.id)} className="p-1.5 text-gray-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-colors cursor-pointer ml-1" title="Delete Record">
                                 <Trash2 className="w-4 h-4" />

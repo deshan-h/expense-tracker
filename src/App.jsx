@@ -201,7 +201,7 @@ function App() {
   const totalPendingLent = useMemo(() => pendingLent.reduce((acc, curr) => acc + (curr.amount - (curr.paidAmount || 0)), 0), [pendingLent]);
 
   const totalSavings = useMemo(() => savings.reduce((acc, curr) => {
-    if (curr.type === 'Deposit') return acc + curr.amount;
+    if (curr.type === 'Deposit' || curr.type === 'Initial') return acc + curr.amount;
     if (curr.type === 'Withdrawal') return acc - curr.amount;
     return acc;
   }, 0), [savings]);
@@ -389,6 +389,8 @@ function App() {
                 handleAddSubcategory={handleAddSubcategoryLocal}
                 templates={templates}
                 addTemplate={addTemplate}
+                transactions={transactions}
+                formatLKR={formatLKR}
               />
             </Suspense>
           </TabsContent>

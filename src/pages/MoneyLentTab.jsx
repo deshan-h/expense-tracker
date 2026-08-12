@@ -32,9 +32,10 @@ const MoneyLentTab = ({
   // Group pending lent by name
   const groupedLent = pendingLent.reduce((acc, curr) => {
     if (!acc[curr.name]) {
-      acc[curr.name] = { name: curr.name, type: curr.type, totalOwed: 0, records: [] };
+      acc[curr.name] = { name: curr.name, type: curr.type, totalOwed: 0, totalPaid: 0, records: [] };
     }
     acc[curr.name].totalOwed += (curr.amount - (curr.paidAmount || 0));
+    acc[curr.name].totalPaid += (curr.paidAmount || 0);
     acc[curr.name].records.push(curr);
     return acc;
   }, {});
@@ -165,9 +166,16 @@ const MoneyLentTab = ({
                                 {group.type}
                               </span>
                            </div>
-                           <div className="text-right xl:hidden">
-                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Owed</p>
-                              <p className="font-black text-lg text-white">Rs. {formatLKR(group.totalOwed)}</p>
+                           <div className="text-right xl:hidden flex flex-col items-end gap-1">
+                              {group.totalPaid > 0 && (
+                                <span className="text-emerald-400 font-semibold text-[9px] tracking-wide bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                                  PAID: Rs. {formatLKR(group.totalPaid)}
+                                </span>
+                              )}
+                              <div>
+                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Owed</p>
+                                <p className="font-black text-lg text-white">Rs. {formatLKR(group.totalOwed)}</p>
+                              </div>
                            </div>
                         </div>
                         
@@ -175,9 +183,18 @@ const MoneyLentTab = ({
                           className="flex items-center gap-3 w-full xl:w-auto"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <div className="hidden xl:block text-right pr-4 border-r border-gray-700/50 whitespace-nowrap">
-                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Total Owed</p>
-                              <p className="font-black text-lg text-white tracking-tight">Rs. {formatLKR(group.totalOwed)}</p>
+                          <div className="hidden xl:flex items-center text-right pr-4 border-r border-gray-700/50 whitespace-nowrap gap-4">
+                              {group.totalPaid > 0 && (
+                                <div className="text-right border-r border-gray-700/50 pr-4 flex items-center h-full">
+                                   <span className="inline-block text-emerald-400 font-semibold text-[10px] tracking-wide bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
+                                     PAID: Rs. {formatLKR(group.totalPaid)}
+                                   </span>
+                                </div>
+                              )}
+                              <div>
+                                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Total Owed</p>
+                                 <p className="font-black text-lg text-white tracking-tight">Rs. {formatLKR(group.totalOwed)}</p>
+                              </div>
                           </div>
                           
                           {/* Payment Input */}
@@ -217,56 +234,71 @@ const MoneyLentTab = ({
                       {expandedHistory === group.name && (
                          <div className="px-6 pb-6 pt-2 border-t border-gray-800/50 mt-1">
                            <h5 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Lending History</h5>
-                           <div className="relative border-l-2 border-gray-700/50 ml-3 space-y-5">
-                             {group.records.map((rec, i) => (
-                               <React.Fragment key={rec.id || i}>
-                                 <div className="relative pl-6 group">
-                                    <div className={`absolute -left-[9px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-4 border-gray-900 ${rec.status === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
-                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 py-2 px-3 hover:bg-gray-800/40 rounded-lg transition-colors border-b border-gray-800/50">
-                                      <div className="flex items-center gap-3 flex-1 overflow-hidden w-full sm:w-auto">
-                                        <span className="text-[10px] font-bold text-gray-500 tracking-wider whitespace-nowrap w-[90px] shrink-0">
-                                          {new Date(rec.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                        </span>
-                                        <span className="text-sm font-bold text-gray-200 whitespace-nowrap overflow-hidden text-ellipsis">
-                                          {rec.description || 'Borrowed money'}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-end">
-                                        {rec.paidAmount > 0 && (
-                                          <span className="text-emerald-400 font-semibold text-[10px] tracking-wide bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                                            PAID: Rs. {formatLKR(rec.paidAmount)}
-                                          </span>
-                                        )}
-                                        <span className="text-sm font-black text-white">
-                                          Rs. {formatLKR(rec.amount)} 
-                                        </span>
-                                      </div>
-                                    </div>
-                                 </div>
+                           <div className="relative border-l-2 border-gray-700/50 ml-[70px] sm:ml-[90px] space-y-6">
+                              {(() => {
+                                const unifiedHistory = [];
+                                group.records.forEach(rec => {
+                                  unifiedHistory.push({ ...rec, entryType: 'borrow' });
+                                  if (rec.paymentHistory && rec.paymentHistory.length > 0) {
+                                    rec.paymentHistory.forEach(payment => {
+                                      unifiedHistory.push({ ...payment, entryType: 'payment', parentRec: rec });
+                                    });
+                                  }
+                                });
+                                unifiedHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-                                 {/* Render Individual Payment Entries */}
-                                 {rec.paymentHistory && rec.paymentHistory.map((payment, pIdx) => (
-                                   <div key={`payment-${rec.id}-${pIdx}`} className="relative pl-6 group">
-                                      <div className="absolute -left-[7px] top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-gray-900 bg-emerald-500"></div>
-                                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 py-2 px-3 hover:bg-gray-800/40 rounded-lg transition-colors border-b border-gray-800/50">
-                                        <div className="flex items-center gap-3 flex-1 overflow-hidden w-full sm:w-auto">
-                                          <span className="text-[10px] font-bold text-gray-500 tracking-wider whitespace-nowrap w-[90px] shrink-0">
-                                            {new Date(payment.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                          </span>
-                                          <span className="text-sm font-bold text-emerald-400 whitespace-nowrap overflow-hidden text-ellipsis flex items-center gap-2">
-                                            <CreditCard className="w-3 h-3" /> Payment Received
-                                          </span>
-                                        </div>
-                                        <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-end">
-                                          <span className="text-sm font-black text-emerald-400">
-                                            + Rs. {formatLKR(payment.amount)} 
-                                          </span>
-                                        </div>
+                                return unifiedHistory.map((item, i) => {
+                                  const dateObj = new Date(item.date);
+                                  const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                  const timeStr = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+                                  if (item.entryType === 'borrow') {
+                                    return (
+                                      <div key={`borrow-${item.id || i}`} className="relative pl-4 sm:pl-6 group">
+                                         <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 text-right w-max">
+                                           <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{dateStr}</div>
+                                           <div className="text-[9px] font-semibold text-gray-500">{timeStr}</div>
+                                         </div>
+                                         <div className={`absolute -left-[9px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-4 border-gray-900 ${item.status === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
+                                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 py-2.5 px-3 bg-gray-800/30 hover:bg-gray-800/70 rounded-xl transition-colors border border-gray-700/40 shadow-sm">
+                                           <div className="flex items-center gap-3 flex-1 overflow-hidden w-full sm:w-auto">
+                                             <span className="text-sm font-bold text-gray-200 whitespace-nowrap overflow-hidden text-ellipsis">
+                                               {item.description || 'Borrowed money'}
+                                             </span>
+                                           </div>
+                                           <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-end">
+                                             <span className="text-sm font-black text-white">
+                                               Rs. {formatLKR(item.amount)} 
+                                             </span>
+                                           </div>
+                                         </div>
                                       </div>
-                                   </div>
-                                 ))}
-                               </React.Fragment>
-                             ))}
+                                    );
+                                  } else {
+                                    return (
+                                      <div key={`payment-${item.id || i}`} className="relative pl-4 sm:pl-6 group">
+                                         <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 text-right w-max">
+                                           <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{dateStr}</div>
+                                           <div className="text-[9px] font-semibold text-gray-500">{timeStr}</div>
+                                         </div>
+                                         <div className="absolute -left-[7px] top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-gray-900 bg-emerald-500"></div>
+                                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 py-2.5 px-3 bg-gray-800/30 hover:bg-gray-800/70 rounded-xl transition-colors border border-gray-700/40 shadow-sm">
+                                           <div className="flex items-center gap-3 flex-1 overflow-hidden w-full sm:w-auto">
+                                             <span className="text-sm font-bold text-emerald-400 whitespace-nowrap overflow-hidden text-ellipsis flex items-center gap-2">
+                                               <CreditCard className="w-3 h-3" /> Payment Received
+                                             </span>
+                                           </div>
+                                           <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-end">
+                                             <span className="text-sm font-black text-emerald-400">
+                                               + Rs. {formatLKR(item.amount)} 
+                                             </span>
+                                           </div>
+                                         </div>
+                                      </div>
+                                    );
+                                  }
+                                });
+                              })()}
                            </div>
                          </div>
                       )}

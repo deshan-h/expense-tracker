@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, AreaChart, Area, XAxis, YAxis, CartesianGrid, BarChart, Bar, LabelList } from 'recharts';
+import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, AreaChart, Area, XAxis, YAxis, CartesianGrid, BarChart, Bar, LabelList, ReferenceLine } from 'recharts';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, DollarSign, Activity, Target, Clock, Handshake, RefreshCw, PiggyBank, CalendarClock } from 'lucide-react';
 import { PieChart as PieChartIcon } from 'lucide-react';
@@ -23,6 +23,31 @@ const CustomAreaTooltip = ({ active, payload, label, formatLKR }) => {
           ))}
         </div>
       </div>
+    );
+  }
+  return null;
+};
+
+const CustomAreaMaxLabel = (props) => {
+  const { x, y, value, maxValue, color, formatCompact } = props;
+  if (value === maxValue && value > 0) {
+    return (
+      <text x={x} y={y - 12} fill={color} fontSize={11} fontWeight="900" textAnchor="middle" className="drop-shadow-md">
+        Rs.{formatCompact(value)}
+      </text>
+    );
+  }
+  return null;
+};
+
+const CustomBarMaxLabel = (props) => {
+  const { x, y, width, height, index, data, maxTotal, formatCompact } = props;
+  const total = data[index]?.total || 0;
+  if (total === maxTotal && total > 0) {
+    return (
+      <text x={x + width + 8} y={y + height / 2} fill="#e5e7eb" fontSize={11} fontWeight="900" dominantBaseline="central" className="drop-shadow-md">
+        Rs.{formatCompact(total)}
+      </text>
     );
   }
   return null;
@@ -259,7 +284,7 @@ const DashboardTab = ({
     let safetyCounter = 0; 
     while (d <= endOfMonth && safetyCounter < 100) {
       safetyCounter++;
-      if (d >= startOfMonth && d <= today) {
+      if (d >= startOfMonth && d <= endOfMonth) {
         const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
         if (!groupedFlow[dateStr]) groupedFlow[dateStr] = { date: dateStr, Income: 0, Expense: 0, Lent: 0, Planned: 0 };
         groupedFlow[dateStr].Planned = (groupedFlow[dateStr].Planned || 0) + schedule.amount;
@@ -302,59 +327,90 @@ const DashboardTab = ({
   // Generate Cash Flow Data based on filter
   const cashFlowArray = [];
   
-  if (cashFlowFilter === 'month') {
-    const currentDate = today.getDate(); // 1 to 31
-    for (let i = 1; i <= currentDate; i++) {
-      const d = new Date(currentYear, currentMonth, i);
+  let lastMonthIncome = 0;
+  let lastMonthExpense = 0;
+  let lastMonthLent = 0;
+  let lastMonthPlanned = 0;
+  
+  if (cashFlowFilter === 'month' || cashFlowFilter === 'lastMonth') {
+    const isLastMonth = cashFlowFilter === 'lastMonth';
+    const targetMonth = isLastMonth ? lastMonth : currentMonth;
+    const targetYear = isLastMonth ? lastMonthYear : currentYear;
+    const targetDaysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+
+    for (let i = 1; i <= targetDaysInMonth; i++) {
+      const d = new Date(targetYear, targetMonth, i);
       const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
       const dayStr = String(i).padStart(2, '0');
-      if (groupedFlow[dateStr]) {
+      
+      if (!isLastMonth) {
+        // Reuse groupedFlow for current month to avoid recomputing
+        if (groupedFlow[dateStr]) {
+          cashFlowArray.push({
+            date: dateStr,
+            day: dayStr,
+            Income: groupedFlow[dateStr].Income || 0,
+            Expense: groupedFlow[dateStr].Expense || 0,
+            Lent: groupedFlow[dateStr].Lent || 0,
+            Planned: groupedFlow[dateStr].Planned || 0
+          });
+        } else {
+          cashFlowArray.push({ date: dateStr, day: dayStr, Income: 0, Expense: 0, Lent: 0, Planned: 0 });
+        }
+      } else {
+        // Compute dynamically for last month
+        let dayIncome = 0;
+        let dayExpense = 0;
+        let dayLent = 0;
+        let dayPlanned = 0;
+
+        transactions.forEach(t => {
+          const td = new Date(t.date);
+          if (td.toDateString() === d.toDateString()) {
+            if (t.type === 'Income' || t.type === 'POS Income') dayIncome += t.amount;
+            else if (t.type === 'Expense') dayExpense += t.amount;
+          }
+        });
+        
+        lentMoney.forEach(t => {
+          const td = new Date(t.date);
+          if (td.toDateString() === d.toDateString()) {
+            dayLent += t.amount;
+          }
+        });
+        
+        activeSchedules.forEach(schedule => {
+          let sd = new Date(schedule.nextDate);
+          let safetyCounter = 0; 
+          while (sd <= d && safetyCounter < 100) {
+            safetyCounter++;
+            if (sd.toDateString() === d.toDateString()) {
+              dayPlanned += schedule.amount;
+            }
+            if (schedule.frequency === 'Once') break;
+            else if (schedule.frequency === 'Daily') sd.setDate(sd.getDate() + 1);
+            else if (schedule.frequency === 'Weekly') sd.setDate(sd.getDate() + 7);
+            else if (schedule.frequency === 'Monthly') sd.setMonth(sd.getMonth() + 1);
+            else if (schedule.frequency === 'Yearly') sd.setFullYear(sd.getFullYear() + 1);
+            else break;
+          }
+        });
+
+        lastMonthIncome += dayIncome;
+        lastMonthExpense += dayExpense;
+        lastMonthLent += dayLent;
+        lastMonthPlanned += dayPlanned;
+        
         cashFlowArray.push({
           date: dateStr,
           day: dayStr,
-          Income: groupedFlow[dateStr].Income || 0,
-          Expense: groupedFlow[dateStr].Expense || 0,
-          Lent: groupedFlow[dateStr].Lent || 0,
-          Planned: groupedFlow[dateStr].Planned || 0
+          Income: dayIncome,
+          Expense: dayExpense,
+          Lent: dayLent,
+          Planned: dayPlanned
         });
-      } else {
-        cashFlowArray.push({ date: dateStr, day: dayStr, Income: 0, Expense: 0, Lent: 0, Planned: 0 });
       }
     }
-    
-    // Still need to calculate thisWeek* for the UI if week is selected
-    transactions.forEach(t => {
-      const d = new Date(t.date);
-      if (d >= startOfWeek && d <= endOfWeek) {
-        if (t.type === 'Income' || t.type === 'POS Income') thisWeekIncome += t.amount;
-        else if (t.type === 'Expense') thisWeekExpense += t.amount;
-      }
-    });
-    
-    lentMoney.forEach(t => {
-      const d = new Date(t.date);
-      if (d >= startOfWeek && d <= endOfWeek) {
-        thisWeekLent += t.amount;
-      }
-    });
-    
-    activeSchedules.forEach(schedule => {
-      let d = new Date(schedule.nextDate);
-      let safetyCounter = 0; 
-      while (d <= endOfWeek && safetyCounter < 100) {
-        safetyCounter++;
-        if (d >= startOfWeek && d <= endOfWeek) {
-          thisWeekPlanned += schedule.amount;
-        }
-        if (schedule.frequency === 'Once') break;
-        else if (schedule.frequency === 'Daily') d.setDate(d.getDate() + 1);
-        else if (schedule.frequency === 'Weekly') d.setDate(d.getDate() + 7);
-        else if (schedule.frequency === 'Monthly') d.setMonth(d.getMonth() + 1);
-        else if (schedule.frequency === 'Yearly') d.setFullYear(d.getFullYear() + 1);
-        else break;
-      }
-    });
-
   } else {
     // Week
     const currentDayOfWeek = today.getDay() || 7; // 1-7 (Mon-Sun)
@@ -418,6 +474,41 @@ const DashboardTab = ({
     }
   }
 
+  // We need to calculate thisWeek sums for the UI if week is selected but filter isn't week
+  if (cashFlowFilter !== 'week') {
+    transactions.forEach(t => {
+      const d = new Date(t.date);
+      if (d >= startOfWeek && d <= endOfWeek) {
+        if (t.type === 'Income' || t.type === 'POS Income') thisWeekIncome += t.amount;
+        else if (t.type === 'Expense') thisWeekExpense += t.amount;
+      }
+    });
+    
+    lentMoney.forEach(t => {
+      const d = new Date(t.date);
+      if (d >= startOfWeek && d <= endOfWeek) {
+        thisWeekLent += t.amount;
+      }
+    });
+    
+    activeSchedules.forEach(schedule => {
+      let d = new Date(schedule.nextDate);
+      let safetyCounter = 0; 
+      while (d <= endOfWeek && safetyCounter < 100) {
+        safetyCounter++;
+        if (d >= startOfWeek && d <= endOfWeek) {
+          thisWeekPlanned += schedule.amount;
+        }
+        if (schedule.frequency === 'Once') break;
+        else if (schedule.frequency === 'Daily') d.setDate(d.getDate() + 1);
+        else if (schedule.frequency === 'Weekly') d.setDate(d.getDate() + 7);
+        else if (schedule.frequency === 'Monthly') d.setMonth(d.getMonth() + 1);
+        else if (schedule.frequency === 'Yearly') d.setFullYear(d.getFullYear() + 1);
+        else break;
+      }
+    });
+  }
+
   // Calculate This Month totals
   let thisMonthIncome = 0;
   let thisMonthLentSum = 0;
@@ -426,10 +517,10 @@ const DashboardTab = ({
     thisMonthLentSum += dayData.Lent;
   });
 
-  const displayedIncome = cashFlowFilter === 'week' ? thisWeekIncome : thisMonthIncome;
-  const displayedExpense = cashFlowFilter === 'week' ? thisWeekExpense : thisMonthExpenses;
-  const displayedLent = cashFlowFilter === 'week' ? thisWeekLent : thisMonthLentSum;
-  const displayedPlanned = cashFlowFilter === 'week' ? thisWeekPlanned : thisMonthPlanned;
+  const displayedIncome = cashFlowFilter === 'week' ? thisWeekIncome : (cashFlowFilter === 'lastMonth' ? lastMonthIncome : thisMonthIncome);
+  const displayedExpense = cashFlowFilter === 'week' ? thisWeekExpense : (cashFlowFilter === 'lastMonth' ? lastMonthExpense : thisMonthExpenses);
+  const displayedLent = cashFlowFilter === 'week' ? thisWeekLent : (cashFlowFilter === 'lastMonth' ? lastMonthLent : thisMonthLentSum);
+  const displayedPlanned = cashFlowFilter === 'week' ? thisWeekPlanned : (cashFlowFilter === 'lastMonth' ? lastMonthPlanned : thisMonthPlanned);
 
   // Process data for Expenses by Category (This Month)
   const thisMonthExpensesTransactions = transactions.filter(t => {
@@ -524,11 +615,34 @@ const DashboardTab = ({
     return formatLKR(value);
   };
 
+  const getDaysString = (dateObj) => {
+    const todayZero = new Date();
+    todayZero.setHours(0, 0, 0, 0);
+    const target = new Date(dateObj);
+    target.setHours(0, 0, 0, 0);
+    
+    const diffTime = target.getTime() - todayZero.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
+    if (diffDays > 1) return `In ${diffDays} days`;
+    if (diffDays === -1) return 'Yesterday';
+    return `${Math.abs(diffDays)} days ago`;
+  };
+
   const recentTransactions = transactions.slice(0, 5);
 
   const pendingWishlistItems = (displayData?.wishlistItems || []).filter(item => item.status === 'pending');
   const totalWishlistEstCost = pendingWishlistItems.reduce((acc, curr) => acc + (Number(curr.estimatedCost) || 0), 0);
   const wishlistPendingCount = pendingWishlistItems.length;
+
+  let todayReferenceX = null;
+  if (cashFlowFilter === 'week') {
+    todayReferenceX = today.toLocaleDateString(undefined, { weekday: 'short' });
+  } else if (cashFlowFilter === 'month') {
+    todayReferenceX = String(today.getDate()).padStart(2, '0');
+  }
 
   return (
     <div className="w-[100vw] relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] bg-gray-950/50 border-y border-gray-800/80 shadow-2xl backdrop-blur-sm">
@@ -653,7 +767,7 @@ const DashboardTab = ({
               {nextPlannedSchedule ? (
                 <div className="flex justify-between items-center w-full">
                   <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap overflow-hidden text-ellipsis pr-2">
-                    <span className="font-bold mr-1.5 text-gray-500">{new Date(nextPlannedSchedule.nextDate).toLocaleDateString(undefined, {month: 'short', day:'numeric'})}</span> 
+                    <span className="font-bold mr-1.5 text-gray-500">{getDaysString(nextPlannedSchedule.nextDate)}</span>
                     {nextPlannedSchedule.description || nextPlannedSchedule.category}
                   </span>
                   <span className="text-[10px] font-bold text-amber-500 whitespace-nowrap">
@@ -766,29 +880,35 @@ const DashboardTab = ({
       </div>
 
       {/* 2. MIDDLE ROW: ANALYTICS CHARTS */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="w-full mt-8">
         
         {/* Cash Flow AreaChart */}
-        <div className="bg-gray-900/40 backdrop-blur-xl p-6 rounded-[1.5rem] border border-gray-800 hover:border-gray-700/80 shadow-xl lg:col-span-2 relative overflow-hidden group transition-all duration-500">
+        <div className="bg-gray-900/40 backdrop-blur-xl p-6 rounded-[1.5rem] border border-gray-800 hover:border-gray-700/80 shadow-xl w-full relative overflow-hidden group transition-all duration-500">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] group-hover:bg-blue-500/20 transition-all duration-700"></div>
           
           <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between mb-8 relative z-10 gap-6">
             <div className="flex flex-col gap-3">
               <h3 className="text-[13px] md:text-sm font-bold tracking-[0.15em] uppercase text-gray-200">
-                Cash Flow Overview <span className="text-gray-500">({cashFlowFilter === 'week' ? 'THIS WEEK' : 'THIS MONTH'})</span>
+                Cash Flow Overview <span className="text-gray-500">({cashFlowFilter === 'week' ? 'THIS WEEK' : (cashFlowFilter === 'lastMonth' ? 'LAST MONTH' : 'THIS MONTH')})</span>
               </h3>
               <div className="flex bg-[#0f172a] rounded-lg p-1 border border-gray-800/80 w-max shadow-inner">
                 <button 
                   onClick={() => setCashFlowFilter('week')}
-                  className={`px-4 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all ${cashFlowFilter === 'week' ? 'bg-[#064e3b] text-[#34d399]' : 'text-gray-500 hover:text-gray-300'}`}
+                  className={`px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all ${cashFlowFilter === 'week' ? 'bg-[#064e3b] text-[#34d399]' : 'text-gray-500 hover:text-gray-300'}`}
                 >
                   THIS WEEK
                 </button>
                 <button 
                   onClick={() => setCashFlowFilter('month')}
-                  className={`px-4 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all ${cashFlowFilter === 'month' ? 'bg-[#064e3b] text-[#34d399]' : 'text-gray-500 hover:text-gray-300'}`}
+                  className={`px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all ${cashFlowFilter === 'month' ? 'bg-[#064e3b] text-[#34d399]' : 'text-gray-500 hover:text-gray-300'}`}
                 >
                   THIS MONTH
+                </button>
+                <button 
+                  onClick={() => setCashFlowFilter('lastMonth')}
+                  className={`px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all ${cashFlowFilter === 'lastMonth' ? 'bg-[#064e3b] text-[#34d399]' : 'text-gray-500 hover:text-gray-300'}`}
+                >
+                  LAST MONTH
                 </button>
               </div>
             </div>
@@ -841,10 +961,27 @@ const DashboardTab = ({
                   <XAxis dataKey="day" stroke="#4b5563" fontSize={11} fontWeight={600} tickLine={false} axisLine={false} dy={10} minTickGap={5} />
                   <YAxis stroke="#4b5563" fontSize={11} fontWeight={600} tickLine={false} axisLine={false} tickFormatter={(val) => val === 0 ? 'Rs0' : val} />
                   <Tooltip content={<CustomAreaTooltip formatLKR={formatLKR} />} cursor={{ stroke: '#4b5563', strokeWidth: 1, strokeDasharray: '5 5' }} />
-                  <Area type="monotone" dataKey="Income" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }} />
-                  <Area type="monotone" dataKey="Expense" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" activeDot={{ r: 6, strokeWidth: 0, fill: '#f43f5e' }} />
-                  <Area type="monotone" dataKey="Lent" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorLent)" activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }} />
-                  <Area type="monotone" dataKey="Planned" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorPlanned)" activeDot={{ r: 6, strokeWidth: 0, fill: '#f59e0b' }} />
+                  {todayReferenceX && cashFlowFilter !== 'lastMonth' && (
+                    <ReferenceLine 
+                      x={todayReferenceX} 
+                      stroke="#3b82f6" 
+                      strokeWidth={1.5}
+                      strokeDasharray="4 4" 
+                      label={{ position: 'insideTopLeft', value: 'TODAY', fill: '#60a5fa', fontSize: 9, fontWeight: 'bold' }} 
+                    />
+                  )}
+                  <Area type="monotone" dataKey="Income" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }}>
+                    <LabelList dataKey="Income" content={(props) => <CustomAreaMaxLabel {...props} maxValue={Math.max(...cashFlowArray.map(d => d.Income || 0))} color="#10b981" formatCompact={formatCompact} />} />
+                  </Area>
+                  <Area type="monotone" dataKey="Expense" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" activeDot={{ r: 6, strokeWidth: 0, fill: '#f43f5e' }}>
+                    <LabelList dataKey="Expense" content={(props) => <CustomAreaMaxLabel {...props} maxValue={Math.max(...cashFlowArray.map(d => d.Expense || 0))} color="#f43f5e" formatCompact={formatCompact} />} />
+                  </Area>
+                  <Area type="monotone" dataKey="Lent" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorLent)" activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }}>
+                    <LabelList dataKey="Lent" content={(props) => <CustomAreaMaxLabel {...props} maxValue={Math.max(...cashFlowArray.map(d => d.Lent || 0))} color="#3b82f6" formatCompact={formatCompact} />} />
+                  </Area>
+                  <Area type="monotone" dataKey="Planned" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorPlanned)" activeDot={{ r: 6, strokeWidth: 0, fill: '#f59e0b' }}>
+                    <LabelList dataKey="Planned" content={(props) => <CustomAreaMaxLabel {...props} maxValue={Math.max(...cashFlowArray.map(d => d.Planned || 0))} color="#f59e0b" formatCompact={formatCompact} />} />
+                  </Area>
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
@@ -852,46 +989,6 @@ const DashboardTab = ({
                 <Activity className="w-12 h-12 text-gray-700 mb-4" />
                 <p>Not enough data for cash flow trend.</p>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Recent Activity Timeline (Moved from bottom) */}
-        <div className="bg-gray-900/40 backdrop-blur-xl p-6 rounded-[1.5rem] border border-gray-800 hover:border-gray-700/80 shadow-xl flex flex-col h-full relative overflow-hidden group transition-all duration-500">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] group-hover:bg-purple-500/20 transition-all duration-700"></div>
-
-          <div className="flex items-center justify-between mb-8 flex-shrink-0 relative z-10">
-            <h3 className="text-xl font-bold flex items-center gap-3 text-white">
-              <div className="p-2 bg-purple-500/10 rounded-xl">
-                <Clock className="w-5 h-5 text-purple-400" />
-              </div>
-              Recent Activity
-            </h3>
-          </div>
-
-          <div className="space-y-4 overflow-y-auto hide-scrollbar flex-1 pr-2 relative z-10">
-            {recentTransactions.length === 0 ? (
-              <p className="text-gray-500 italic text-sm">No recent transactions.</p>
-            ) : (
-              recentTransactions.map(t => {
-                const isIncome = t.type === 'Income';
-                return (
-                  <div key={t.id} className="flex items-center justify-between p-4 bg-gray-800/40 rounded-2xl border border-gray-700/50 hover:bg-gray-700/40 hover:border-gray-600/50 transition-all duration-300">
-                    <div className="flex items-center gap-4">
-                      <div className={`p-3 rounded-xl shadow-inner ${isIncome ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-rose-500/10 border border-rose-500/20'}`}>
-                        {isIncome ? <TrendingUp className={`w-5 h-5 text-emerald-400`} /> : <TrendingDown className={`w-5 h-5 text-rose-400`} />}
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-gray-100 text-sm md:text-base line-clamp-1 max-w-[120px]">{t.description || 'Untitled'}</h4>
-                        <p className="text-xs text-gray-500 font-medium tracking-wide mt-0.5">{t.category} • {new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</p>
-                      </div>
-                    </div>
-                    <div className={`font-black whitespace-nowrap text-lg ${isIncome ? 'text-emerald-400' : 'text-white'}`}>
-                      {isIncome ? '+' : '-'}Rs. {formatLKR(t.amount)}
-                    </div>
-                  </div>
-                );
-              })
             )}
           </div>
         </div>
@@ -920,6 +1017,11 @@ const DashboardTab = ({
               cat.subcategories.forEach(sub => {
                 dataObj[sub.name] = sub.value;
               });
+              
+              dataObj.lastMonthTotal = comparisonArray
+                .filter(row => row.category === cat.category)
+                .reduce((acc, curr) => acc + curr.lastMonth, 0);
+                
               return dataObj;
             });
             
@@ -953,29 +1055,30 @@ const DashboardTab = ({
                         formatter={(value) => `Rs. ${formatCompact(value)}`} 
                       />
                       <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '20px', fontWeight: 'bold', color: '#9ca3af' }} iconType="circle" iconSize={8} />
-                      {allSubcategories.map((subName, idx) => (
-                        <Bar key={subName} dataKey={subName} stackId="a" fill={COLORS[idx % COLORS.length]} radius={[2, 2, 2, 2]} />
-                      ))}
+                      <Bar dataKey="lastMonthTotal" name="Last Month" fill="#4b5563" radius={[2, 2, 2, 2]} barSize={10} />
+                      {allSubcategories.map((subName, idx) => {
+                        const isLast = idx === allSubcategories.length - 1;
+                        return (
+                          <Bar key={subName} dataKey={subName} stackId="a" fill={COLORS[idx % COLORS.length]} radius={[2, 2, 2, 2]}>
+                            {isLast && (
+                              <LabelList dataKey={subName} content={(props) => <CustomBarMaxLabel {...props} data={stackedBarData} maxTotal={Math.max(...stackedBarData.map(d => d.total || 0))} formatCompact={formatCompact} />} />
+                            )}
+                          </Bar>
+                        );
+                      })}
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
 
-                <div className="w-full mt-2 flex flex-col gap-3">
-                  <button 
-                    onClick={() => setShowComparisonTable(!showComparisonTable)}
-                    className="flex items-center justify-between w-full p-4 bg-[#0f172a]/40 hover:bg-[#0f172a]/70 rounded-xl border border-gray-700/50 transition-colors shadow-inner group cursor-pointer relative overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/0 via-indigo-500/5 to-indigo-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                    <span className="text-xs font-bold tracking-widest uppercase text-gray-400 group-hover:text-gray-200 transition-colors relative z-10">Compare with Last Month</span>
-                    <div className={`transform transition-transform duration-300 relative z-10 ${showComparisonTable ? 'rotate-180' : ''}`}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </div>
-                  </button>
-
-                  {showComparisonTable && (
-                    <div className="w-full relative z-10 bg-[#0f172a]/40 rounded-[1.25rem] border border-gray-700/30 overflow-hidden shadow-inner">
-                      <div className="overflow-x-auto hide-scrollbar">
-                        <table className="w-full text-left text-sm whitespace-nowrap">
+                <div className="w-full mt-4 flex flex-col gap-3">
+                  <div className="flex items-center gap-3 px-2">
+                    <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-indigo-400 drop-shadow-sm">Comparison Details</span>
+                    <div className="flex-1 h-px bg-gray-700/50"></div>
+                  </div>
+                  
+                  <div className="w-full relative z-10 bg-[#0f172a]/40 rounded-[1.25rem] border border-gray-700/30 overflow-hidden shadow-inner">
+                    <div className="overflow-x-auto hide-scrollbar">
+                      <table className="w-full text-left text-sm whitespace-nowrap">
                           <thead className="bg-gray-800/50 text-gray-400 text-[10px] uppercase tracking-wider">
                             <tr>
                               <th className="px-4 py-3 font-bold">Category & Subcategory</th>
@@ -1079,7 +1182,6 @@ const DashboardTab = ({
                         </table>
                       </div>
                     </div>
-                  )}
                 </div>
               </div>
             );
