@@ -65,72 +65,61 @@ const MoneyLentTab = ({
         <div className="absolute bottom-[10%] right-[10%] w-[40vw] h-[40vw] bg-blue-600/10 rounded-full blur-[120px] mix-blend-screen opacity-50 pointer-events-none"></div>
 
         <div className="w-full relative z-10 mt-2">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          <div className="flex flex-col">
 
-            {/* LEFT COLUMN: Add Record Form */}
-            <div className="flex flex-col gap-8">
-              <h3 className="text-sm font-bold text-gray-300 px-2 uppercase tracking-[0.2em] flex items-center gap-2">
-                <PlusCircle className="w-4 h-4 text-amber-500" /> Lend Money
-              </h3>
+            {/* TOP ROW: Add Record Form */}
+            <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl relative z-20 mb-8">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
+                <h3 className="text-xs font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <PlusCircle className="w-4 h-4 text-amber-500" /> Lend Money
+                </h3>
+                <div className="flex p-1 bg-gray-900/60 backdrop-blur-md rounded-xl border border-gray-700/50 shadow-inner w-full sm:w-auto">
+                  <button type="button" onClick={() => setLentType('Family')} className={`flex-1 sm:flex-none px-6 py-1.5 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${lentType === 'Family' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>Family</button>
+                  <button type="button" onClick={() => setLentType('Friends')} className={`flex-1 sm:flex-none px-6 py-1.5 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${lentType === 'Friends' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>Friends</button>
+                </div>
+              </div>
               
-              <form onSubmit={handleAddLentMoney} className="flex flex-col gap-6">
+              <form onSubmit={handleAddLentMoney} className="flex flex-col md:flex-row gap-3 items-end">
+                {/* Amount */}
+                <div className={`w-full md:w-40 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-${lentType === 'Family' ? 'amber' : 'blue'}-500 focus-within:ring-1 focus-within:ring-${lentType === 'Family' ? 'amber' : 'blue'}-500 transition-all shadow-inner`}>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">Rs.</span>
+                  <input type="number" step="0.01" required value={lentAmount} onChange={(e) => setLentAmount(e.target.value)} className="w-full bg-transparent pl-10 pr-3 py-2.5 text-sm font-bold text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
+                </div>
                 
-                {/* Category Selection */}
-                <div className="flex p-1 bg-gray-900/60 backdrop-blur-md rounded-xl w-full border border-gray-700/50 shadow-inner">
-                  <button type="button" onClick={() => setLentType('Family')} className={`flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all ${lentType === 'Family' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>Family</button>
-                  <button type="button" onClick={() => setLentType('Friends')} className={`flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all ${lentType === 'Friends' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>Friends</button>
+                {/* Recipient */}
+                <div className={`w-full md:w-48 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-${lentType === 'Family' ? 'amber' : 'blue'}-500 transition-all shadow-inner`}>
+                  <input type="text" required value={lentName} onChange={(e) => setLentName(e.target.value)} className="w-full bg-transparent px-3 py-2.5 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder="Recipient Name" />
                 </div>
 
-                {/* Amount Field */}
-                <div className="text-center bg-gray-900/60 backdrop-blur-md p-6 rounded-2xl border border-gray-700/50 relative shadow-inner">
-                  <p className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-[0.2em]">Amount Lent</p>
-                  <div className="flex items-center justify-center text-4xl md:text-5xl font-bold text-white group">
-                    <span className="text-gray-500 mr-3 text-2xl md:text-3xl">Rs.</span>
-                    <input type="number" step="0.01" required value={lentAmount} onChange={(e) => setLentAmount(e.target.value)} className="bg-transparent border-none outline-none text-left w-[150px] md:w-[220px] focus:ring-0 placeholder-gray-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
-                  </div>
-                  <div className={`h-1 w-32 bg-gradient-to-r from-transparent via-gray-700 to-transparent mx-auto mt-4 opacity-50 group-focus-within:via-${lentType === 'Family' ? 'amber' : 'blue'}-500 group-focus-within:opacity-100 transition-all duration-700 rounded-full`}></div>
+                {/* Details */}
+                <div className={`w-full md:flex-1 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-${lentType === 'Family' ? 'amber' : 'blue'}-500 transition-all shadow-inner`}>
+                  <input type="text" value={lentDescription} onChange={(e) => setLentDescription(e.target.value)} className="w-full h-[42px] bg-transparent px-3 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder="Notes (Optional)" />
                 </div>
-
-                {/* Recipient Field */}
-                <div className="space-y-4 bg-gray-900/60 backdrop-blur-md p-6 rounded-3xl border border-gray-700/50 shadow-inner">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Recipient</p>
-                  <div className={`relative bg-gray-900/80 rounded-2xl border border-gray-700/80 focus-within:border-${lentType === 'Family' ? 'amber' : 'blue'}-500 focus-within:ring-1 focus-within:ring-${lentType === 'Family' ? 'amber' : 'blue'}-500 transition-all overflow-hidden shadow-inner`}>
-                    <input type="text" required value={lentName} onChange={(e) => setLentName(e.target.value)} className="w-full bg-transparent px-5 py-4 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder="Who did you lend to?" />
-                  </div>
-                  
-                  {lentType === 'Family' && (
-                    <div className="flex flex-wrap gap-2 px-1">
-                      {['Mother', 'Father', 'Brother', 'Sister'].map(name => (
-                        <button
-                          key={name}
-                          type="button"
-                          onClick={() => setLentName(name)}
-                          className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all active:scale-95 cursor-pointer ${lentName === name ? 'bg-amber-600 text-white shadow-md shadow-amber-500/30' : 'bg-gray-800/80 text-gray-400 border border-gray-700/80 hover:bg-gray-700 hover:text-white'}`}
-                        >
-                          {name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                {/* Date */}
+                <div className="w-full md:w-44 flex-shrink-0">
+                  <DateTimePicker date={lentDate} setDate={setLentDate} time={lentTime} setTime={setLentTime} hideTime={true} />
                 </div>
-
-                {/* Details & Date */}
-                <div className="flex flex-col bg-gray-900/60 backdrop-blur-md p-6 rounded-3xl border border-gray-700/50 shadow-inner">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Details</p>
-
-                  <div className={`relative bg-gray-900/80 rounded-2xl border border-gray-700/80 focus-within:border-${lentType === 'Family' ? 'amber' : 'blue'}-500 focus-within:ring-1 focus-within:ring-${lentType === 'Family' ? 'amber' : 'blue'}-500 transition-all overflow-hidden shadow-inner`}>
-                    <input type="text" value={lentDescription} onChange={(e) => setLentDescription(e.target.value)} className="w-full bg-transparent px-5 py-4 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder="Notes (Optional)" />
-                  </div>
-
-                  <div className="mt-4">
-                    <DateTimePicker date={lentDate} setDate={setLentDate} time={lentTime} setTime={setLentTime} />
-                  </div>
-
-                  <button type="submit" className={`w-full bg-gradient-to-r ${lentType === 'Family' ? 'from-amber-600 via-orange-500 to-amber-600 shadow-[0_0_20px_-5px_rgba(245,158,11,0.5)]' : 'from-blue-600 via-cyan-500 to-blue-600 shadow-[0_0_20px_-5px_rgba(59,130,246,0.5)]'} bg-[length:200%_auto] hover:bg-right text-white font-black tracking-widest uppercase py-5 rounded-2xl transition-all active:scale-[0.98] cursor-pointer items-center justify-center flex gap-3 text-lg mt-8`}>
-                    <Handshake className="w-6 h-6" /> SAVE RECORD
-                  </button>
-                </div>
+                {/* Submit */}
+                <button type="submit" className={`w-full md:w-auto h-[42px] bg-gradient-to-r ${lentType === 'Family' ? 'from-amber-600 via-orange-500 to-amber-600 shadow-[0_0_15px_-3px_rgba(245,158,11,0.5)]' : 'from-blue-600 via-cyan-500 to-blue-600 shadow-[0_0_15px_-3px_rgba(59,130,246,0.5)]'} bg-[length:200%_auto] hover:bg-right text-white font-black tracking-widest uppercase px-6 rounded-xl transition-all active:scale-[0.98] shrink-0 flex items-center justify-center gap-2`}>
+                  <Handshake className="w-4 h-4" /> SAVE
+                </button>
               </form>
+
+              {/* Family Suggestions (Only if Family is selected) */}
+              {lentType === 'Family' && (
+                <div className="flex flex-wrap gap-2 mt-3 pl-1">
+                  {['Mother', 'Father', 'Brother', 'Sister'].map(name => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => setLentName(name)}
+                      className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all active:scale-95 cursor-pointer ${lentName === name ? 'bg-amber-600 text-white shadow-md' : 'bg-gray-800/80 text-gray-400 border border-gray-700/80 hover:bg-gray-700 hover:text-white'}`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* RIGHT COLUMN: Manage & Receive Payments */}

@@ -47,124 +47,127 @@ const SavingsTab = ({
         <div className="absolute bottom-[10%] right-[10%] w-[40vw] h-[40vw] bg-purple-600/10 rounded-full blur-[120px] mix-blend-screen opacity-50 pointer-events-none"></div>
 
         <div className="w-full relative z-10 mt-2">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          <div className="flex flex-col">
 
-            {/* LEFT COLUMN: Add Form */}
-            <div className="flex flex-col gap-8">
-              <h3 className="text-sm font-bold text-gray-300 px-2 uppercase tracking-[0.2em] flex items-center gap-2">
-                <PlusCircle className="w-4 h-4 text-pink-500" /> Add Record
-              </h3>
-
-              <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                <div className="flex p-1 bg-gray-900 rounded-2xl w-full mx-auto">
+            {/* TOP ROW: Add Record Form */}
+            <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl relative z-20 mb-8">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
+                <h3 className="text-xs font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <PlusCircle className="w-4 h-4 text-pink-500" /> Add Record
+                </h3>
+                <div className="flex p-1 bg-gray-900 rounded-xl w-full sm:w-auto">
                   {savings.length === 0 && (
-                    <button type="button" onClick={() => setType('Initial')} className={`flex-1 py-4 text-sm md:text-base font-semibold rounded-xl transition-all ${type === 'Initial' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
-                      <PlusCircle className="w-4 h-4 inline mr-2" /> Initial
+                    <button type="button" onClick={() => setType('Initial')} className={`flex-1 sm:flex-none px-4 py-1.5 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${type === 'Initial' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
+                      Initial
                     </button>
                   )}
-                  <button type="button" onClick={() => setType('Deposit')} className={`flex-1 py-4 text-sm md:text-base font-semibold rounded-xl transition-all ${type === 'Deposit' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
-                    <ArrowUpCircle className="w-4 h-4 inline mr-2" /> Deposit
+                  <button type="button" onClick={() => setType('Deposit')} className={`flex-1 sm:flex-none px-4 py-1.5 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${type === 'Deposit' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
+                    Deposit
                   </button>
-                  <button type="button" onClick={() => setType('Withdrawal')} className={`flex-1 py-4 text-sm md:text-base font-semibold rounded-xl transition-all ${type === 'Withdrawal' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
-                    <ArrowDownCircle className="w-4 h-4 inline mr-2" /> Withdrawal
-                  </button>
-                </div>
-
-                <div className="text-center bg-gray-900/60 backdrop-blur-md p-6 rounded-2xl border border-gray-700/50 relative shadow-inner">
-                  <p className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-[0.2em]">Amount</p>
-                  <div className="flex items-center justify-center text-4xl md:text-5xl font-bold text-white group">
-                    <span className="text-gray-500 mr-3 text-2xl md:text-3xl">Rs.</span>
-                    <input 
-                      type="text" 
-                      inputMode="decimal"
-                      required 
-                      value={amount} 
-                      onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} 
-                      className="bg-transparent border-none outline-none text-left w-[150px] md:w-[220px] focus:ring-0 placeholder-gray-700" 
-                      placeholder="0.00" 
-                    />
-                  </div>
-                  <div className="h-1 w-32 bg-gradient-to-r from-transparent via-gray-700 to-transparent mx-auto mt-4 opacity-50 group-focus-within:via-pink-500 group-focus-within:opacity-100 transition-all duration-700 rounded-full"></div>
-                </div>
-
-                <div className="flex flex-col justify-between bg-gray-900/60 backdrop-blur-md p-6 rounded-3xl border border-gray-700/50 shadow-inner">
-                  <div>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Details</p>
-                    
-                    <div className="relative bg-gray-900/80 rounded-2xl border border-gray-700/80 focus-within:border-pink-500 focus-within:ring-1 focus-within:ring-pink-500 transition-all overflow-hidden mb-4 shadow-inner">
-                      <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} required className="w-full bg-transparent px-5 py-4 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder="E.g., Monthly Savings, Emergency Fund" />
-                    </div>
-                    
-                    <div className="mt-4 z-20 relative">
-                      <DateTimePicker date={date} setDate={setDate} time={time} setTime={setTime} />
-                    </div>
-                  </div>
-
-                  <button type="submit" className={`w-full bg-gradient-to-r ${type === 'Deposit' ? 'from-emerald-500 via-teal-500 to-emerald-600 shadow-[0_0_20px_-5px_rgba(16,185,129,0.5)]' : type === 'Withdrawal' ? 'from-rose-500 via-pink-500 to-rose-600 shadow-[0_0_20px_-5px_rgba(244,63,94,0.5)]' : 'from-indigo-500 via-purple-500 to-indigo-600 shadow-[0_0_20px_-5px_rgba(99,102,241,0.5)]'} hover:bg-right bg-[length:200%_auto] text-white font-black tracking-widest uppercase py-5 rounded-2xl transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-3 text-lg mt-8`}>
-                    <PlusCircle className="w-6 h-6" /> SAVE RECORD
+                  <button type="button" onClick={() => setType('Withdrawal')} className={`flex-1 sm:flex-none px-4 py-1.5 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${type === 'Withdrawal' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
+                    Withdrawal
                   </button>
                 </div>
+              </div>
+
+              <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-3 items-end">
+                {/* Amount */}
+                <div className="w-full md:w-48 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-pink-500 focus-within:ring-1 focus-within:ring-pink-500 transition-all shadow-inner">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">Rs.</span>
+                  <input type="text" inputMode="decimal" required value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} className="w-full bg-transparent pl-10 pr-3 py-2.5 text-sm font-bold text-white focus:outline-none" placeholder="0.00" />
+                </div>
+                {/* Details */}
+                <div className="w-full md:flex-1 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-pink-500 transition-all shadow-inner">
+                  <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} required className="w-full h-[42px] bg-transparent px-3 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder="E.g., Monthly Savings, Emergency Fund" />
+                </div>
+                {/* Date */}
+                <div className="w-full md:w-44 flex-shrink-0">
+                  <DateTimePicker date={date} setDate={setDate} time={time} setTime={setTime} hideTime={true} />
+                </div>
+                {/* Submit */}
+                <button type="submit" className={`w-full md:w-auto h-[42px] bg-gradient-to-r ${type === 'Deposit' ? 'from-emerald-500 via-teal-500 to-emerald-600' : type === 'Withdrawal' ? 'from-rose-500 via-pink-500 to-rose-600' : 'from-indigo-500 via-purple-500 to-indigo-600'} hover:bg-right bg-[length:200%_auto] text-white font-black tracking-widest uppercase px-6 rounded-xl transition-all shadow-[0_0_15px_-3px_rgba(16,185,129,0.5)] active:scale-[0.98] shrink-0 flex items-center justify-center gap-2`}>
+                  <PlusCircle className="w-4 h-4" /> SAVE
+                </button>
               </form>
             </div>
 
-            {/* RIGHT COLUMN: Timeline View */}
-            <div className="flex flex-col gap-8">
-              <div className="flex items-center justify-between px-2">
+            {/* BOTTOM SECTION: Timeline View */}
+            <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl flex flex-col relative z-10">
+              <div className="flex items-center justify-between px-2 mb-6">
                 <h3 className="text-sm font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
                   <List className="w-4 h-4 text-purple-500" /> Savings History
                 </h3>
-                <div className="bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full flex flex-col items-end">
-                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none">Total Balance</span>
+                <div className="bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl flex flex-col items-end shadow-inner">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Total Balance</span>
                   <span className="text-sm font-black text-emerald-500 leading-tight">Rs. {formatLKR(totalSavings)}</span>
                 </div>
               </div>
               
-              <div className="overflow-x-auto lg:overflow-visible">
-                <div className="min-w-[500px] lg:min-w-0 pr-4">
-                  {savings.length === 0 ? (
-                    <div className="text-center py-12 bg-gray-900/40 rounded-3xl border border-gray-800 border-dashed">
-                      <PiggyBank className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                      <p className="text-gray-400 font-medium">No savings records found.</p>
-                    </div>
-                  ) : (
-                    <div className="relative border-l-2 border-gray-700/50 ml-16 md:ml-20 space-y-2 pb-4 mt-2">
-                      {savings.map((record) => (
-                        <div key={record.id} className="relative pl-6 group">
-                          {/* Date and Time on Left */}
-                          <div className="absolute -left-[4.5rem] md:-left-[5.5rem] top-1/2 -translate-y-1/2 w-16 md:w-20 text-right pr-4">
-                            <div className="text-[10px] md:text-xs font-semibold text-gray-400">
-                              {new Date(record.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+              <div className="relative overflow-y-auto hide-scrollbar flex-1 pr-1 pb-4">
+                {savings.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-900/40 rounded-3xl border border-gray-800 border-dashed">
+                    <PiggyBank className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                    <p className="text-gray-400 font-medium text-xs">No savings records found.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="absolute left-[56px] top-3 bottom-3 w-px bg-gray-700/50"></div>
+                    <div className="space-y-4 relative z-10">
+                      {savings.map((record) => {
+                        const d = new Date(record.date);
+                        const isToday = d.toDateString() === new Date().toDateString();
+                        const isDeposit = record.type === 'Deposit';
+                        const isWithdrawal = record.type === 'Withdrawal';
+                        const isInitial = record.type === 'Initial';
+                        
+                        return (
+                          <div key={record.id} className="relative flex items-start group">
+                            {/* Date and Time on Left */}
+                            <div className="w-12 flex-shrink-0 text-right pt-0.5 pr-2">
+                              <p className="text-[11px] font-black text-gray-300 leading-tight">{isToday ? 'Today' : d.getDate().toString()}</p>
+                              <p className="text-[8px] font-bold text-gray-500 tracking-wider mt-0.5">{isToday ? d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }).split(' ')[0] : d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase()}</p>
                             </div>
-                            <div className="text-[9px] md:text-[10px] font-bold text-gray-500 mt-0.5">
-                              {new Date(record.date).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
-                            </div>
-                          </div>
 
-                          {/* Timeline Node */}
-                          <div className={`absolute -left-[13px] top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-4 border-gray-900 flex items-center justify-center transition-transform group-hover:scale-125 ${record.type === 'Deposit' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : record.type === 'Withdrawal' ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]' : 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]'}`}>
-                            {record.type === 'Deposit' ? <ArrowUpCircle className="w-3 h-3 text-gray-900" /> : record.type === 'Withdrawal' ? <ArrowDownCircle className="w-3 h-3 text-gray-900" /> : <PlusCircle className="w-3 h-3 text-gray-900" />}
-                          </div>
+                            {/* Timeline Node */}
+                            <div className="relative w-4 h-full flex flex-col items-center justify-start pt-1.5 flex-shrink-0 z-10">
+                              <div className={`w-2.5 h-2.5 rounded-full border border-gray-900 transition-transform group-hover:scale-125 ${isDeposit ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]' : isWithdrawal ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]' : 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]'}`}></div>
+                            </div>
+                            
+                            {/* Row Content */}
+                            <div className="flex-1 ml-3 flex items-center justify-between pb-2 group cursor-default">
+                              <div className="flex items-start gap-2.5 min-w-0 pr-4">
+                                <div className={`mt-0.5 ${isDeposit ? 'text-emerald-400' : isWithdrawal ? 'text-rose-400' : 'text-indigo-400'}`}>
+                                  {isDeposit ? <ArrowUpCircle className="w-3.5 h-3.5" /> : isWithdrawal ? <ArrowDownCircle className="w-3.5 h-3.5" /> : <PlusCircle className="w-3.5 h-3.5" />}
+                                </div>
+                                <div className="min-w-0">
+                                  <h4 className="font-bold text-gray-200 text-[11px] md:text-xs group-hover:text-white transition-colors truncate">
+                                    {record.description}
+                                  </h4>
+                                </div>
+                              </div>
 
-                          {/* Row Content - Single Line */}
-                          <div className="py-2 px-3 hover:bg-gray-800/40 rounded-lg flex flex-row items-center justify-between border-b border-gray-800/50 transition-colors">
-                            <div className="font-bold text-gray-100 text-sm whitespace-nowrap overflow-hidden text-ellipsis flex-1 pr-4">
-                              {record.description}
-                            </div>
-                            <div className="flex items-center gap-3 shrink-0">
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 hidden sm:block">{record.type}</p>
-                              <p className={`font-black text-sm md:text-base tracking-tight ${record.type === 'Deposit' ? 'text-emerald-400' : record.type === 'Withdrawal' ? 'text-rose-400' : 'text-indigo-400'}`}>
-                                {record.type === 'Withdrawal' ? '-' : '+'}Rs. {formatLKR(record.amount)}
-                              </p>
-                              <button onClick={() => deleteSaving(record.id)} className="p-1.5 text-gray-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-colors cursor-pointer ml-1" title="Delete Record">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest bg-gray-800 text-gray-400 border border-gray-700">
+                                  {record.type}
+                                </span>
+                                <div className={`font-black whitespace-nowrap text-[11px] md:text-xs ${isDeposit ? 'text-emerald-400' : isWithdrawal ? 'text-rose-400' : 'text-indigo-400'}`}>
+                                  {isWithdrawal ? '-' : '+'}Rs. {formatLKR(record.amount)}
+                                </div>
+                                <button 
+                                  onClick={() => deleteSaving(record.id)} 
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-500 hover:text-rose-500 bg-gray-800 rounded-md shadow-sm ml-1"
+                                  title="Delete Record"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
-                  )}
-                </div>
+                  </>
+                )}
               </div>
             </div>
 

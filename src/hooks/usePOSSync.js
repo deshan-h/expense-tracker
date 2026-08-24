@@ -39,9 +39,8 @@ export const usePOSSync = (user) => {
           await addDoc(collection(db, 'transactions'), {
             type: 'Income',
             category: 'Business',
-            subcategory: 'POS Batch Sync',
             amount: parseFloat(result.sum),
-            description: `Auto-synced POS sales batch`,
+            description: 'DESH Digital Hub POS Income',
             date: new Date().toISOString(),
             posLatestTimestamp: newPosTimestamp,
             isTracked: true

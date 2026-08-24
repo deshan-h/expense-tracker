@@ -5,10 +5,12 @@ const HistoryTab = ({
   transactions, 
   lentMoney,
   savings,
+  schedules,
   formatLKR, 
   handleDeleteTransaction,
   handleDeleteLentMoney,
   deleteSaving,
+  deleteSchedule,
   categories
 }) => {
   // Advanced Filters State
@@ -185,6 +187,39 @@ const HistoryTab = ({
 
         <div className="w-full max-w-5xl mx-auto relative z-10 mt-2">
           
+          {/* ACTIVE SUBSCRIPTIONS */}
+          {schedules && schedules.length > 0 && (
+            <div className="mb-8 bg-gray-900/60 backdrop-blur-md p-6 rounded-[2rem] border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.15)]">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <CalendarClock className="w-4 h-4 text-blue-500" /> Active Subscriptions / Plans
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {schedules.map(schedule => (
+                  <div key={schedule.id} className="bg-gray-800/50 p-4 rounded-xl border border-gray-700 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-xs font-black text-gray-200 uppercase tracking-wider">{schedule.category}</span>
+                        <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-1 rounded-full uppercase tracking-wider">{schedule.frequency}</span>
+                      </div>
+                      <p className="text-[10px] text-gray-400 font-medium mb-3">{schedule.description || schedule.subcategory}</p>
+                    </div>
+                    <div className="flex justify-between items-end border-t border-gray-700/50 pt-3">
+                      <div>
+                        <p className="text-[9px] text-gray-500 uppercase tracking-widest font-bold mb-1">Next Payment</p>
+                        <p className="text-xs font-black text-emerald-400">Rs. {formatLKR(schedule.amount)}</p>
+                      </div>
+                      <button onClick={() => deleteSchedule(schedule.id)} className="text-gray-500 hover:text-rose-400 transition-colors p-1" title="Cancel Subscription">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* HEADER & FILTERS */}
           <div className="mb-8 flex flex-col gap-4 bg-gray-900/60 backdrop-blur-md p-6 rounded-[2rem] border border-gray-700/50 shadow-inner">
             <div className="flex items-center justify-between">

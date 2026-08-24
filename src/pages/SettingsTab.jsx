@@ -8,6 +8,8 @@ const SettingsTab = ({
   setNewCategoryName,
   newCategoryIcon,
   setNewCategoryIcon,
+  newCategoryType,
+  setNewCategoryType,
   isAddingCategory,
   seedDefaultCategories,
   categories,
@@ -22,7 +24,7 @@ const SettingsTab = ({
 }) => {
   const [isIconSelectorOpen, setIsIconSelectorOpen] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState(null);
-  const [editFormData, setEditFormData] = useState({ name: '', amount: '', category: '', subcategory: '' });
+  const [editFormData, setEditFormData] = useState({ name: '', amount: '', category: '', subcategory: '', description: '' });
 
   const handleEditClick = (tpl) => {
     setEditingTemplateId(tpl.id);
@@ -30,7 +32,8 @@ const SettingsTab = ({
       name: tpl.name || '',
       amount: tpl.amount || '',
       category: tpl.category || '',
-      subcategory: tpl.subcategory || ''
+      subcategory: tpl.subcategory || '',
+      description: tpl.description || ''
     });
   };
 
@@ -40,7 +43,7 @@ const SettingsTab = ({
     setEditingTemplateId(null);
   };
   
-  const SelectedIcon = newCategoryIcon ? getIconComponent(newCategoryIcon) : null;
+  const iconToRender = newCategoryIcon ? getIconComponent(newCategoryIcon) : null;
   const selectedIconColors = newCategoryIcon ? getIconColor(newCategoryIcon) : { bg: 'bg-gray-800', color: 'text-gray-400' };
 
   return (
@@ -63,6 +66,12 @@ const SettingsTab = ({
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-2 uppercase tracking-wider">New Category</label>
               <div className="flex flex-col sm:flex-row gap-3">
+                {/* Type Toggle */}
+                <div className="flex bg-gray-900 border border-gray-700 rounded-xl overflow-hidden shrink-0">
+                  <button type="button" onClick={() => setNewCategoryType('Expense')} className={`px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors ${newCategoryType === 'Expense' ? 'bg-rose-500 text-white' : 'text-gray-400 hover:bg-gray-800'}`}>Expense</button>
+                  <button type="button" onClick={() => setNewCategoryType('Income')} className={`px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors ${newCategoryType === 'Income' ? 'bg-emerald-500 text-white' : 'text-gray-400 hover:bg-gray-800'}`}>Income</button>
+                </div>
+                
                 {/* Name Input */}
                 <input type="text" required value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="Category Name (e.g. Groceries)" className="w-full sm:flex-1 bg-gray-900 border border-gray-700 rounded-xl px-5 py-3 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder-gray-500 shadow-inner" />
 
@@ -73,9 +82,9 @@ const SettingsTab = ({
                   className="flex items-center justify-between w-full sm:w-48 bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-gray-100 hover:border-gray-500 transition-colors shadow-inner shrink-0"
                 >
                   <div className="flex items-center gap-3 overflow-hidden">
-                    {SelectedIcon ? (
+                    {iconToRender ? (
                       <div className={`p-1.5 rounded-lg ${selectedIconColors.bg} shrink-0`}>
-                        <SelectedIcon className={`w-5 h-5 ${selectedIconColors.color}`} />
+                        {React.createElement(iconToRender, { className: `w-5 h-5 ${selectedIconColors.color}` })}
                       </div>
                     ) : (
                       <div className="w-8 h-8 rounded-lg bg-gray-800 border border-dashed border-gray-600 flex items-center justify-center text-gray-500 font-bold shrink-0">
@@ -137,7 +146,10 @@ const SettingsTab = ({
                       <div className={`p-2 rounded-lg ${iconColors.bg}`}>
                         <CatIcon className={`w-5 h-5 ${iconColors.color}`} />
                       </div>
-                      <span className="text-gray-100 font-bold text-xl">{cat.name}</span>
+                      <div className="flex flex-col">
+                        <span className="text-gray-100 font-bold text-xl">{cat.name}</span>
+                        <span className={`text-[10px] uppercase font-bold tracking-widest mt-0.5 ${cat.type === 'Income' ? 'text-emerald-400' : 'text-rose-400'}`}>{cat.type || 'Expense'}</span>
+                      </div>
                     </div>
                     <button onClick={() => handleDeleteCategory(cat.id)} className="p-2 text-gray-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-xl transition-colors cursor-pointer" title="Delete Category"><Trash2 className="w-5 h-5" /></button>
                   </div>
@@ -191,6 +203,10 @@ const SettingsTab = ({
                           <input type="text" inputMode="decimal" value={editFormData.amount} onChange={e => setEditFormData({...editFormData, amount: e.target.value.replace(/[^0-9.]/g, '')})} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-blue-500" placeholder="0.00" />
                         </div>
                         <div>
+                          <label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1 block">Description (Optional)</label>
+                          <input type="text" value={editFormData.description} onChange={e => setEditFormData({...editFormData, description: e.target.value})} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-blue-500" placeholder="e.g. Daily Coffee" />
+                        </div>
+                        <div>
                           <label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1 block">Category</label>
                           <select value={editFormData.category} onChange={e => setEditFormData({...editFormData, category: e.target.value, subcategory: ''})} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-blue-500 [&>option]:bg-gray-900">
                             <option value="" disabled>Select Category</option>
@@ -238,6 +254,12 @@ const SettingsTab = ({
                       <div className="p-4 bg-gray-900/40">
                         <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Amount</p>
                         <p className="text-gray-200 font-mono text-lg">{tpl.amount}</p>
+                      </div>
+                    )}
+                    {tpl.description && (
+                      <div className="p-4 pt-0 bg-gray-900/40 border-t border-gray-800/80">
+                        <p className="text-gray-400 text-xs uppercase tracking-wider mb-1 mt-3">Description</p>
+                        <p className="text-gray-300 text-sm">{tpl.description}</p>
                       </div>
                     )}
                   </div>

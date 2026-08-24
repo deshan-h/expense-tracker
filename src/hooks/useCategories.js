@@ -41,11 +41,12 @@ export const useCategories = (user, setCategory) => {
     return () => unsubCat();
   }, [user, setCategory]);
 
-  const addCategory = useCallback(async (name, icon) => {
+  const addCategory = useCallback(async (name, icon, type = 'Expense') => {
     try {
       await addDoc(collection(db, 'categories'), {
         name: name,
         icon: icon,
+        type: type,
         subcategories: [],
         createdAt: serverTimestamp()
       });
@@ -112,6 +113,7 @@ export const useCategories = (user, setCategory) => {
         await addDoc(collection(db, 'categories'), {
           name: cat.name,
           icon: cat.icon,
+          type: 'Expense',
           subcategories: [],
           createdAt: serverTimestamp()
         });

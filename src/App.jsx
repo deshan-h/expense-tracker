@@ -30,10 +30,15 @@ const HistoryTab = lazy(() => import('./pages/HistoryTab'));
 const MoneyLentTab = lazy(() => import('./pages/MoneyLentTab'));
 const SettingsTab = lazy(() => import('./pages/SettingsTab'));
 const SavingsTab = lazy(() => import('./pages/SavingsTab'));
-const ScheduledTab = lazy(() => import('./pages/ScheduledTab'));
 const WishlistTab = lazy(() => import('./pages/WishlistTab'));
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
+
+const TabFallback = () => (
+  <div className="w-full flex items-center justify-center p-12">
+    <div className="w-8 h-8 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+  </div>
+);
 
 function App() {
   const { user, authLoading } = useAuth();
@@ -53,6 +58,7 @@ function App() {
   // Category Form State
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryIcon, setNewCategoryIcon] = useState('Folder');
+  const [newCategoryType, setNewCategoryType] = useState('Expense');
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newSubcategoryNames, setNewSubcategoryNames] = useState({});
 
@@ -77,10 +83,6 @@ function App() {
   const { savings, addSaving, deleteSaving } = useSavings(user);
   const { schedules, addSchedule, deleteSchedule } = useScheduled(user, addExpense);
   const { wishlistItems, loading: wishlistLoading, addWishlistItem, completeWishlistItem, deleteWishlistItem, addSubItemToWishlist } = useWishlist(user, addExpense);
-
-  useEffect(() => {
-    setSubcategory('');
-  }, [category]);
 
   const handleAddTransaction = useCallback(async (e) => {
     e.preventDefault();
@@ -158,13 +160,14 @@ function App() {
     e.preventDefault();
     if (!newCategoryName.trim()) return;
     setIsAddingCategory(true);
-    const success = await addCat(newCategoryName.trim(), newCategoryIcon);
+    const success = await addCat(newCategoryName.trim(), newCategoryIcon, newCategoryType);
     if (success) {
       setNewCategoryName('');
       setNewCategoryIcon('Folder');
+      setNewCategoryType('Expense');
     }
     setIsAddingCategory(false);
-  }, [newCategoryName, newCategoryIcon, addCat]);
+  }, [newCategoryName, newCategoryIcon, newCategoryType, addCat]);
 
   const handleSubcategoryChange = useCallback((catId, value) => {
     setNewSubcategoryNames(prev => ({ ...prev, [catId]: value }));
@@ -274,12 +277,6 @@ function App() {
     );
   }
 
-  const TabFallback = () => (
-    <div className="w-full flex items-center justify-center p-12">
-      <div className="w-8 h-8 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 px-4 md:px-8 pb-8 font-sans overflow-x-hidden">
       <Toaster position="top-center" toastOptions={{ style: { background: '#1f2937', color: '#fff', borderRadius: '16px', border: '1px solid #374151' } }} />
@@ -295,13 +292,7 @@ function App() {
                     <LayoutDashboard className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Dashboard</span>
                   </TabsTrigger>
                   <TabsTrigger value="add" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
-                    <PlusCircle className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Expense</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="income" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
-                    <TrendingUp className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Income</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="scheduled" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
-                    <CalendarClock className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Planned</span>
+                    <PlusCircle className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Add New</span>
                   </TabsTrigger>
                   <TabsTrigger value="wishlist" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
                     <Target className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Wishlist</span>
@@ -359,7 +350,7 @@ function App() {
             </Suspense>
           </TabsContent>
 
-        {/* TAB 2: EXPENSE */}
+        {/* TAB 2: ADD TRANSACTION (EXPENSE & INCOME) */}
           <TabsContent value="add">
             <Suspense fallback={<TabFallback />}>
               <AddExpenseTab 
@@ -382,6 +373,10 @@ function App() {
                 isTracked={isTracked}
                 setIsTracked={setIsTracked}
                 handleAddTransaction={handleAddTransaction}
+                handleAddIncome={handleAddIncomeLocal}
+                handleSyncPOS={handleSyncPOS}
+                isSyncing={isSyncing}
+                lastSyncTimeStr={lastSyncTimeStr}
                 categories={categories}
                 selectedCatObj={selectedCatObj}
                 newSubcategoryNames={newSubcategoryNames}
@@ -391,30 +386,8 @@ function App() {
                 addTemplate={addTemplate}
                 transactions={transactions}
                 formatLKR={formatLKR}
-              />
-            </Suspense>
-          </TabsContent>
-
-        {/* TAB 3: INCOME */}
-          <TabsContent value="income">
-            <Suspense fallback={<TabFallback />}>
-              <IncomeTab 
-                amount={amount}
-                setAmount={setAmount}
-                calcHistory={calcHistory}
-                setCalcHistory={setCalcHistory}
-                description={description}
-                setDescription={setDescription}
-                date={date}
-                setDate={setDate}
-                time={time}
-                setTime={setTime}
-                handleAddIncome={handleAddIncomeLocal}
-                handleSyncPOS={handleSyncPOS}
-                isSyncing={isSyncing}
-                lastSyncTimeStr={lastSyncTimeStr}
-                transactions={transactions}
-                formatLKR={formatLKR}
+                handleDeleteTransaction={deleteTransaction}
+                addSchedule={addSchedule}
               />
             </Suspense>
           </TabsContent>
@@ -431,6 +404,8 @@ function App() {
                 handleDeleteLentMoney={delLent}
                 deleteSaving={deleteSaving}
                 categories={categories}
+                schedules={schedules}
+                deleteSchedule={deleteSchedule}
               />
             </Suspense>
           </TabsContent>
@@ -476,6 +451,8 @@ function App() {
                 setNewCategoryName={setNewCategoryName}
                 newCategoryIcon={newCategoryIcon}
                 setNewCategoryIcon={setNewCategoryIcon}
+                newCategoryType={newCategoryType}
+                setNewCategoryType={setNewCategoryType}
                 isAddingCategory={isAddingCategory}
                 seedDefaultCategories={seedDefaultCategories}
                 handleDeleteCategory={delCat}
@@ -497,19 +474,6 @@ function App() {
                 savings={savings}
                 addSaving={addSaving}
                 deleteSaving={deleteSaving}
-                formatLKR={formatLKR}
-              />
-            </Suspense>
-          </TabsContent>
-
-          {/* TAB 8: PLANNED */}
-          <TabsContent value="scheduled" className="space-y-6">
-            <Suspense fallback={<TabFallback />}>
-              <ScheduledTab 
-                schedules={schedules}
-                addSchedule={addSchedule}
-                deleteSchedule={deleteSchedule}
-                categories={categories}
                 formatLKR={formatLKR}
               />
             </Suspense>

@@ -1,10 +1,47 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+const quickActions = [
+  { 
+    label: 'Today', 
+    getOffset: (d) => 0, 
+    formatInfo: (targetDate) => targetDate.toLocaleDateString(undefined, { weekday: 'short' }) 
+  },
+  { 
+    label: 'Tomorrow', 
+    getOffset: (d) => 1, 
+    formatInfo: (targetDate) => targetDate.toLocaleDateString(undefined, { weekday: 'short' }) 
+  },
+  { 
+    label: 'This weekend', 
+    getOffset: (d) => { const diff = 6 - d.getDay(); return diff >= 0 ? diff : diff + 7; }, 
+    formatInfo: (targetDate) => targetDate.toLocaleDateString(undefined, { weekday: 'short' }) 
+  },
+  { 
+    label: 'Next week', 
+    getOffset: (d) => { const diff = 1 - d.getDay(); return (diff > 0 ? diff : diff + 7); }, 
+    formatInfo: (targetDate) => targetDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) 
+  },
+  { 
+    label: 'Next weekend', 
+    getOffset: (d) => { const diff = 6 - d.getDay(); return (diff >= 0 ? diff : diff + 7) + 7; }, 
+    formatInfo: (targetDate) => targetDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) 
+  },
+  { 
+    label: '2 weeks', 
+    getOffset: (d) => 14, 
+    formatInfo: (targetDate) => targetDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) 
+  },
+  { 
+    label: '4 weeks', 
+    getOffset: (d) => 28, 
+    formatInfo: (targetDate) => targetDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) 
+  },
+];
 
 const DateTimePicker = ({ date, setDate, time, setTime, hideTime = false }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
   
   // Use current date as fallback if invalid
   const initialDate = date ? new Date(date) : new Date();
@@ -16,7 +53,6 @@ const DateTimePicker = ({ date, setDate, time, setTime, hideTime = false }) => {
     function handleClickOutside(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setIsOpen(false);
-        setShowCalendar(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -31,25 +67,29 @@ const DateTimePicker = ({ date, setDate, time, setTime, hideTime = false }) => {
   
   const handlePrevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
   const handleNextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
-
-  const handleDateSelect = (day) => {
-    // Construct local date correctly
-    const newDate = new Date(year, month, day);
-    // Adjust for timezone offset to get local YYYY-MM-DD
-    const tzOffset = newDate.getTimezoneOffset() * 60000;
-    const localISODate = (new Date(newDate - tzOffset)).toISOString().split('T')[0];
-    setDate(localISODate);
+  const handleGoToToday = () => {
+    const today = new Date();
+    setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1));
   };
 
-  const handleQuickSelect = (daysOffset) => {
-    const d = new Date();
-    d.setDate(d.getDate() + daysOffset);
+  const setLocalDate = (d) => {
     const tzOffset = d.getTimezoneOffset() * 60000;
     const localISODate = (new Date(d - tzOffset)).toISOString().split('T')[0];
     setDate(localISODate);
+  };
+
+  const handleDateSelect = (day) => {
+    const newDate = new Date(year, month, day);
+    setLocalDate(newDate);
+    setIsOpen(false);
+  };
+
+  const handleQuickSelect = (offsetFunc) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetFunc(d));
+    setLocalDate(d);
     setCurrentMonth(new Date(d.getFullYear(), d.getMonth(), 1));
     setIsOpen(false);
-    setShowCalendar(false);
   };
 
   const selectedDateObj = date ? new Date(date) : new Date();
@@ -60,17 +100,25 @@ const DateTimePicker = ({ date, setDate, time, setTime, hideTime = false }) => {
            selectedDateObj.getFullYear() === year;
   };
 
+  const isTodayDate = (day) => {
+    const today = new Date();
+    return today.getDate() === day && 
+           today.getMonth() === month && 
+           today.getFullYear() === year;
+  };
+
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const blanks = Array.from({ length: firstDayOfMonth }, (_, i) => i);
 
   return (
     <div className="relative w-full" ref={wrapperRef}>
+      {/* Input Field Trigger */}
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-gray-900/80 rounded-2xl border border-gray-700/80 hover:border-pink-500 hover:ring-1 hover:ring-pink-500 transition-all overflow-hidden shadow-inner cursor-pointer flex flex-row items-center justify-between px-4 sm:px-5 py-4 gap-2"
+        className="w-full h-[42px] bg-gray-900/80 rounded-xl border border-gray-700/80 hover:border-blue-500 hover:ring-1 hover:ring-blue-500 transition-all overflow-hidden shadow-inner cursor-pointer flex flex-row items-center justify-between px-3 sm:px-4 py-2.5 gap-2"
       >
         <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-          <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-pink-500 shrink-0" />
+          <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 shrink-0" />
           <span className="text-xs sm:text-sm font-medium text-gray-100 whitespace-nowrap overflow-hidden text-ellipsis">
             {selectedDateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
           </span>
@@ -90,102 +138,108 @@ const DateTimePicker = ({ date, setDate, time, setTime, hideTime = false }) => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="absolute z-50 top-full mt-2 w-[320px] max-w-[90vw] left-0 sm:left-auto sm:right-0 bg-gray-900/95 backdrop-blur-3xl border border-gray-700 rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.7)] p-4 overflow-hidden"
+            className="absolute z-50 top-full mt-2 w-[600px] max-w-[95vw] left-0 sm:left-auto sm:right-0 bg-[#1e1e1e] border border-gray-700/80 rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col md:flex-row"
           >
-            {/* Quick Actions (Moved to Top) */}
-            <div className="flex items-center gap-2 mb-4">
-              <button 
-                type="button" 
-                onClick={() => handleQuickSelect(0)}
-                className="flex-1 py-2 bg-gray-800 hover:bg-pink-500/20 text-gray-300 hover:text-pink-400 rounded-xl text-xs font-bold transition-colors"
-              >
-                Today
-              </button>
-              <button 
-                type="button" 
-                onClick={() => handleQuickSelect(-1)}
-                className="flex-1 py-2 bg-gray-800 hover:bg-pink-500/20 text-gray-300 hover:text-pink-400 rounded-xl text-xs font-bold transition-colors"
-              >
-                Yesterday
-              </button>
+            {/* Left Column: Quick Selects */}
+            <div className="w-full md:w-[240px] border-b md:border-b-0 md:border-r border-gray-700/50 flex flex-col p-2">
+              <div className="space-y-1">
+                {quickActions.map((action, idx) => {
+                  const now = new Date();
+                  now.setDate(now.getDate() + action.getOffset(now));
+                  const targetInfo = action.formatInfo(now);
+                  
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleQuickSelect(action.getOffset)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-gray-800/80 transition-colors group"
+                    >
+                      <span className="text-sm font-medium text-gray-200 group-hover:text-white transition-colors">{action.label}</span>
+                      <span className="text-[11px] font-medium text-gray-500">{targetInfo}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Time Picker */}
-            {!hideTime && (
-              <div className="flex items-center justify-between px-2 mb-4">
-                <div className="flex items-center gap-2 text-gray-400 text-sm font-semibold">
-                  <Clock className="w-4 h-4" /> Time
+            {/* Right Column: Calendar & Time */}
+            <div className="flex-1 p-5 flex flex-col">
+              
+              {/* Calendar Header */}
+              <div className="flex items-center justify-between mb-4 px-1">
+                <div className="font-bold text-gray-100 text-sm tracking-wide">
+                  {currentMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
                 </div>
-                <input 
-                  type="time" 
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm font-medium text-gray-100 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 [color-scheme:dark]"
-                />
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={handleGoToToday} className="text-xs font-medium text-gray-400 hover:text-gray-200 transition-colors cursor-pointer">
+                    Today
+                  </button>
+                  <div className="flex items-center gap-1 border border-gray-700/50 rounded-lg p-0.5">
+                    <button type="button" onClick={handlePrevMonth} className="p-1 hover:bg-gray-800 rounded-md transition-colors text-gray-400 hover:text-gray-200">
+                      <ChevronUp className="w-4 h-4" />
+                    </button>
+                    <button type="button" onClick={handleNextMonth} className="p-1 hover:bg-gray-800 rounded-md transition-colors text-gray-400 hover:text-gray-200">
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
-            )}
 
-            {/* Calendar Toggle */}
-            <button 
-              type="button"
-              onClick={() => setShowCalendar(!showCalendar)}
-              className="w-full py-2 flex items-center justify-center gap-2 text-xs font-bold text-gray-400 hover:text-gray-200 bg-gray-800/50 rounded-xl transition-colors"
-            >
-              <CalendarIcon className="w-3 h-3" />
-              {showCalendar ? 'Hide Calendar' : 'Custom Date'}
-            </button>
-
-            {/* Calendar Grid (Collapsible) */}
-            <AnimatePresence>
-              {showCalendar && (
-                <motion.div 
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden mt-4 pt-4 border-t border-gray-800"
-                >
-                  {/* Header */}
-                  <div className="flex items-center justify-between mb-4">
-                    <button type="button" onClick={handlePrevMonth} className="p-2 hover:bg-gray-800 rounded-xl transition-colors">
-                      <ChevronLeft className="w-5 h-5 text-gray-400" />
-                    </button>
-                    <div className="font-bold text-gray-100 tracking-wider text-sm">
-                      {currentMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-                    </div>
-                    <button type="button" onClick={handleNextMonth} className="p-2 hover:bg-gray-800 rounded-xl transition-colors">
-                      <ChevronRight className="w-5 h-5 text-gray-400" />
-                    </button>
-                  </div>
-
-                  {/* Days Grid */}
-                  <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
-                      <div key={d} className="text-xs font-bold text-gray-500 py-1">{d}</div>
-                    ))}
-                  </div>
+              {/* Days of Week Header */}
+              <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+                  <div key={d} className="text-[11px] font-bold text-gray-500 py-1">{d}</div>
+                ))}
+              </div>
+              
+              {/* Days Grid */}
+              <div className="grid grid-cols-7 gap-1">
+                {blanks.map(b => (
+                  <div key={`blank-${b}`} className="p-1 sm:p-1.5 w-full aspect-square"></div>
+                ))}
+                {days.map(day => {
+                  const selected = isSelected(day);
+                  const isToday = isTodayDate(day);
                   
-                  <div className="grid grid-cols-7 gap-1">
-                    {blanks.map(b => (
-                      <div key={`blank-${b}`} className="p-1 sm:p-2"></div>
-                    ))}
-                    {days.map(day => (
-                      <button
-                        key={day}
-                        type="button"
-                        onClick={() => handleDateSelect(day)}
-                        className={`p-1 sm:p-2 w-full aspect-square flex items-center justify-center rounded-xl text-sm font-medium transition-all ${
-                          isSelected(day) 
-                            ? 'bg-gradient-to-br from-pink-500 to-purple-600 text-white shadow-lg shadow-pink-500/20 scale-110 z-10' 
-                            : 'text-gray-300 hover:bg-gray-800 hover:text-white hover:scale-110'
-                        }`}
-                      >
-                        {day}
-                      </button>
-                    ))}
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => handleDateSelect(day)}
+                      className={`p-1 sm:p-1.5 w-full aspect-square flex items-center justify-center rounded-xl text-[13px] font-bold transition-all relative
+                        ${selected 
+                          ? 'bg-[#3b82f6] text-white shadow-lg shadow-blue-500/20' 
+                          : 'text-gray-300 hover:bg-gray-800 hover:text-white hover:scale-110'}
+                        ${!selected && isToday ? 'text-blue-400 font-black' : ''}
+                      `}
+                    >
+                      {day}
+                      {/* Optional little dot for today if not selected */}
+                      {!selected && isToday && (
+                        <div className="absolute bottom-1 w-1 h-1 bg-blue-500 rounded-full"></div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Time Picker */}
+              {!hideTime && (
+                <div className="mt-6 pt-4 border-t border-gray-700/50 flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2 text-gray-400 text-sm font-semibold tracking-wide">
+                    <Clock className="w-4 h-4" /> Time
                   </div>
-                </motion.div>
+                  <input 
+                    type="time" 
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-sm font-medium text-gray-100 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 [color-scheme:dark] transition-all cursor-pointer"
+                  />
+                </div>
               )}
-            </AnimatePresence>
+            </div>
+
           </motion.div>
         )}
       </AnimatePresence>
