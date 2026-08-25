@@ -1,1 +1,0 @@
-if('serviceWorker' in navigator) navigator.serviceWorker.register('/expense-tracker/dev-sw.js?dev-sw', { scope: '/expense-tracker/', type: 'classic' })
