@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, AreaChart, Area, XAxis, YAxis, CartesianGrid, BarChart, Bar, LabelList, ReferenceLine } from 'recharts';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, DollarSign, Activity, Target, Clock, Handshake, RefreshCw, PiggyBank, CalendarClock } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Activity, Target, Clock, Handshake, RefreshCw, PiggyBank, CalendarClock, History, Users } from 'lucide-react';
 import { PieChart as PieChartIcon } from 'lucide-react';
 import { getIconComponent, getIconColor } from '../utils/icons';
 
@@ -135,6 +135,7 @@ const DashboardTab = ({
   const [cashFlowFilter, setCashFlowFilter] = useState('month'); // 'week' | 'month'
   const [showComparisonTable, setShowComparisonTable] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState({});
+  const toggleCategory = (cat) => setExpandedCategories(prev => ({...prev, [cat]: !prev[cat]}));
 
   // Auto-refresh when entering the tab (on mount)
   useEffect(() => {
@@ -169,6 +170,7 @@ const DashboardTab = ({
   // New Metrics Calculations
   const today = new Date();
   const todayStr = today.toDateString();
+  const todayFormattedStr = today.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = yesterday.toDateString();
@@ -215,7 +217,7 @@ const DashboardTab = ({
     return b.thisMonth - a.thisMonth;
   });
 
-  const todayExpenses = transactions
+  const todayExpenses = liveTransactions
     .filter(t => t.type === 'Expense' && new Date(t.date).toDateString() === todayStr)
     .reduce((acc, curr) => acc + curr.amount, 0);
 
@@ -223,8 +225,12 @@ const DashboardTab = ({
     .filter(t => t.type === 'Expense' && new Date(t.date).toDateString() === yesterdayStr)
     .reduce((acc, curr) => acc + curr.amount, 0);
 
-  const todayIncome = transactions
+  const todayIncome = liveTransactions
     .filter(t => (t.type === 'Income' || t.type === 'POS Income') && new Date(t.date).toDateString() === todayStr)
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const yesterdayIncome = transactions
+    .filter(t => (t.type === 'Income' || t.type === 'POS Income') && new Date(t.date).toDateString() === yesterdayStr)
     .reduce((acc, curr) => acc + curr.amount, 0);
 
   const thisMonthExpenses = transactions
@@ -232,6 +238,79 @@ const DashboardTab = ({
       if (t.type !== 'Expense') return false;
       const d = new Date(t.date);
       return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    })
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const liveThisMonthIncome = liveTransactions
+    .filter(t => {
+      const d = new Date(t.date);
+      return (t.type === 'Income' || t.type === 'POS Income') && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    })
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const thisYearExpenses = liveTransactions
+    .filter(t => t.type === 'Expense' && new Date(t.date).getFullYear() === currentYear)
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const thisYearIncome = liveTransactions
+    .filter(t => (t.type === 'Income' || t.type === 'POS Income') && new Date(t.date).getFullYear() === currentYear)
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const yearlyOverviewData = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(currentYear, i, 1);
+    return {
+      month: d.toLocaleDateString(undefined, { month: 'short' }),
+      Income: 0,
+      Expense: 0,
+      Lent: 0,
+      Savings: 0
+    };
+  });
+
+  transactions.forEach(t => {
+    const td = new Date(t.date);
+    if (td.getFullYear() === currentYear) {
+      const m = td.getMonth();
+      if (t.type === 'Income' || t.type === 'POS Income') yearlyOverviewData[m].Income += t.amount;
+      else if (t.type === 'Expense') yearlyOverviewData[m].Expense += t.amount;
+    }
+  });
+
+  lentMoney.forEach(t => {
+    const td = new Date(t.date);
+    if (td.getFullYear() === currentYear) {
+      yearlyOverviewData[td.getMonth()].Lent += t.amount;
+    }
+  });
+
+  savings.forEach(t => {
+    const td = t.date?.toDate ? t.date.toDate() : new Date(t.date);
+    if (td.getFullYear() === currentYear) {
+      if (t.type === 'Deposit' || t.type === 'Initial') {
+         yearlyOverviewData[td.getMonth()].Savings += t.amount;
+      }
+    }
+  });
+
+  const startOfThisWeek = new Date(today);
+  const currentDayOfWeekNum = startOfThisWeek.getDay();
+  startOfThisWeek.setDate(startOfThisWeek.getDate() - currentDayOfWeekNum + (currentDayOfWeekNum === 0 ? -6 : 1));
+  startOfThisWeek.setHours(0, 0, 0, 0);
+  const endOfThisWeek = new Date(startOfThisWeek);
+  endOfThisWeek.setDate(endOfThisWeek.getDate() + 6);
+  endOfThisWeek.setHours(23, 59, 59, 999);
+
+  const liveThisWeekIncome = liveTransactions
+    .filter(t => {
+      const d = new Date(t.date);
+      return (t.type === 'Income' || t.type === 'POS Income') && d >= startOfThisWeek && d <= endOfThisWeek;
+    })
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const liveThisWeekExpense = liveTransactions
+    .filter(t => {
+      const d = new Date(t.date);
+      return t.type === 'Expense' && d >= startOfThisWeek && d <= endOfThisWeek;
     })
     .reduce((acc, curr) => acc + curr.amount, 0);
 
@@ -244,7 +323,7 @@ const DashboardTab = ({
   // Group by date string
   const groupedFlow = thisMonthTransactions.reduce((acc, curr) => {
     const dateStr = new Date(curr.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    if (!acc[dateStr]) acc[dateStr] = { date: dateStr, Income: 0, Expense: 0, Lent: 0, Planned: 0 };
+    if (!acc[dateStr]) acc[dateStr] = { date: dateStr, Income: 0, Expense: 0, Lent: 0, Planned: 0, Received: 0, Deposit: 0, Withdrawal: 0, Savings: 0 };
     acc[dateStr][curr.type] += curr.amount;
     return acc;
   }, {});
@@ -262,7 +341,7 @@ const DashboardTab = ({
   });
 
   const thisMonthDeposit = thisMonthSavingsFlow
-    .filter(t => t.type === 'Deposit')
+    .filter(t => t.type === 'Deposit' || t.type === 'Initial')
     .reduce((acc, curr) => acc + curr.amount, 0);
 
   const thisMonthWithdrawal = thisMonthSavingsFlow
@@ -271,8 +350,33 @@ const DashboardTab = ({
 
   thisMonthLentFlow.forEach(curr => {
     const dateStr = new Date(curr.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    if (!groupedFlow[dateStr]) groupedFlow[dateStr] = { date: dateStr, Income: 0, Expense: 0, Lent: 0, Planned: 0 };
-    groupedFlow[dateStr].Lent = (groupedFlow[dateStr].Lent || 0) + curr.amount;
+    if (!groupedFlow[dateStr]) groupedFlow[dateStr] = { date: dateStr, Income: 0, Expense: 0, Lent: 0, Planned: 0, Received: 0, Deposit: 0, Withdrawal: 0, Savings: 0 };
+    groupedFlow[dateStr].Lent += curr.amount;
+  });
+
+  lentMoney.forEach(record => {
+    if (record.paymentHistory) {
+      record.paymentHistory.forEach(payment => {
+        const pd = new Date(payment.date);
+        if (pd.getMonth() === currentMonth && pd.getFullYear() === currentYear) {
+          const dateStr = pd.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+          if (!groupedFlow[dateStr]) groupedFlow[dateStr] = { date: dateStr, Income: 0, Expense: 0, Lent: 0, Planned: 0, Received: 0, Deposit: 0, Withdrawal: 0, Savings: 0 };
+          groupedFlow[dateStr].Received += payment.amount;
+        }
+      });
+    }
+  });
+
+  thisMonthSavingsFlow.forEach(curr => {
+    const d = curr.date?.toDate ? curr.date.toDate() : new Date(curr.date);
+    const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    if (!groupedFlow[dateStr]) groupedFlow[dateStr] = { date: dateStr, Income: 0, Expense: 0, Lent: 0, Planned: 0, Received: 0, Deposit: 0, Withdrawal: 0, Savings: 0 };
+    groupedFlow[dateStr].Savings += curr.amount; // legacy fallback
+    if (curr.type === 'Deposit' || curr.type === 'Initial') {
+      groupedFlow[dateStr].Deposit += curr.amount;
+    } else if (curr.type === 'Withdrawal') {
+      groupedFlow[dateStr].Withdrawal += curr.amount;
+    }
   });
 
   const activeSchedules = schedules.filter(s => s.status === 'active');
@@ -352,17 +456,25 @@ const DashboardTab = ({
             Income: groupedFlow[dateStr].Income || 0,
             Expense: groupedFlow[dateStr].Expense || 0,
             Lent: groupedFlow[dateStr].Lent || 0,
-            Planned: groupedFlow[dateStr].Planned || 0
+            Received: groupedFlow[dateStr].Received || 0,
+            Deposit: groupedFlow[dateStr].Deposit || 0,
+            Withdrawal: groupedFlow[dateStr].Withdrawal || 0,
+            Planned: groupedFlow[dateStr].Planned || 0,
+            Savings: groupedFlow[dateStr].Savings || 0
           });
         } else {
-          cashFlowArray.push({ date: dateStr, day: dayStr, Income: 0, Expense: 0, Lent: 0, Planned: 0 });
+          cashFlowArray.push({ date: dateStr, day: dayStr, Income: 0, Expense: 0, Lent: 0, Received: 0, Deposit: 0, Withdrawal: 0, Planned: 0, Savings: 0 });
         }
       } else {
         // Compute dynamically for last month
         let dayIncome = 0;
         let dayExpense = 0;
         let dayLent = 0;
+        let dayReceived = 0;
         let dayPlanned = 0;
+        let daySavings = 0;
+        let dayDeposit = 0;
+        let dayWithdrawal = 0;
 
         transactions.forEach(t => {
           const td = new Date(t.date);
@@ -376,6 +488,23 @@ const DashboardTab = ({
           const td = new Date(t.date);
           if (td.toDateString() === d.toDateString()) {
             dayLent += t.amount;
+          }
+          if (t.paymentHistory) {
+            t.paymentHistory.forEach(payment => {
+              const pd = new Date(payment.date);
+              if (pd.toDateString() === d.toDateString()) {
+                dayReceived += payment.amount;
+              }
+            });
+          }
+        });
+        
+        savings.forEach(t => {
+          const td = t.date?.toDate ? t.date.toDate() : new Date(t.date);
+          if (td.toDateString() === d.toDateString()) {
+            daySavings += t.amount;
+            if (t.type === 'Deposit' || t.type === 'Initial') dayDeposit += t.amount;
+            else if (t.type === 'Withdrawal') dayWithdrawal += t.amount;
           }
         });
         
@@ -407,7 +536,11 @@ const DashboardTab = ({
           Income: dayIncome,
           Expense: dayExpense,
           Lent: dayLent,
-          Planned: dayPlanned
+          Received: dayReceived,
+          Deposit: dayDeposit,
+          Withdrawal: dayWithdrawal,
+          Planned: dayPlanned,
+          Savings: daySavings
         });
       }
     }
@@ -424,7 +557,10 @@ const DashboardTab = ({
       let dayIncome = 0;
       let dayExpense = 0;
       let dayLent = 0;
+      let dayReceived = 0;
       let dayPlanned = 0;
+      let dayDeposit = 0;
+      let dayWithdrawal = 0;
       
       transactions.forEach(t => {
         const td = new Date(t.date);
@@ -438,6 +574,22 @@ const DashboardTab = ({
         const td = new Date(t.date);
         if (td.toDateString() === d.toDateString()) {
           dayLent += t.amount;
+        }
+        if (t.paymentHistory) {
+          t.paymentHistory.forEach(payment => {
+            const pd = new Date(payment.date);
+            if (pd.toDateString() === d.toDateString()) {
+              dayReceived += payment.amount;
+            }
+          });
+        }
+      });
+
+      savings.forEach(t => {
+        const td = t.date?.toDate ? t.date.toDate() : new Date(t.date);
+        if (td.toDateString() === d.toDateString()) {
+           if (t.type === 'Deposit' || t.type === 'Initial') dayDeposit += t.amount;
+           else if (t.type === 'Withdrawal') dayWithdrawal += t.amount;
         }
       });
       
@@ -469,7 +621,11 @@ const DashboardTab = ({
         Income: dayIncome,
         Expense: dayExpense,
         Lent: dayLent,
-        Planned: dayPlanned
+        Received: dayReceived,
+        Deposit: dayDeposit,
+        Withdrawal: dayWithdrawal,
+        Planned: dayPlanned,
+        Savings: dayDeposit // fallback
       });
     }
   }
@@ -633,7 +789,7 @@ const DashboardTab = ({
 
   const recentTransactions = transactions.slice(0, 5);
 
-  const pendingWishlistItems = (displayData?.wishlistItems || []).filter(item => item.status === 'pending');
+  const pendingWishlistItems = liveWishlistItems.filter(item => item.status === 'pending');
   const totalWishlistEstCost = pendingWishlistItems.reduce((acc, curr) => acc + (Number(curr.estimatedCost) || 0), 0);
   const wishlistPendingCount = pendingWishlistItems.length;
 
@@ -644,638 +800,523 @@ const DashboardTab = ({
     todayReferenceX = String(today.getDate()).padStart(2, '0');
   }
 
+  const chartTotalIncome = cashFlowArray.reduce((acc, curr) => acc + (curr.Income || 0), 0);
+  const chartTotalExpense = cashFlowArray.reduce((acc, curr) => acc + (curr.Expense || 0), 0);
+  const chartTotalLent = cashFlowArray.reduce((acc, curr) => acc + (curr.Lent || 0), 0);
+  const chartTotalSavings = cashFlowArray.reduce((acc, curr) => acc + (curr.Savings || 0), 0);
+
+  // Savings this month
+  const thisMonthSavingsList = savings.filter(s => {
+    const d = new Date(s.date);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
+  const thisMonthSavingsDeposits = thisMonthSavingsList.filter(s => s.type === 'Deposit').reduce((acc, curr) => acc + curr.amount, 0);
+  const thisMonthSavingsWithdrawals = thisMonthSavingsList.filter(s => s.type === 'Withdrawal').reduce((acc, curr) => acc + curr.amount, 0);
+
+  // Lent money people count
+  const pendingLentRecords = lentMoney.filter(r => r.status !== 'paid');
+  const uniqueLentPeopleCount = new Set(pendingLentRecords.map(r => r.name)).size;
+
+
   return (
-    <div className="w-[100vw] relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] bg-gray-950/50 border-y border-gray-800/80 shadow-2xl backdrop-blur-sm">
-      <div className="px-4 md:px-8 pb-8 pt-6 space-y-8 w-full max-w-full">
-      
-
-      {/* 1. TOP ROW: COMMAND CENTER METRICS */}
-        <div className="flex flex-col xl:flex-row gap-4 mx-auto w-full">
+    <div className="w-[100vw] relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] bg-gray-950/50 border-b border-gray-800/80 shadow-2xl backdrop-blur-sm" style={{ fontFamily: "'Roboto', sans-serif" }}>
+      <div className="px-4 md:px-8 pb-8 pt-4 space-y-6 w-full max-w-[1600px] mx-auto">
         
-        {/* Left Side: Main Summary */}
-        <div className="xl:w-[450px] flex-shrink-0">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="bg-[#0b1120] p-4 md:p-5 rounded-[1.25rem] border border-gray-800/80 shadow-xl relative overflow-hidden group transition-all duration-500 flex flex-col h-full justify-center"
-          >
-            {/* Header Row */}
-            <div className="flex justify-between items-center w-full relative z-10 mb-4">
-              <div className="flex items-center gap-2.5">
-                <TrendingUp className="w-5 h-5 text-emerald-400" />
-                <p className="text-gray-100 text-xs font-bold uppercase tracking-[0.15em]">Today's Summary</p>
-              </div>
-              {todayExpenses > yesterdayExpenses && (
-                <div className="flex items-center gap-1.5 bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-500/20 text-rose-400 text-[10px] font-bold" title={`+${formatCompact(todayExpenses - yesterdayExpenses)} vs yesterday`}>
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  <span>Rs. {formatCompact(todayExpenses - yesterdayExpenses)}</span>
-                </div>
-              )}
-              {todayExpenses < yesterdayExpenses && (
-                <div className="flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 text-emerald-400 text-[10px] font-bold" title={`${formatCompact(yesterdayExpenses - todayExpenses)} less than yesterday`}>
-                  <TrendingDown className="w-3.5 h-3.5" />
-                  <span>Rs. {formatCompact(yesterdayExpenses - todayExpenses)}</span>
-                </div>
-              )}
+        {/* 1. TOP TILES */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+          
+          {/* Today Expenses */}
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.1 }} className="bg-gradient-to-br from-[#0f172a] to-[#020617] p-4 rounded-2xl border border-gray-800/80 shadow-xl relative overflow-hidden h-28 flex flex-col justify-center hover:-translate-y-1 hover:shadow-2xl hover:border-gray-700/50 transition-all duration-300">
+            <div className="absolute top-0 right-0 w-[100px] h-[100px] bg-rose-600/10 rounded-full blur-[40px] mix-blend-screen pointer-events-none"></div>
+            <div className="flex justify-between items-start mb-1.5 relative z-10">
+              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <TrendingDown className="w-3.5 h-3.5 text-rose-400" /> Today Expenses
+              </p>
             </div>
-            
-            {/* Metrics Row */}
-            <div className="flex items-center w-full relative z-10 mt-2 mb-2">
-              <div className="flex flex-col flex-1">
-                <span className="text-[10px] uppercase text-rose-500 font-bold tracking-widest mb-2">Expense (Out)</span>
-                <h2 title={`Rs. ${formatLKR(todayExpenses)}`} className="text-3xl font-black text-rose-400 tracking-tight drop-shadow-md flex items-baseline gap-1.5">
-                  <span className="text-base font-bold text-rose-600">Rs.</span>
-                  {formatCompact(todayExpenses)}
-                </h2>
-              </div>
-              
-              <div className="w-px h-16 bg-gray-700/60 mx-4 lg:mx-6"></div>
-              
-              <div className="flex flex-col flex-1 pl-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[10px] uppercase text-emerald-500 font-bold tracking-widest">Income (In)</span>
-                  <button 
-                    onClick={async () => {
-                      await handleSyncPOS();
-                      handleRefresh();
-                    }}
-                    disabled={isSyncing}
-                    className="text-emerald-400 hover:text-emerald-300 transition-all disabled:opacity-50 shrink-0"
-                    title={`Business Sync : ${timeAgo(lastSyncTimeStr)}`}
-                  >
-                    <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} /> 
-                  </button>
-                </div>
-                <h2 title={`Rs. ${formatLKR(todayIncome)}`} className="text-3xl font-black text-emerald-400 tracking-tight drop-shadow-md flex items-baseline gap-1.5">
-                  <span className="text-base font-bold text-emerald-600">Rs.</span>
-                  {formatCompact(todayIncome)}
-                </h2>
-              </div>
-            </div>
-            
-            <div className="w-full h-px bg-gray-800/80 mt-4 mb-3 z-10 relative"></div>
-            
-            <div className="flex justify-between items-center w-full z-10 relative mt-1">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Week Out:</span>
-                <span className="text-[10px] font-bold text-rose-500">Rs. {formatCompact(thisWeekExpense)}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Week In:</span>
-                <span className="text-[10px] font-bold text-emerald-500">Rs. {formatCompact(thisWeekIncome)}</span>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Right Side: 4 Tiles Grid */}
-        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.35 }}
-            className="bg-[#0b1120] p-4 md:p-5 rounded-[1.25rem] border border-gray-800/80 shadow-xl relative overflow-hidden group transition-all duration-500 flex flex-col items-center justify-center min-h-[100px] h-full"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/20 rounded-full blur-[60px] group-hover:bg-amber-500/30 transition-all duration-700 pointer-events-none"></div>
-            
-            <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex-shrink-0 w-8 h-8 rounded-xl border border-gray-700/50 bg-gray-800/30 flex items-center justify-center group-hover:border-amber-500/50 transition-all duration-500 z-10 shadow-inner">
-              <CalendarClock className="w-4 h-4 text-amber-500 drop-shadow-md" />
-            </div>
-
-            <div className="w-full flex items-center justify-center gap-5 sm:gap-8 z-10 mt-3">
-              <div className="flex flex-col items-center text-center">
-                <span className="text-[10px] uppercase text-gray-400 font-bold tracking-widest mb-1 truncate">Today Planned</span>
-                <h2 title={`Rs. ${formatLKR(todayPlanned)}`} className="text-lg sm:text-xl font-black text-amber-500 tracking-tight flex items-baseline gap-1">
-                  <span className="text-[11px] font-bold text-amber-600">Rs.</span>{formatCompact(todayPlanned)}
-                </h2>
-              </div>
-              
-              <div className="w-px h-8 bg-gray-700/50"></div>
-              
-              <div className="flex flex-col items-center text-center">
-                <span className="text-[10px] uppercase text-gray-400 font-bold tracking-widest mb-1 truncate">Month Total</span>
-                <h2 title={`Rs. ${formatLKR(thisMonthPlanned)}`} className="text-lg sm:text-xl font-black text-white tracking-tight flex items-baseline gap-1">
-                  <span className="text-[11px] font-bold text-gray-500">Rs.</span>{formatCompact(thisMonthPlanned)}
-                </h2>
-              </div>
-            </div>
-            
-            <div className="w-full h-px bg-gray-800/80 z-10 mt-3 mb-2"></div>
-            
-            <div className="w-full z-10">
-              {nextPlannedSchedule ? (
-                <div className="flex justify-between items-center w-full">
-                  <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap overflow-hidden text-ellipsis pr-2">
-                    <span className="font-bold mr-1.5 text-gray-500">{getDaysString(nextPlannedSchedule.nextDate)}</span>
-                    {nextPlannedSchedule.description || nextPlannedSchedule.category}
-                  </span>
-                  <span className="text-[10px] font-bold text-amber-500 whitespace-nowrap">
-                    Rs. {formatCompact(nextPlannedSchedule.amount)}
-                  </span>
-                </div>
-              ) : (
-                <div className="text-[10px] text-gray-600 font-bold uppercase tracking-widest text-center">No upcoming</div>
-              )}
+            <h2 className="text-2xl font-black text-white relative z-10">
+              <span className="text-sm text-gray-500">Rs.</span> {formatCompact(todayExpenses)}
+            </h2>
+            <div className="flex items-center gap-1 text-[9px] text-gray-500 font-bold uppercase relative z-10 tracking-widest mt-1 pt-1 border-t border-gray-800/50">
+               <span>Yesterday: Rs. {formatCompact(yesterdayExpenses)}</span>
             </div>
           </motion.div>
 
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="bg-[#0b1120] p-4 md:p-5 rounded-[1.25rem] border border-gray-800/80 shadow-xl relative overflow-hidden group transition-all duration-500 flex flex-col items-center justify-center min-h-[100px] h-full"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full blur-[60px] group-hover:bg-blue-500/30 transition-all duration-700 pointer-events-none"></div>
-            
-            <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex-shrink-0 w-8 h-8 rounded-xl border border-gray-700/50 bg-gray-800/30 flex items-center justify-center group-hover:border-blue-500/50 transition-all duration-500 z-10 shadow-inner">
-              <Handshake className="w-4 h-4 text-blue-400 drop-shadow-md" />
+          {/* Today Income */}
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.2 }} className="bg-gradient-to-br from-[#0f172a] to-[#020617] p-4 rounded-2xl border border-gray-800/80 shadow-xl relative overflow-hidden h-28 flex flex-col justify-center hover:-translate-y-1 hover:shadow-2xl hover:border-gray-700/50 transition-all duration-300">
+            <div className="absolute top-0 right-0 w-[100px] h-[100px] bg-emerald-600/10 rounded-full blur-[40px] mix-blend-screen pointer-events-none"></div>
+            <div className="flex justify-between items-start mb-1.5 relative z-10">
+              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> Today Income
+              </p>
+              <button onClick={async () => { await handleSyncPOS(); handleRefresh(); }} disabled={isSyncing} className="p-1 bg-gray-800/80 rounded-md hover:bg-gray-700 transition-colors group">
+                <RefreshCw className={`w-3.5 h-3.5 text-gray-400 group-hover:text-white ${isSyncing ? 'animate-spin' : ''}`} />
+              </button>
             </div>
-            
-            <div className="w-full flex items-center justify-center gap-5 sm:gap-8 z-10 mt-3">
-              <div className="flex flex-col items-center text-center">
-                <span className="text-[10px] uppercase text-gray-400 font-bold tracking-widest mb-1 truncate">Total Pending</span>
-                <h2 title={`Rs. ${formatLKR(totalPendingLent)}`} className="text-lg sm:text-xl font-black text-white tracking-tight flex items-baseline gap-1">
-                  <span className="text-[11px] font-bold text-gray-500">Rs.</span>{formatCompact(totalPendingLent)}
-                </h2>
-              </div>
-              
-              <div className="w-px h-8 bg-gray-700/50"></div>
-              
-              <div className="flex flex-col items-center text-center">
-                <span className="text-[10px] uppercase text-gray-400 font-bold tracking-widest mb-1 truncate">This Month</span>
-                <h2 title={`Rs. ${formatLKR(thisMonthLentTotal)}`} className="text-lg sm:text-xl font-black text-blue-400 tracking-tight flex items-baseline gap-1">
-                  <span className="text-[11px] font-bold text-blue-600">Rs.</span>{formatCompact(thisMonthLentTotal)}
-                </h2>
+            <h2 className="text-2xl font-black text-white relative z-10">
+              <span className="text-sm text-gray-500">Rs.</span> {formatCompact(todayIncome)}
+            </h2>
+            <div className="flex items-center gap-1 text-[9px] text-gray-500 font-bold uppercase relative z-10 tracking-widest mt-1 pt-1 border-t border-gray-800/50">
+               <span>Yesterday: Rs. {formatCompact(yesterdayIncome)}</span>
+            </div>
+          </motion.div>
+
+          {/* Savings Balance */}
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.3 }} className="bg-gradient-to-br from-[#0f172a] to-[#020617] p-4 rounded-2xl border border-gray-800/80 shadow-xl relative overflow-hidden h-28 flex flex-col justify-center hover:-translate-y-1 hover:shadow-2xl hover:border-gray-700/50 transition-all duration-300">
+            <div className="absolute top-0 right-0 w-[100px] h-[100px] bg-pink-600/10 rounded-full blur-[40px] mix-blend-screen pointer-events-none"></div>
+            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5 relative z-10">
+              <PiggyBank className="w-3.5 h-3.5 text-pink-400" /> Savings Balance
+            </p>
+            <h2 className="text-2xl font-black text-white relative z-10 mb-1.5">
+              <span className="text-sm text-gray-500">Rs.</span> {formatCompact(totalSavings)}
+            </h2>
+            <div className="flex gap-3 text-[9px] text-gray-500 font-bold uppercase relative z-10 tracking-widest border-t border-gray-800 pt-1.5 mt-auto">
+               <span className="flex items-center gap-1" title="This Month Deposits"><TrendingUp className="w-2.5 h-2.5 text-emerald-400"/> {formatCompact(thisMonthSavingsDeposits)}</span>
+               <span className="flex items-center gap-1" title="This Month Withdrawals"><TrendingDown className="w-2.5 h-2.5 text-rose-400"/> {formatCompact(thisMonthSavingsWithdrawals)}</span>
+            </div>
+          </motion.div>
+
+          {/* Total Lent */}
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.4 }} className="bg-gradient-to-br from-[#0f172a] to-[#020617] p-4 rounded-2xl border border-gray-800/80 shadow-xl relative overflow-hidden h-28 flex flex-col justify-center hover:-translate-y-1 hover:shadow-2xl hover:border-gray-700/50 transition-all duration-300">
+            <div className="absolute top-0 right-0 w-[100px] h-[100px] bg-blue-600/10 rounded-full blur-[40px] mix-blend-screen pointer-events-none"></div>
+            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5 relative z-10">
+              <Handshake className="w-3.5 h-3.5 text-blue-400" /> Total Lent
+            </p>
+            <div className="flex items-end justify-between relative z-10 mt-0.5">
+              <h2 className="text-2xl font-black text-white">
+                <span className="text-sm text-gray-500">Rs.</span> {formatCompact(totalPendingLent)}
+              </h2>
+              <div className="flex flex-col items-center justify-center px-2 py-0.5 bg-gray-800/50 rounded-md border border-gray-700/50">
+                <Users className="w-3 h-3 text-blue-400 mb-0.5" />
+                <span className="text-[8px] text-gray-400 font-bold uppercase tracking-widest">{uniqueLentPeopleCount} Ppl</span>
               </div>
             </div>
           </motion.div>
 
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
-            className="bg-[#0b1120] p-4 md:p-5 rounded-[1.25rem] border border-gray-800/80 shadow-xl relative overflow-hidden group transition-all duration-500 flex flex-col items-center justify-center min-h-[100px] h-full"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/20 rounded-full blur-[60px] group-hover:bg-purple-500/30 transition-all duration-700 pointer-events-none"></div>
-            
-            <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex-shrink-0 w-8 h-8 rounded-xl border border-gray-700/50 bg-gray-800/30 flex items-center justify-center group-hover:border-purple-500/50 transition-all duration-500 z-10 shadow-inner">
-              <Target className="w-4 h-4 text-purple-400 drop-shadow-md" />
-            </div>
-            
-            <div className="w-full flex items-center justify-center gap-5 sm:gap-8 z-10 mt-3">
-              <div className="flex flex-col items-center text-center">
-                <span className="text-[10px] uppercase text-gray-400 font-bold tracking-widest mb-1 truncate">Wishlist Plans</span>
-                <h2 className="text-lg sm:text-xl font-black text-white tracking-tight flex items-baseline gap-1">
-                  {wishlistPendingCount} <span className="text-[11px] font-bold text-gray-500">Items</span>
-                </h2>
-              </div>
-              
-              <div className="w-px h-8 bg-gray-700/50"></div>
-              
-              <div className="flex flex-col items-center text-center">
-                <span className="text-[10px] uppercase text-gray-400 font-bold tracking-widest mb-1 truncate">Total Est. Cost</span>
-                <h2 title={`Rs. ${formatLKR(totalWishlistEstCost)}`} className="text-lg sm:text-xl font-black text-purple-400 tracking-tight flex items-baseline gap-1">
-                  <span className="text-[11px] font-bold text-purple-600">Rs.</span>{formatCompact(totalWishlistEstCost)}
-                </h2>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-            className="bg-[#0b1120] p-4 md:p-5 rounded-[1.25rem] border border-gray-800/80 shadow-xl relative overflow-hidden group transition-all duration-500 flex flex-col items-center justify-center min-h-[100px] h-full"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-pink-500/20 rounded-full blur-[60px] group-hover:bg-pink-500/30 transition-all duration-700 pointer-events-none"></div>
-            
-            <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex-shrink-0 w-8 h-8 rounded-xl border border-gray-700/50 bg-gray-800/30 flex items-center justify-center group-hover:border-pink-500/50 transition-all duration-500 z-10 shadow-inner">
-              <PiggyBank className="w-4 h-4 text-pink-400 drop-shadow-md" />
-            </div>
-            
-            <div className="w-full flex flex-col items-center justify-center z-10 mt-1">
-              <div className="flex flex-col items-center text-center mb-1.5">
-                <span className="text-[11px] uppercase text-gray-400 font-bold tracking-widest mb-0.5 truncate">Total Savings</span>
-                <h2 title={`Rs. ${formatLKR(totalSavings)}`} className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-baseline gap-1">
-                  <span className="text-xs sm:text-sm font-bold text-gray-500">Rs.</span>{formatCompact(totalSavings)}
-                </h2>
-              </div>
-              
-              <div className="flex items-center gap-3 mt-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">In:</span>
-                  <span className="text-xs font-bold text-emerald-500">Rs. {formatCompact(thisMonthDeposit)}</span>
-                </div>
-                <div className="w-px h-3.5 bg-gray-700/50"></div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Out:</span>
-                  <span className="text-xs font-bold text-rose-500">Rs. {formatCompact(thisMonthWithdrawal)}</span>
-                </div>
+          {/* Wishlist */}
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.5 }} className="bg-gradient-to-br from-[#0f172a] to-[#020617] p-4 rounded-2xl border border-gray-800/80 shadow-xl relative overflow-hidden h-28 flex flex-col justify-center hover:-translate-y-1 hover:shadow-2xl hover:border-gray-700/50 transition-all duration-300">
+            <div className="absolute top-0 right-0 w-[100px] h-[100px] bg-purple-600/10 rounded-full blur-[40px] mix-blend-screen pointer-events-none"></div>
+            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5 relative z-10">
+              <Target className="w-3.5 h-3.5 text-purple-400" /> Wishlist
+            </p>
+            <div className="flex items-end justify-between relative z-10 mt-0.5">
+              <h2 className="text-2xl font-black text-white">
+                <span className="text-sm text-gray-500">Rs.</span> {formatCompact(totalWishlistEstCost)}
+              </h2>
+              <div className="flex flex-col items-center justify-center px-2 py-0.5 bg-gray-800/50 rounded-md border border-gray-700/50">
+                <Target className="w-3 h-3 text-purple-400 mb-0.5" />
+                <span className="text-[8px] text-gray-400 font-bold uppercase tracking-widest">{wishlistPendingCount} Itms</span>
               </div>
             </div>
           </motion.div>
 
         </div>
-      </div>
 
-      {/* 2. MIDDLE ROW: ANALYTICS CHARTS */}
-      <div className="w-full mt-8">
-        
-        {/* Cash Flow AreaChart */}
-        <div className="bg-gray-900/40 backdrop-blur-xl p-6 rounded-[1.5rem] border border-gray-800 hover:border-gray-700/80 shadow-xl w-full relative overflow-hidden group transition-all duration-500">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] group-hover:bg-blue-500/20 transition-all duration-700"></div>
+        {/* 2. VISUALIZATIONS GRID */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.1 }} className="lg:col-span-8 bg-[#0b1120] p-6 rounded-[1.5rem] border border-gray-800/80 shadow-xl relative overflow-hidden group">
+             <div className="flex justify-between items-center mb-6">
+               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Cash Flow</h3>
+               <div className="flex bg-gray-800/50 rounded-lg p-1">
+                 <button onClick={() => setCashFlowFilter('month')} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-colors ${cashFlowFilter === 'month' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500 hover:text-gray-300'}`}>This Month</button>
+                 <button onClick={() => setCashFlowFilter('lastMonth')} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-colors ${cashFlowFilter === 'lastMonth' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500 hover:text-gray-300'}`}>Last Month</button>
+               </div>
+             </div>
+             
+             {/* Chart Totals Summary */}
+             <div className="flex items-center gap-6 mb-6">
+               <div className="flex flex-col">
+                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Income</span>
+                 <span className="text-sm font-black text-emerald-400">Rs. {formatCompact(chartTotalIncome)}</span>
+               </div>
+               <div className="flex flex-col">
+                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Expense</span>
+                 <span className="text-sm font-black text-rose-400">Rs. {formatCompact(chartTotalExpense)}</span>
+               </div>
+               <div className="flex flex-col">
+                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Lent</span>
+                 <span className="text-sm font-black text-yellow-500">Rs. {formatCompact(chartTotalLent)}</span>
+               </div>
+               <div className="flex flex-col">
+                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Savings</span>
+                 <span className="text-sm font-black text-purple-400">Rs. {formatCompact(chartTotalSavings)}</span>
+               </div>
+             </div>
+
+             <div className="h-[250px] w-full">
+               <ResponsiveContainer width="100%" height="100%">
+                 <AreaChart data={cashFlowArray} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                   <defs>
+                     <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                       <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
+                       <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                     </linearGradient>
+                     <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                       <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4}/>
+                       <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                     </linearGradient>
+                   </defs>
+                   <XAxis dataKey="day" stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} />
+                   <YAxis stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} tickFormatter={val => formatCompact(val)} />
+                   <Tooltip content={<CustomAreaTooltip formatLKR={formatLKR} />} />
+                   
+                   <ReferenceLine y={1000} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'insideTopLeft', value: 'Limit: 1k', fill: '#ef4444', fontSize: 10, fontWeight: 'bold' }} />
+                   {todayReferenceX && cashFlowFilter === 'month' && (
+                     <ReferenceLine x={todayReferenceX} stroke="#3b82f6" strokeDasharray="3 3" label={{ position: 'insideTopRight', value: 'Today', fill: '#3b82f6', fontSize: 10, fontWeight: 'bold' }} />
+                   )}
+                   
+                   <Area type="monotone" dataKey="Lent" stroke="#eab308" strokeWidth={2} fillOpacity={0.1} fill="#eab308" />
+                   <Area type="monotone" dataKey="Savings" stroke="#a855f7" strokeWidth={2} fillOpacity={0.1} fill="#a855f7" />
+                   <Area type="monotone" dataKey="Income" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" />
+                   <Area type="monotone" dataKey="Expense" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" />
+                 </AreaChart>
+               </ResponsiveContainer>
+             </div>
+          </motion.div>
           
-          <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between mb-8 relative z-10 gap-6">
-            <div className="flex flex-col gap-3">
-              <h3 className="text-[13px] md:text-sm font-bold tracking-[0.15em] uppercase text-gray-200">
-                Cash Flow Overview <span className="text-gray-500">({cashFlowFilter === 'week' ? 'THIS WEEK' : (cashFlowFilter === 'lastMonth' ? 'LAST MONTH' : 'THIS MONTH')})</span>
-              </h3>
-              <div className="flex bg-[#0f172a] rounded-lg p-1 border border-gray-800/80 w-max shadow-inner">
-                <button 
-                  onClick={() => setCashFlowFilter('week')}
-                  className={`px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all ${cashFlowFilter === 'week' ? 'bg-[#064e3b] text-[#34d399]' : 'text-gray-500 hover:text-gray-300'}`}
-                >
-                  THIS WEEK
-                </button>
-                <button 
-                  onClick={() => setCashFlowFilter('month')}
-                  className={`px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all ${cashFlowFilter === 'month' ? 'bg-[#064e3b] text-[#34d399]' : 'text-gray-500 hover:text-gray-300'}`}
-                >
-                  THIS MONTH
-                </button>
-                <button 
-                  onClick={() => setCashFlowFilter('lastMonth')}
-                  className={`px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-md transition-all ${cashFlowFilter === 'lastMonth' ? 'bg-[#064e3b] text-[#34d399]' : 'text-gray-500 hover:text-gray-300'}`}
-                >
-                  LAST MONTH
-                </button>
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.2 }} className="lg:col-span-4 bg-[#0b1120] p-6 rounded-[1.5rem] border border-gray-800/80 shadow-xl relative overflow-hidden flex flex-col justify-center">
+             <div className="flex justify-between items-center w-full mb-6">
+               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                 <Activity className="w-4 h-4 text-purple-400" /> SUMMARY
+               </h3>
+             </div>
+             
+             <div className="w-full flex flex-col gap-6">
+               
+               {/* Today */}
+               <div className="w-full flex flex-col gap-2">
+                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Today</span>
+                 <div className="flex items-center gap-3">
+                   <div className="flex-1 h-2 bg-gray-800/60 rounded-full overflow-hidden border border-gray-700/30">
+                     <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full" style={{ width: `${(todayIncome / Math.max(todayIncome, todayExpenses, 1)) * 100}%` }}></div>
+                   </div>
+                   <span className="text-emerald-400 text-[10px] font-black w-12 text-right">{formatCompact(todayIncome)}</span>
+                 </div>
+                 <div className="flex items-center gap-3">
+                   <div className="flex-1 h-2 bg-gray-800/60 rounded-full overflow-hidden border border-gray-700/30">
+                     <div className="h-full bg-gradient-to-r from-red-600 to-red-400 rounded-full" style={{ width: `${(todayExpenses / Math.max(todayIncome, todayExpenses, 1)) * 100}%` }}></div>
+                   </div>
+                   <span className="text-red-400 text-[10px] font-black w-12 text-right">{formatCompact(todayExpenses)}</span>
+                 </div>
+               </div>
+
+               {/* This Week */}
+               <div className="w-full flex flex-col gap-2">
+                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">This Week</span>
+                 <div className="flex items-center gap-3">
+                   <div className="flex-1 h-2 bg-gray-800/60 rounded-full overflow-hidden border border-gray-700/30">
+                     <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full" style={{ width: `${(liveThisWeekIncome / Math.max(liveThisWeekIncome, liveThisWeekExpense, 1)) * 100}%` }}></div>
+                   </div>
+                   <span className="text-emerald-400 text-[10px] font-black w-12 text-right">{formatCompact(liveThisWeekIncome)}</span>
+                 </div>
+                 <div className="flex items-center gap-3">
+                   <div className="flex-1 h-2 bg-gray-800/60 rounded-full overflow-hidden border border-gray-700/30">
+                     <div className="h-full bg-gradient-to-r from-red-600 to-red-400 rounded-full" style={{ width: `${(liveThisWeekExpense / Math.max(liveThisWeekIncome, liveThisWeekExpense, 1)) * 100}%` }}></div>
+                   </div>
+                   <span className="text-red-400 text-[10px] font-black w-12 text-right">{formatCompact(liveThisWeekExpense)}</span>
+                 </div>
+               </div>
+
+               {/* This Month */}
+               <div className="w-full flex flex-col gap-2">
+                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">This Month</span>
+                 <div className="flex items-center gap-3">
+                   <div className="flex-1 h-2 bg-gray-800/60 rounded-full overflow-hidden border border-gray-700/30">
+                     <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full" style={{ width: `${(liveThisMonthIncome / Math.max(liveThisMonthIncome, thisMonthExpenses, 1)) * 100}%` }}></div>
+                   </div>
+                   <span className="text-emerald-400 text-[10px] font-black w-12 text-right">{formatCompact(liveThisMonthIncome)}</span>
+                 </div>
+                 <div className="flex items-center gap-3">
+                   <div className="flex-1 h-2 bg-gray-800/60 rounded-full overflow-hidden border border-gray-700/30">
+                     <div className="h-full bg-gradient-to-r from-red-600 to-red-400 rounded-full" style={{ width: `${(thisMonthExpenses / Math.max(liveThisMonthIncome, thisMonthExpenses, 1)) * 100}%` }}></div>
+                   </div>
+                   <span className="text-red-400 text-[10px] font-black w-12 text-right">{formatCompact(thisMonthExpenses)}</span>
+                 </div>
+               </div>
+
+               {/* This Year */}
+               <div className="w-full flex flex-col gap-2">
+                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">This Year</span>
+                 <div className="flex items-center gap-3">
+                   <div className="flex-1 h-2 bg-gray-800/60 rounded-full overflow-hidden border border-gray-700/30">
+                     <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full" style={{ width: `${(thisYearIncome / Math.max(thisYearIncome, thisYearExpenses, 1)) * 100}%` }}></div>
+                   </div>
+                   <span className="text-emerald-400 text-[10px] font-black w-12 text-right">{formatCompact(thisYearIncome)}</span>
+                 </div>
+                 <div className="flex items-center gap-3">
+                   <div className="flex-1 h-2 bg-gray-800/60 rounded-full overflow-hidden border border-gray-700/30">
+                     <div className="h-full bg-gradient-to-r from-red-600 to-red-400 rounded-full" style={{ width: `${(thisYearExpenses / Math.max(thisYearIncome, thisYearExpenses, 1)) * 100}%` }}></div>
+                   </div>
+                   <span className="text-red-400 text-[10px] font-black w-12 text-right">{formatCompact(thisYearExpenses)}</span>
+                 </div>
+               </div>
+
+             </div>
+           </motion.div>
+        </div>
+
+        {/* 3. LENT & SAVINGS CHARTS */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Lent Money Chart */}
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.3 }} className="bg-[#0b1120] p-6 rounded-[1.5rem] border border-gray-800/80 shadow-xl flex flex-col h-64">
+            <div className="flex justify-between items-start mb-2">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-blue-500/10 rounded-lg"><Handshake className="w-4 h-4 text-blue-400"/></div>
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Lent Money Trend</span>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="text-xl font-black text-blue-400">Rs. {formatCompact(liveTotalPendingLent)}</span>
+                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Total Pending</span>
               </div>
             </div>
-
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-4 bg-[#0f172a]/80 py-3 px-5 rounded-xl border border-gray-800/60 shadow-lg w-full xl:w-auto overflow-x-auto hide-scrollbar">
-              <div className="flex flex-col">
-                <span className="text-[9px] md:text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Total Income</span>
-                <span className="text-sm md:text-base font-black text-[#34d399] whitespace-nowrap">Rs {formatLKR(displayedIncome)}</span>
-              </div>
-              <div className="w-px h-8 bg-gray-700/50 hidden sm:block"></div>
-              <div className="flex flex-col">
-                <span className="text-[9px] md:text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Total Expenses</span>
-                <span className="text-sm md:text-base font-black text-rose-400 whitespace-nowrap">Rs {formatLKR(displayedExpense)}</span>
-              </div>
-              <div className="w-px h-8 bg-gray-700/50 hidden sm:block"></div>
-              <div className="flex flex-col">
-                <span className="text-[9px] md:text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Total Lent</span>
-                <span className="text-sm md:text-base font-black text-blue-400 whitespace-nowrap">Rs {formatLKR(displayedLent)}</span>
-              </div>
-              <div className="w-px h-8 bg-gray-700/50 hidden md:block"></div>
-              <div className="flex flex-col">
-                <span className="text-[9px] md:text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Total Planned</span>
-                <span className="text-sm md:text-base font-black text-amber-500 whitespace-nowrap">Rs {formatLKR(displayedPlanned)}</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="h-[350px] w-full relative z-10">
-            {cashFlowArray.length > 0 ? (
+            <div className="flex-1 w-full min-h-0 mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={cashFlowArray} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <AreaChart data={cashFlowArray} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
+                  <XAxis dataKey="date" stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} minTickGap={20} />
+                  <YAxis stroke="#4b5563" fontSize={10} tickFormatter={(val) => formatCompact(val)} tickLine={false} axisLine={false} width={35} />
+                  <ReferenceLine x={todayFormattedStr} stroke="#f59e0b" strokeDasharray="3 3" />
                   <defs>
-                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorLent" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="colorLentChart" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
                       <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                     </linearGradient>
-                    <linearGradient id="colorPlanned" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                    <linearGradient id="colorReceivedChart" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="day" stroke="#4b5563" fontSize={11} fontWeight={600} tickLine={false} axisLine={false} dy={10} minTickGap={5} />
-                  <YAxis stroke="#4b5563" fontSize={11} fontWeight={600} tickLine={false} axisLine={false} tickFormatter={(val) => val === 0 ? 'Rs0' : val} />
-                  <Tooltip content={<CustomAreaTooltip formatLKR={formatLKR} />} cursor={{ stroke: '#4b5563', strokeWidth: 1, strokeDasharray: '5 5' }} />
-                  {todayReferenceX && cashFlowFilter !== 'lastMonth' && (
-                    <ReferenceLine 
-                      x={todayReferenceX} 
-                      stroke="#3b82f6" 
-                      strokeWidth={1.5}
-                      strokeDasharray="4 4" 
-                      label={{ position: 'insideTopLeft', value: 'TODAY', fill: '#60a5fa', fontSize: 9, fontWeight: 'bold' }} 
-                    />
-                  )}
-                  <Area type="monotone" dataKey="Income" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }}>
-                    <LabelList dataKey="Income" content={(props) => <CustomAreaMaxLabel {...props} maxValue={Math.max(...cashFlowArray.map(d => d.Income || 0))} color="#10b981" formatCompact={formatCompact} />} />
-                  </Area>
-                  <Area type="monotone" dataKey="Expense" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" activeDot={{ r: 6, strokeWidth: 0, fill: '#f43f5e' }}>
-                    <LabelList dataKey="Expense" content={(props) => <CustomAreaMaxLabel {...props} maxValue={Math.max(...cashFlowArray.map(d => d.Expense || 0))} color="#f43f5e" formatCompact={formatCompact} />} />
-                  </Area>
-                  <Area type="monotone" dataKey="Lent" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorLent)" activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }}>
-                    <LabelList dataKey="Lent" content={(props) => <CustomAreaMaxLabel {...props} maxValue={Math.max(...cashFlowArray.map(d => d.Lent || 0))} color="#3b82f6" formatCompact={formatCompact} />} />
-                  </Area>
-                  <Area type="monotone" dataKey="Planned" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorPlanned)" activeDot={{ r: 6, strokeWidth: 0, fill: '#f59e0b' }}>
-                    <LabelList dataKey="Planned" content={(props) => <CustomAreaMaxLabel {...props} maxValue={Math.max(...cashFlowArray.map(d => d.Planned || 0))} color="#f59e0b" formatCompact={formatCompact} />} />
-                  </Area>
+                  <Tooltip content={<CustomAreaTooltip formatLKR={formatLKR} />} />
+                  <Area type="monotone" dataKey="Lent" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorLentChart)" />
+                  <Area type="monotone" dataKey="Received" stroke="#a855f7" strokeWidth={3} fillOpacity={1} fill="url(#colorReceivedChart)" />
                 </AreaChart>
               </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-gray-500 text-sm bg-gray-900/30 rounded-2xl border border-dashed border-gray-700">
-                <Activity className="w-12 h-12 text-gray-700 mb-4" />
-                <p>Not enough data for cash flow trend.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+            </div>
+          </motion.div>
 
-      {/* 3. BOTTOM ROW: INSIGHTS & ACTIVITY */}
-      
-      {/* EXPENSE BREAKDOWN */}
-      <div className="w-full mb-10 mt-6 relative z-10 bg-gray-900/60 backdrop-blur-2xl p-6 md:p-8 rounded-[1.75rem] border border-gray-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.12)] overflow-hidden group hover:border-indigo-500/30 transition-all duration-700">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] group-hover:bg-indigo-500/20 transition-all duration-1000 pointer-events-none -translate-y-1/2 translate-x-1/3"></div>
-        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-cyan-500/10 rounded-full blur-[100px] group-hover:bg-cyan-500/20 transition-all duration-1000 pointer-events-none translate-y-1/3 -translate-x-1/4"></div>
-        
-        <div className="flex items-center gap-4 mb-8 pl-2 relative z-10">
-          <div className="p-2.5 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl border border-indigo-500/30 shadow-inner group-hover:scale-110 transition-transform duration-500">
-            <PieChartIcon className="w-5 h-5 text-indigo-400 drop-shadow-md" />
-          </div>
-          <h3 className="text-sm md:text-base font-black tracking-[0.2em] uppercase bg-clip-text text-transparent bg-gradient-to-r from-gray-100 via-gray-200 to-gray-400 drop-shadow-sm">
-            Expense Breakdown <span className="text-[10px] md:text-xs font-bold tracking-widest text-indigo-400/80 ml-2">(THIS MONTH)</span>
-          </h3>
+          {/* Savings Chart */}
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.4 }} className="bg-[#0b1120] p-6 rounded-[1.5rem] border border-gray-800/80 shadow-xl flex flex-col h-64">
+            <div className="flex justify-between items-start mb-2">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-500/10 rounded-lg"><PiggyBank className="w-4 h-4 text-emerald-400"/></div>
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Savings Trend</span>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="text-xl font-black text-emerald-400">Rs. {formatCompact(liveTotalSavings)}</span>
+                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Total Balance</span>
+              </div>
+            </div>
+            <div className="flex-1 w-full min-h-0 mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={cashFlowArray} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
+                  <XAxis dataKey="date" stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} minTickGap={20} />
+                  <YAxis stroke="#4b5563" fontSize={10} tickFormatter={(val) => formatCompact(val)} tickLine={false} axisLine={false} width={35} />
+                  <ReferenceLine x={todayFormattedStr} stroke="#f59e0b" strokeDasharray="3 3" />
+                  <defs>
+                    <linearGradient id="colorDepositChart" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorWithdrawalChart" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <Tooltip content={<CustomAreaTooltip formatLKR={formatLKR} />} />
+                  <Area type="monotone" dataKey="Deposit" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorDepositChart)" />
+                  <Area type="monotone" dataKey="Withdrawal" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorWithdrawalChart)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </motion.div>
+
         </div>
-        
-        {advancedCategoryCards.length > 0 ? (
-          (() => {
-            const stackedBarData = advancedCategoryCards.map(cat => {
-              const dataObj = { category: cat.category, total: cat.total };
-              cat.subcategories.forEach(sub => {
-                dataObj[sub.name] = sub.value;
-              });
-              
-              dataObj.lastMonthTotal = comparisonArray
-                .filter(row => row.category === cat.category)
-                .reduce((acc, curr) => acc + curr.lastMonth, 0);
-                
-              return dataObj;
+
+        {/* 4. EXPENSE BREAKDOWN COMPARISON */}
+        {(() => {
+          const categoryGroups = comparisonArray.reduce((acc, curr) => {
+            if (!acc[curr.category]) {
+              acc[curr.category] = { category: curr.category, thisMonth: 0, lastMonth: 0, subcategories: [] };
+            }
+            acc[curr.category].thisMonth += curr.thisMonth;
+            acc[curr.category].lastMonth += curr.lastMonth;
+            if (curr.subcategory !== 'Other') {
+              acc[curr.category].subcategories.push(curr);
+            }
+            return acc;
+          }, {});
+          const groupedComparisonArray = Object.values(categoryGroups).sort((a, b) => b.thisMonth - a.thisMonth);
+
+          const uniqueSubcategories = Array.from(new Set(comparisonArray.map(c => c.subcategory).filter(s => s !== 'Other')));
+          uniqueSubcategories.push('Other'); // Keep 'Other' at the end
+
+          const CHART_COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#f59e0b', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9'];
+
+          const subcatColorMap = {};
+          uniqueSubcategories.forEach((subcat, i) => {
+            subcatColorMap[subcat] = CHART_COLORS[i % CHART_COLORS.length];
+          });
+
+          const chartData = groupedComparisonArray.map(group => {
+            const row = { category: group.category, lastMonth: group.lastMonth };
+            let subcatSum = 0;
+            group.subcategories.forEach(sub => {
+              row[`${sub.subcategory}_thisMonth`] = sub.thisMonth;
+              subcatSum += sub.thisMonth;
             });
-            
-            const allSubcategories = Array.from(new Set(
-              advancedCategoryCards.flatMap(cat => cat.subcategories.map(sub => sub.name))
-            ));
-            
-            // Calculate a dynamic height based on the number of categories to prevent excessive spacing
-            const chartHeight = Math.max(250, stackedBarData.length * 45 + 100);
-            
-            return (
-              <div className="flex flex-col gap-2">
-                <div 
-                  className="w-full relative z-10 bg-[#0f172a]/40 rounded-[1.25rem] border border-gray-700/30 p-4 sm:p-6 mt-4 shadow-inner"
-                  style={{ height: `${chartHeight}px` }}
-                >
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      layout="vertical"
-                      data={stackedBarData}
-                      margin={{ top: 20, right: 30, left: 30, bottom: 5 }}
-                      barSize={14}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
-                      <XAxis type="number" stroke="#6b7280" fontSize={10} tickFormatter={(val) => `Rs ${formatCompact(val)}`} axisLine={false} tickLine={false} />
-                      <YAxis dataKey="category" type="category" stroke="#d1d5db" fontSize={11} fontWeight={700} tickLine={false} axisLine={false} width={80} />
-                      <Tooltip 
-                        cursor={{ fill: 'rgba(255,255,255,0.03)' }} 
-                        contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.95)', backdropFilter: 'blur(20px)', borderRadius: '1rem', border: '1px solid rgba(71, 85, 105, 0.4)', padding: '12px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)' }} 
-                        itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
-                        formatter={(value) => `Rs. ${formatCompact(value)}`} 
-                      />
-                      <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '20px', fontWeight: 'bold', color: '#9ca3af' }} iconType="circle" iconSize={8} />
-                      <Bar dataKey="lastMonthTotal" name="Last Month" fill="#4b5563" radius={[2, 2, 2, 2]} barSize={10} />
-                      {allSubcategories.map((subName, idx) => {
-                        const isLast = idx === allSubcategories.length - 1;
+            const otherAmount = group.thisMonth - subcatSum;
+            if (otherAmount > 0) {
+              row['Other_thisMonth'] = (row['Other_thisMonth'] || 0) + otherAmount;
+            }
+            return row;
+          });
+
+          return (
+            <div className="bg-[#0b1120] p-6 rounded-[1.5rem] border border-gray-800/80 shadow-xl mt-6 flex flex-col">
+              <div className="flex justify-between items-center w-full mb-6">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <PieChartIcon className="w-4 h-4 text-emerald-500" /> EXPENSE BREAKDOWN COMPARISON
+                </h3>
+                <div className="flex gap-4 text-[10px] font-bold uppercase tracking-wider">
+                  <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500"></div>This Month</div>
+                  <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-slate-500"></div>Last Month</div>
+                </div>
+              </div>
+              
+              {/* Chart */}
+              <div className="w-full h-[300px] mb-8 relative">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#1f2937" />
+                    <XAxis type="number" stroke="#4b5563" fontSize={10} tickFormatter={(val) => `Rs${formatCompact(val)}`} />
+                    <YAxis dataKey="category" type="category" stroke="#9ca3af" fontSize={10} width={120} tickLine={false} axisLine={false} />
+                    <Tooltip cursor={{fill: '#1f2937', opacity: 0.4}} content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
                         return (
-                          <Bar key={subName} dataKey={subName} stackId="a" fill={COLORS[idx % COLORS.length]} radius={[2, 2, 2, 2]}>
-                            {isLast && (
-                              <LabelList dataKey={subName} content={(props) => <CustomBarMaxLabel {...props} data={stackedBarData} maxTotal={Math.max(...stackedBarData.map(d => d.total || 0))} formatCompact={formatCompact} />} />
-                            )}
-                          </Bar>
+                          <div className="bg-gray-900/90 border border-gray-700 p-3 rounded-lg shadow-xl z-50">
+                            <p className="text-gray-300 text-xs font-bold uppercase mb-2">{label}</p>
+                            {payload.map((entry, index) => {
+                              const name = entry.name.replace('_thisMonth', '');
+                              return (
+                                <div key={index} className="flex items-center gap-2 text-[11px] font-bold mb-1">
+                                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }}></div>
+                                  <span className="text-gray-300">{name}: <span className="text-white">Rs. {formatLKR(entry.value)}</span></span>
+                                </div>
+                              );
+                            })}
+                          </div>
                         );
-                      })}
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                      }
+                      return null;
+                    }} />
+                    <Bar dataKey="lastMonth" fill="#4b5563" name="Last Month" radius={[0, 4, 4, 0]} barSize={8} />
+                    {uniqueSubcategories.map((subcat) => (
+                      <Bar 
+                        key={subcat} 
+                        dataKey={`${subcat}_thisMonth`} 
+                        stackId="thisMonth" 
+                        fill={subcatColorMap[subcat]} 
+                        name={`${subcat}_thisMonth`} 
+                        barSize={8} 
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
 
-                <div className="w-full mt-4 flex flex-col gap-3">
-                  <div className="flex items-center gap-3 px-2">
-                    <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-indigo-400 drop-shadow-sm">Comparison Details</span>
-                    <div className="flex-1 h-px bg-gray-700/50"></div>
-                  </div>
+              {/* Table Header */}
+              <div className="grid grid-cols-12 gap-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider pb-3 border-b border-gray-800">
+                <div className="col-span-6 pl-2">Category</div>
+                <div className="col-span-2 text-right">This Month</div>
+                <div className="col-span-2 text-right">Last Month</div>
+                <div className="col-span-2 text-right">Growth</div>
+              </div>
+              
+              {/* Table Body */}
+              <div className="flex flex-col gap-1 mt-2">
+                {groupedComparisonArray.map(group => {
+                  const growth = group.lastMonth === 0 
+                    ? (group.thisMonth > 0 ? 100 : 0)
+                    : ((group.thisMonth - group.lastMonth) / group.lastMonth) * 100;
                   
-                  <div className="w-full relative z-10 bg-[#0f172a]/40 rounded-[1.25rem] border border-gray-700/30 overflow-hidden shadow-inner">
-                    <div className="overflow-x-auto hide-scrollbar">
-                      <table className="w-full text-left text-sm whitespace-nowrap">
-                          <thead className="bg-gray-800/50 text-gray-400 text-[10px] uppercase tracking-wider">
-                            <tr>
-                              <th className="px-4 py-3 font-bold">Category & Subcategory</th>
-                              <th className="px-4 py-3 font-bold text-right">Last Month</th>
-                              <th className="px-4 py-3 font-bold text-right">This Month</th>
-                              <th className="px-4 py-3 font-bold text-right">Difference</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-700/30 text-gray-300">
-                            {(() => {
-                              const grouped = {};
-                              comparisonArray.forEach(row => {
-                                if (!grouped[row.category]) {
-                                  grouped[row.category] = {
-                                    category: row.category,
-                                    thisMonthTotal: 0,
-                                    lastMonthTotal: 0,
-                                    subcategories: []
-                                  };
-                                }
-                                grouped[row.category].thisMonthTotal += row.thisMonth;
-                                grouped[row.category].lastMonthTotal += row.lastMonth;
-                                grouped[row.category].subcategories.push(row);
-                              });
-                              
-                              const groupedArray = Object.values(grouped).sort((a, b) => b.thisMonthTotal - a.thisMonthTotal);
-
-                              if (groupedArray.length === 0) {
-                                return (
-                                  <tr>
-                                    <td colSpan="4" className="px-4 py-8 text-center text-gray-500 text-xs">No expense data found for comparison.</td>
-                                  </tr>
-                                )
-                              }
-
-                              return groupedArray.map((group, gIdx) => {
-                                const diff = group.thisMonthTotal - group.lastMonthTotal;
-                                const isLess = group.thisMonthTotal < group.lastMonthTotal;
-                                const isMore = group.thisMonthTotal > group.lastMonthTotal;
-                                const isExpanded = expandedCategories[group.category] || false;
-                                
-                                return (
-                                  <React.Fragment key={gIdx}>
-                                    <tr 
-                                      className="hover:bg-gray-800/50 transition-colors cursor-pointer group/row"
-                                      onClick={() => setExpandedCategories(prev => ({ ...prev, [group.category]: !prev[group.category] }))}
-                                    >
-                                      <td className="px-4 py-3">
-                                        <div className="flex items-center gap-2.5">
-                                          <div className={`transform transition-transform duration-300 text-gray-500 group-hover/row:text-indigo-400 ${isExpanded ? 'rotate-90' : ''}`}>
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                                          </div>
-                                          <span className="font-black text-gray-200">{group.category}</span>
-                                        </div>
-                                      </td>
-                                      <td className="px-4 py-3 text-right font-bold text-gray-400">Rs {formatCompact(group.lastMonthTotal)}</td>
-                                      <td className="px-4 py-3 text-right font-black text-white">Rs {formatCompact(group.thisMonthTotal)}</td>
-                                      <td className="px-4 py-3 text-right">
-                                        {diff === 0 ? (
-                                          <span className="text-gray-500 font-medium">-</span>
-                                        ) : (
-                                          <div className={`flex items-center justify-end gap-1 font-bold ${isLess ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                            {isLess ? <TrendingDown className="w-3.5 h-3.5" /> : <TrendingUp className="w-3.5 h-3.5" />}
-                                            Rs {formatCompact(Math.abs(diff))}
-                                          </div>
-                                        )}
-                                      </td>
-                                    </tr>
-                                    {isExpanded && group.subcategories.map((sub, sIdx) => {
-                                      const subDiff = sub.thisMonth - sub.lastMonth;
-                                      const subIsLess = sub.thisMonth < sub.lastMonth;
-                                      
-                                      return (
-                                        <tr key={`${gIdx}-${sIdx}`} className="bg-gray-900/30 hover:bg-gray-800/30 transition-colors">
-                                          <td className="px-4 py-2.5 pl-[38px]">
-                                            <span className="text-[11px] font-medium text-gray-400 flex items-center gap-2">
-                                              <div className="w-1 h-1 rounded-full bg-gray-600"></div>
-                                              {sub.subcategory}
-                                            </span>
-                                          </td>
-                                          <td className="px-4 py-2.5 text-right font-medium text-xs text-gray-500">Rs {formatCompact(sub.lastMonth)}</td>
-                                          <td className="px-4 py-2.5 text-right font-bold text-xs text-gray-300">Rs {formatCompact(sub.thisMonth)}</td>
-                                          <td className="px-4 py-2.5 text-right text-xs">
-                                            {subDiff === 0 ? (
-                                              <span className="text-gray-600">-</span>
-                                            ) : (
-                                              <div className={`flex items-center justify-end gap-1 font-bold ${subIsLess ? 'text-emerald-500/80' : 'text-rose-500/80'}`}>
-                                                {subIsLess ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
-                                                Rs {formatCompact(Math.abs(subDiff))}
-                                              </div>
-                                            )}
-                                          </td>
-                                        </tr>
-                                      )
-                                    })}
-                                  </React.Fragment>
-                                )
-                              })
-                            })()}
-                          </tbody>
-                        </table>
+                  const isExpanded = expandedCategories[group.category];
+                  
+                  return (
+                    <div key={group.category} className="flex flex-col">
+                      <div 
+                        className="grid grid-cols-12 gap-4 py-3 items-center border-b border-gray-800/50 hover:bg-gray-800/20 cursor-pointer transition-colors"
+                        onClick={() => toggleCategory(group.category)}
+                      >
+                        <div className="col-span-6 flex items-center gap-2 text-xs font-bold text-gray-200">
+                          {group.subcategories.length > 0 ? (
+                            <span className="text-gray-500 text-lg leading-none w-4 text-center">{isExpanded ? '˅' : '›'}</span>
+                          ) : <span className="w-4"></span>}
+                          {group.category}
+                        </div>
+                        <div className="col-span-2 text-right text-xs font-bold text-emerald-400">Rs {formatCompact(group.thisMonth)}</div>
+                        <div className="col-span-2 text-right text-xs font-bold text-gray-400">Rs {formatCompact(group.lastMonth)}</div>
+                        <div className={`col-span-2 text-right text-xs font-bold ${growth > 0 ? 'text-rose-400' : growth < 0 ? 'text-emerald-400' : 'text-gray-500'}`}>
+                          {growth > 0 ? '+' : ''}{growth.toFixed(1)}%
+                        </div>
                       </div>
+                      
+                      {isExpanded && group.subcategories.length > 0 && (
+                        <div className="flex flex-col pl-6 bg-gray-900/20 py-2 border-b border-gray-800/50">
+                          {group.subcategories.map(sub => {
+                            const subGrowth = sub.lastMonth === 0 
+                              ? (sub.thisMonth > 0 ? 100 : 0)
+                              : ((sub.thisMonth - sub.lastMonth) / sub.lastMonth) * 100;
+                            return (
+                              <div key={sub.subcategory} className="grid grid-cols-12 gap-4 py-2 items-center">
+                                <div className="col-span-6 flex items-center gap-2 text-[11px] font-semibold text-gray-400 pl-4 border-l-2 border-gray-700">
+                                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: subcatColorMap[sub.subcategory] }}></div>
+                                  {sub.subcategory}
+                                </div>
+                                <div className="col-span-2 text-right text-[11px] font-bold text-emerald-500">Rs {formatCompact(sub.thisMonth)}</div>
+                                <div className="col-span-2 text-right text-[11px] font-bold text-gray-500">Rs {formatCompact(sub.lastMonth)}</div>
+                                <div className={`col-span-2 text-right text-[11px] font-bold ${subGrowth > 0 ? 'text-rose-500' : subGrowth < 0 ? 'text-emerald-500' : 'text-gray-600'}`}>
+                                  {subGrowth > 0 ? '+' : ''}{subGrowth.toFixed(1)}%
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                </div>
+                  );
+                })}
               </div>
-            );
-          })()
-        ) : (
-           <div className="w-full flex flex-col items-center justify-center text-gray-500 text-sm bg-gray-900/30 rounded-2xl border border-dashed border-gray-700 py-12">
-             <PieChartIcon className="w-12 h-12 text-gray-700 mb-4" />
-             <p>No expenses this month.</p>
-           </div>
-        )}
-      </div>
-      
-      <div className="grid grid-cols-1 gap-6 pb-4">
-        
-        {/* Yearly Overview Chart */}
-        <div className="bg-gray-900/40 backdrop-blur-xl p-6 rounded-[1.5rem] border border-gray-800 hover:border-gray-700/80 shadow-xl relative overflow-hidden group transition-all duration-500">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-[80px] group-hover:bg-cyan-500/20 transition-all duration-700"></div>
-          
-          <div className="flex items-center justify-between mb-8 relative z-10">
-            <h3 className="text-xl font-bold flex items-center gap-3 text-white">
-              <div className="p-2 bg-cyan-500/10 rounded-xl">
-                <Activity className="w-5 h-5 text-cyan-400" />
+            </div>
+          );
+        })()}
+
+        {/* 5. YEARLY OVERVIEW BAR CHART */}
+        <div className="mt-6">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.6 }} className="bg-[#0b1120] p-6 rounded-[1.5rem] border border-gray-800/80 shadow-xl flex flex-col h-80">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-indigo-500/10 rounded-lg"><Activity className="w-4 h-4 text-indigo-400"/></div>
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Yearly Overview ({currentYear})</span>
               </div>
-              Yearly Overview
-            </h3>
-            <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 bg-cyan-500/10 px-4 py-1.5 rounded-full border border-cyan-500/20">This Year</span>
-          </div>
-          
-          <div className="h-[220px] w-full relative z-10">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={yearlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <XAxis dataKey="month" stroke="#4b5563" fontSize={11} fontWeight={600} tickLine={false} axisLine={false} dy={10} />
-                <YAxis stroke="#4b5563" fontSize={11} fontWeight={600} tickLine={false} axisLine={false} tickFormatter={(val) => val === 0 ? 'Rs0' : formatCompact(val)} />
-                <Tooltip 
-                  cursor={{fill: 'rgba(255,255,255,0.05)'}} 
-                  contentStyle={{ backgroundColor: 'rgba(17, 24, 39, 0.8)', backdropFilter: 'blur(16px)', borderRadius: '1rem', border: '1px solid rgba(55, 65, 81, 0.5)' }} 
-                  itemStyle={{ color: '#fff', fontWeight: 'bold' }} 
-                  formatter={(value) => `Rs. ${formatLKR(value)}`} 
-                />
-                <Legend wrapperStyle={{ fontSize: '11px', fontWeight: '600', color: '#9ca3af', paddingTop: '20px' }} />
-                <Bar dataKey="Income" fill="#10b981" radius={[4, 4, 0, 0]} barSize={8} />
-                <Bar dataKey="Expense" fill="#f43f5e" radius={[4, 4, 0, 0]} barSize={8} />
-                <Bar dataKey="Lent" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={8} />
-                <Bar dataKey="Net Savings" fill="#d946ef" radius={[4, 4, 0, 0]} barSize={8} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+            </div>
+            <div className="flex-1 w-full min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={yearlyOverviewData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
+                  <XAxis dataKey="month" stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#4b5563" fontSize={10} tickFormatter={(val) => formatCompact(val)} tickLine={false} axisLine={false} width={40} />
+                  <Tooltip cursor={{fill: '#1f2937', opacity: 0.4}} contentStyle={{ backgroundColor: '#111827', borderColor: '#374151', borderRadius: '0.75rem' }} itemStyle={{ fontWeight: 'bold' }} />
+                  <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} iconType="circle" />
+                  <Bar dataKey="Income" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Expense" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Lent" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Savings" fill="#a855f7" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </motion.div>
         </div>
-      </div>
-
-      {/* 4. SAVINGS TREND */}
-      <div className="grid grid-cols-1 gap-6 pb-4 mt-6">
-        <div className="bg-gray-900/40 backdrop-blur-xl p-8 rounded-[1.5rem] border border-gray-800 hover:border-gray-700/80 shadow-xl flex flex-col relative overflow-hidden group transition-all duration-500">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-pink-500/10 rounded-full blur-[80px] group-hover:bg-pink-500/20 transition-all duration-700 pointer-events-none"></div>
-          
-          <div className="flex items-center justify-between mb-8 relative z-10">
-            <h3 className="text-sm font-bold flex items-center gap-3 text-white tracking-[0.1em] uppercase">
-              <div className="p-2 bg-pink-500/10 rounded-xl">
-                <PiggyBank className="w-4 h-4 text-pink-400" />
-              </div>
-              Savings Trend (This Year)
-            </h3>
-          </div>
-          
-          <div className="w-full h-[250px] relative z-10">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={yearlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorDeposit" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorWithdrawal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="month" stroke="#4b5563" fontSize={11} fontWeight={600} tickLine={false} axisLine={false} dy={10} />
-                <YAxis stroke="#4b5563" fontSize={11} fontWeight={600} tickLine={false} axisLine={false} tickFormatter={(val) => val === 0 ? 'Rs0' : formatCompact(val)} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: 'rgba(17, 24, 39, 0.8)', backdropFilter: 'blur(16px)', borderRadius: '1rem', border: '1px solid rgba(55, 65, 81, 0.5)' }} 
-                  itemStyle={{ color: '#fff', fontWeight: 'bold' }} 
-                  formatter={(value) => `Rs. ${formatLKR(value)}`} 
-                />
-                <Legend wrapperStyle={{ fontSize: '11px', fontWeight: '600', color: '#9ca3af', paddingTop: '20px' }} />
-                <Area type="monotone" dataKey="Deposit" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorDeposit)" activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }} />
-                <Area type="monotone" dataKey="Withdrawal" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorWithdrawal)" activeDot={{ r: 6, strokeWidth: 0, fill: '#f43f5e' }} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-
 
       </div>
     </div>

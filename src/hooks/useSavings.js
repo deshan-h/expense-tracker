@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import toast from 'react-hot-toast';
 import { playSuccessSound, playErrorSound } from '../utils/sounds';
@@ -61,5 +61,27 @@ export const useSavings = (user) => {
     }
   }, []);
 
-  return { savings, loading, addSaving, deleteSaving };
+  const updateSaving = useCallback(async (id, updatedData) => {
+    try {
+      const dataToUpdate = {
+        amount: updatedData.amount,
+        description: updatedData.description,
+        date: new Date(updatedData.date).toISOString()
+      };
+      
+      if (updatedData.type !== undefined) dataToUpdate.type = updatedData.type;
+
+      await updateDoc(doc(db, 'savings', id), dataToUpdate);
+      toast.success("Savings record updated!");
+      playSuccessSound();
+      return true;
+    } catch (error) {
+      console.error("Error updating saving: ", error);
+      toast.error("Failed to update savings record.");
+      playErrorSound();
+      return false;
+    }
+  }, []);
+
+  return { savings, loading, addSaving, deleteSaving, updateSaving };
 };

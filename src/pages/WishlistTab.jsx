@@ -100,85 +100,55 @@ export default function WishlistTab({
   }
 
   return (
-    <div className="space-y-6">
-      {/* HEADER STATS - EDGE TO EDGE */}
-      <div className="w-[100vw] relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] bg-indigo-950/30 border-y border-indigo-900/50 shadow-lg backdrop-blur-md mb-6 -mt-6">
-        <div className="w-full flex flex-row items-center justify-between gap-4 px-4 md:px-8 lg:px-12 py-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-500/20 rounded-lg border border-indigo-500/30 shadow-inner">
-              <Target className="w-5 h-5 text-indigo-400" />
-            </div>
-            <h2 className="text-lg font-bold text-white tracking-wide">Wishlist</h2>
-          </div>
-          
-          <div className="flex flex-col items-end">
-            <span className="text-indigo-300/70 text-[10px] font-bold uppercase tracking-widest mb-0.5">Total Estimated Cost</span>
-            <span className="text-xl md:text-2xl font-black text-white tracking-tight">{formatLKR(totalEstimated)}</span>
-          </div>
-        </div>
-      </div>
+    <div className="w-[100vw] relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
+      <div className="px-4 md:px-12 py-4 w-full max-w-full">
+        {/* Full-tab Ambient Glows */}
+        <div className="absolute top-[10%] left-[10%] w-[40vw] h-[40vw] bg-indigo-600/10 rounded-full blur-[120px] mix-blend-screen opacity-50 animate-pulse pointer-events-none"></div>
+        <div className="absolute bottom-[10%] right-[10%] w-[40vw] h-[40vw] bg-purple-600/10 rounded-full blur-[120px] mix-blend-screen opacity-50 pointer-events-none"></div>
 
-      <div className="space-y-6">
-        
-        {/* TOP ROW: ADD FORM */}
-        <div className="w-full mb-8 mt-4">
-          <h3 className="text-sm font-bold tracking-[0.2em] uppercase text-gray-300 mb-6 flex items-center gap-2">
-            <PlusCircle className="w-4 h-4 text-emerald-400" />
-            Add New Plan
-          </h3>
+        <div className="w-full relative z-10 mt-2">
+          <div className="flex flex-col">
 
-          <form onSubmit={handleAddItem} className="flex flex-col md:flex-row gap-5 items-end">
-            <div className="space-y-1.5 flex-1 w-full">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider pl-1">Item or Work Name</label>
-              <input 
-                type="text" 
-                value={newItemName}
-                onChange={e => setNewItemName(e.target.value)}
-                placeholder="e.g., New Laptop, Car Service"
-                className="w-full bg-gray-950/50 border border-gray-700 text-gray-200 rounded-xl px-4 py-3.5 focus:outline-none focus:border-indigo-500 transition-colors shadow-inner"
-              />
-            </div>
-
-            <div className="space-y-1.5 flex-1 w-full">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider pl-1">Estimated Cost (Optional)</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">Rs</span>
-                <input 
-                  type="number" 
-                  value={newEstimatedCost}
-                  onChange={e => setNewEstimatedCost(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full bg-gray-950/50 border border-gray-700 text-gray-200 rounded-xl pl-12 pr-4 py-3.5 focus:outline-none focus:border-indigo-500 transition-colors shadow-inner"
-                />
+            {/* TOP ROW: Add Record Form */}
+            <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl relative z-20 mb-8">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
+                <h3 className="text-xs font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <PlusCircle className="w-4 h-4 text-indigo-500" /> Add New Plan
+                </h3>
               </div>
+
+              <form onSubmit={handleAddItem} className="flex flex-col md:flex-row gap-3 items-end">
+                {/* Details */}
+                <div className="w-full md:flex-1 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-indigo-500 transition-all shadow-inner">
+                  <input type="text" value={newItemName} onChange={e => setNewItemName(e.target.value)} required className="w-full h-[42px] bg-transparent px-3 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder="Item or Work Name (e.g., New Laptop, Car Service)" />
+                </div>
+                {/* Amount */}
+                <div className="w-full md:w-48 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all shadow-inner">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">Rs.</span>
+                  <input type="number" step="0.01" value={newEstimatedCost} onChange={e => setNewEstimatedCost(e.target.value)} className="w-full bg-transparent pl-10 pr-3 py-2.5 text-sm font-bold text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="Estimated Cost (Optional)" />
+                </div>
+                {/* Submit */}
+                <button type="submit" disabled={isSubmitting} className="w-full md:w-auto h-[42px] bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 hover:bg-right bg-[length:200%_auto] text-white font-black tracking-widest uppercase px-6 rounded-xl transition-all shadow-[0_0_15px_-3px_rgba(99,102,241,0.5)] active:scale-[0.98] shrink-0 flex items-center justify-center gap-2">
+                  {isSubmitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <><Target className="w-4 h-4" /> SAVE</>}
+                </button>
+              </form>
             </div>
 
-            <button 
-              type="submit" 
-              disabled={isSubmitting}
-              className="w-full md:w-auto md:px-8 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-[0_0_15px_-3px_rgba(79,70,229,0.5)] active:scale-95 flex items-center justify-center gap-2 shrink-0"
-            >
-              {isSubmitting ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              ) : (
-                <>
-                  <Target className="w-5 h-5" />
-                  Save Plan
-                </>
-              )}
-            </button>
-          </form>
-        </div>
-
-        {/* BOTTOM SECTION: LISTS */}
-        <div className="space-y-6">
-          
-          <div className="w-full min-h-[400px]">
-            <h3 className="text-sm font-bold tracking-[0.2em] uppercase text-gray-300 mb-6 flex items-center gap-2">
-              <ListTodo className="w-4 h-4 text-indigo-400" />
-              Pending Plans
-              <span className="bg-indigo-500/20 text-indigo-400 text-[10px] px-2 py-0.5 rounded-full ml-2">{pendingItems.length}</span>
-            </h3>
+            {/* BOTTOM SECTION: LISTS */}
+            <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl flex flex-col relative z-10 space-y-8">
+              
+              <div className="w-full min-h-[400px]">
+                <div className="flex items-center justify-between px-2 mb-6">
+                  <h3 className="text-sm font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                    <ListTodo className="w-4 h-4 text-indigo-500" />
+                    Pending Plans
+                    <span className="bg-indigo-500/20 text-indigo-400 text-[10px] px-2 py-0.5 rounded-full ml-2">{pendingItems.length}</span>
+                  </h3>
+                  <div className="bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-xl flex flex-col items-end shadow-inner">
+                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Total Estimated</span>
+                    <span className="text-sm font-black text-indigo-400 leading-tight">Rs. {formatLKR(totalEstimated)}</span>
+                  </div>
+                </div>
 
             {pendingItems.length === 0 ? (
               <div className="w-full flex flex-col items-center justify-center text-gray-500 text-sm bg-gray-950/30 rounded-2xl border border-dashed border-gray-700 py-16">
@@ -412,6 +382,8 @@ export default function WishlistTab({
         </div>
       )}
 
-    </div>
+            </div>
+          </div>
+        </div>
   );
 }

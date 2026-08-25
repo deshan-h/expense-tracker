@@ -52,7 +52,7 @@ function App() {
   const [calcHistory, setCalcHistory] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [time, setTime] = useState(new Date().toTimeString().slice(0, 5));
+  const [time, setTime] = useState('12:00');
   const [isTracked, setIsTracked] = useState(true);
 
   // Category Form State
@@ -76,11 +76,11 @@ function App() {
   const [showSignOutModal, setShowSignOutModal] = useState(false);
 
   // Custom Hooks mapped
-  const { transactions, loading: txLoading, addExpense, addIncome, deleteTransaction } = useTransactions(user);
+  const { transactions, loading: txLoading, addExpense, addIncome, deleteTransaction, updateTransaction } = useTransactions(user);
   const { categories, addCategory: addCat, deleteCategory: delCat, addSubcategory: addSub, deleteSubcategory: delSub, seedDefaultCategories, DEFAULT_CATEGORIES } = useCategories(user, setCategory);
-  const { lentMoney, addLentMoney: addLent, receiveLentPayment: recLent, deleteLentMoney: delLent } = useLentMoney(user);
+  const { lentMoney, addLentMoney: addLent, receiveLentPayment: recLent, deleteLentMoney: delLent, deleteLentPayment: delLentPayment, updateLentMoney, updateLentPayment } = useLentMoney(user);
   const { syncMetadata, isSyncing, handleSyncPOS } = usePOSSync(user);
-  const { savings, addSaving, deleteSaving } = useSavings(user);
+  const { savings, addSaving, deleteSaving, updateSaving } = useSavings(user);
   const { schedules, addSchedule, deleteSchedule } = useScheduled(user, addExpense);
   const { wishlistItems, loading: wishlistLoading, addWishlistItem, completeWishlistItem, deleteWishlistItem, addSubItemToWishlist } = useWishlist(user, addExpense);
 
@@ -108,7 +108,7 @@ function App() {
       setCalcHistory('');
       setDescription('');
       setDate(new Date().toISOString().split('T')[0]);
-      setTime(new Date().toTimeString().slice(0, 5));
+      setTime('12:00');
       setIsTracked(true);
     }
   }, [amount, calcHistory, category, subcategory, description, date, time, isTracked, addExpense]);
@@ -137,7 +137,7 @@ function App() {
       setCalcHistory('');
       setDescription('');
       setDate(new Date().toISOString().split('T')[0]);
-      setTime(new Date().toTimeString().slice(0, 5));
+      setTime('12:00');
     }
   }, [amount, calcHistory, description, date, time, addIncome]);
 
@@ -278,36 +278,36 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 px-4 md:px-8 pb-8 font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-gray-900 text-gray-100 pb-8 font-sans overflow-x-hidden">
       <Toaster position="top-center" toastOptions={{ style: { background: '#1f2937', color: '#fff', borderRadius: '16px', border: '1px solid #374151' } }} />
-      <div className="max-w-6xl mx-auto space-y-6 pt-6 relative z-50">
+      <div className="w-full mx-auto space-y-2 pt-2 relative z-50">
         
         <Tabs defaultValue="add" className="w-full relative z-10">
-          <div className="w-[100vw] relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] bg-gray-900/90 border-b border-gray-800/80 backdrop-blur-xl mb-6 shadow-xl z-50">
-            <div className="w-full flex flex-row items-center justify-between gap-3 sm:gap-6 px-4 md:px-8 lg:px-12 py-3">
+          <div className="w-[100vw] relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] bg-gray-900/90 backdrop-blur-xl mb-0 shadow-xl z-50">
+            <div className="w-full max-w-[1600px] mx-auto flex flex-row items-center justify-between gap-3 sm:gap-6 px-2 md:px-4 py-2">
               <div className="relative flex-1 w-full overflow-x-auto hide-scrollbar">
                 
                 <TabsList className="relative flex w-max md:w-full items-center h-auto bg-transparent p-0 gap-1 sm:gap-2 pr-4 md:pr-0">
                   <TabsTrigger value="dashboard" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
-                    <LayoutDashboard className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Dashboard</span>
+                    <LayoutDashboard className="w-5 h-5 sm:w-4 sm:h-4 text-blue-400" /> <span className="hidden sm:inline text-sm">Dashboard</span>
                   </TabsTrigger>
                   <TabsTrigger value="add" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
-                    <PlusCircle className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Add New</span>
+                    <PlusCircle className="w-5 h-5 sm:w-4 sm:h-4 text-emerald-400" /> <span className="hidden sm:inline text-sm">Add New</span>
                   </TabsTrigger>
                   <TabsTrigger value="wishlist" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
-                    <Target className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Wishlist</span>
+                    <Target className="w-5 h-5 sm:w-4 sm:h-4 text-amber-400" /> <span className="hidden sm:inline text-sm">Wishlist</span>
                   </TabsTrigger>
                   <TabsTrigger value="savings" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
-                    <PiggyBank className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Savings</span>
+                    <PiggyBank className="w-5 h-5 sm:w-4 sm:h-4 text-pink-400" /> <span className="hidden sm:inline text-sm">Savings</span>
                   </TabsTrigger>
                   <TabsTrigger value="lent" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
-                    <Handshake className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Lent</span>
+                    <Handshake className="w-5 h-5 sm:w-4 sm:h-4 text-orange-400" /> <span className="hidden sm:inline text-sm">Lent</span>
                   </TabsTrigger>
                   <TabsTrigger value="history" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
-                    <List className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">History</span>
+                    <List className="w-5 h-5 sm:w-4 sm:h-4 text-indigo-400" /> <span className="hidden sm:inline text-sm">History</span>
                   </TabsTrigger>
                   <TabsTrigger value="settings" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
-                    <Settings className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline text-sm">Settings</span>
+                    <Settings className="w-5 h-5 sm:w-4 sm:h-4 text-gray-400" /> <span className="hidden sm:inline text-sm">Settings</span>
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -402,7 +402,12 @@ function App() {
                 formatLKR={formatLKR}
                 handleDeleteTransaction={deleteTransaction}
                 handleDeleteLentMoney={delLent}
+                handleDeleteLentPayment={delLentPayment}
                 deleteSaving={deleteSaving}
+                updateTransaction={updateTransaction}
+                updateLentMoney={updateLentMoney}
+                updateLentPayment={updateLentPayment}
+                updateSaving={updateSaving}
                 categories={categories}
                 schedules={schedules}
                 deleteSchedule={deleteSchedule}
@@ -436,6 +441,7 @@ function App() {
                 pendingLent={pendingLent}
                 paidLent={paidLent}
                 handleDeleteLentMoney={delLent}
+                handleDeleteLentPayment={delLentPayment}
                 showPaid={showPaid}
                 setShowPaid={setShowPaid}
               />

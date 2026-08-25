@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Handshake, Users, PlusCircle, CreditCard, ChevronDown, ChevronUp } from 'lucide-react';
+import { Handshake, Users, PlusCircle, CreditCard, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import DateTimePicker from '../components/ui/DateTimePicker';
 
 const MoneyLentTab = ({
@@ -18,7 +18,9 @@ const MoneyLentTab = ({
   setLentTime,
   pendingLent,
   handleReceiveLentPayment,
-  formatLKR
+  formatLKR,
+  handleDeleteLentMoney,
+  handleDeleteLentPayment
 }) => {
   // State for tracking payment inputs for each person
   const [paymentInputs, setPaymentInputs] = useState({});
@@ -122,102 +124,110 @@ const MoneyLentTab = ({
               )}
             </div>
 
-            {/* RIGHT COLUMN: Manage & Receive Payments */}
-            <div className="flex flex-col gap-8">
-              <h3 className="text-sm font-bold text-gray-300 px-2 uppercase tracking-[0.2em] flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-blue-500" /> Manage Lent & Payments
-              </h3>
+            {/* BOTTOM SECTION: Manage & Receive Payments */}
+            <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl flex flex-col relative z-10 space-y-6">
+              <div className="flex items-center justify-between px-2 mb-2">
+                <h3 className="text-sm font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-blue-500" /> Manage Lent & Payments
+                </h3>
+                <div className="bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-xl flex flex-col items-end shadow-inner">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Total Owed</span>
+                  <span className="text-sm font-black text-blue-400 leading-tight">
+                    Rs. {formatLKR(groupedArray.reduce((acc, curr) => acc + curr.totalOwed, 0))}
+                  </span>
+                </div>
+              </div>
               
               {groupedArray.length === 0 ? (
-                 <div className="text-center bg-gray-900/30 p-10 rounded-3xl border border-gray-700/50 flex flex-col items-center justify-center h-full min-h-[300px]">
+                 <div className="text-center bg-gray-950/30 p-10 rounded-3xl border border-gray-800 border-dashed flex flex-col items-center justify-center h-full min-h-[300px]">
                    <Users className="w-12 h-12 text-gray-600 mb-4" />
                    <p className="text-gray-500 font-medium">No one currently owes you money.<br/>You're all settled up!</p>
                  </div>
               ) : (
-                <div className="space-y-4">
-                  {groupedArray.map(group => (
-                    <div key={group.name} className={`rounded-2xl border border-gray-800/50 hover:bg-gray-800/80 transition-colors shadow-inner flex flex-col ${group.type === 'Family' ? 'bg-amber-500/5' : 'bg-blue-500/5'}`}>
-                      <div 
-                        className="p-3 md:p-4 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-3 cursor-pointer"
-                        onClick={() => toggleHistory(group.name)}
-                      >
-                        <div className="flex items-center justify-between w-full xl:w-auto xl:flex-1 xl:pr-4">
-                           <div>
-                              <h4 className="font-bold text-gray-100 text-base flex items-center gap-2">
-                                {group.name}
-                                {expandedHistory === group.name ? (
-                                  <ChevronUp className="w-4 h-4 text-gray-500" />
-                                ) : (
-                                  <ChevronDown className="w-4 h-4 text-gray-500" />
-                                )}
-                              </h4>
-                              <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${group.type === 'Family' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
-                                {group.type}
-                              </span>
-                           </div>
-                           <div className="text-right xl:hidden flex flex-col items-end gap-1">
-                              {group.totalPaid > 0 && (
-                                <span className="text-emerald-400 font-semibold text-[9px] tracking-wide bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                                  PAID: Rs. {formatLKR(group.totalPaid)}
-                                </span>
-                              )}
-                              <div>
-                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Owed</p>
-                                <p className="font-black text-lg text-white">Rs. {formatLKR(group.totalOwed)}</p>
-                              </div>
-                           </div>
-                        </div>
-                        
+                <div className="flex flex-col">
+                  {/* Table Headers (Hidden on small screens) */}
+                  <div className="hidden md:grid grid-cols-5 gap-4 px-4 pb-3 mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest border-b border-gray-800/50">
+                    <div>Who</div>
+                    <div>Family or Friend</div>
+                    <div className="text-right">Paid Total</div>
+                    <div className="text-right">Total Owed</div>
+                    <div className="text-center">Action</div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {groupedArray.map(group => (
+                      <div key={group.name} className={`rounded-xl border border-gray-800/50 hover:bg-gray-800/80 transition-colors shadow-inner flex flex-col ${group.type === 'Family' ? 'bg-amber-500/5' : 'bg-blue-500/5'}`}>
                         <div 
-                          className="flex items-center gap-3 w-full xl:w-auto"
-                          onClick={(e) => e.stopPropagation()}
+                          className="px-4 py-3 grid grid-cols-1 md:grid-cols-5 gap-4 items-center cursor-pointer"
+                          onClick={() => toggleHistory(group.name)}
                         >
-                          <div className="hidden xl:flex items-center text-right pr-4 border-r border-gray-700/50 whitespace-nowrap gap-4">
-                              {group.totalPaid > 0 && (
-                                <div className="text-right border-r border-gray-700/50 pr-4 flex items-center h-full">
-                                   <span className="inline-block text-emerald-400 font-semibold text-[10px] tracking-wide bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
-                                     PAID: Rs. {formatLKR(group.totalPaid)}
-                                   </span>
-                                </div>
-                              )}
-                              <div>
-                                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Total Owed</p>
-                                 <p className="font-black text-lg text-white tracking-tight">Rs. {formatLKR(group.totalOwed)}</p>
-                              </div>
+                          {/* Who */}
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-bold text-gray-100 text-sm">{group.name}</h4>
+                            {expandedHistory === group.name ? (
+                              <ChevronUp className="w-3 h-3 text-gray-500" />
+                            ) : (
+                              <ChevronDown className="w-3 h-3 text-gray-500" />
+                            )}
                           </div>
-                          
-                          {/* Payment Input */}
-                          {activePayment === group.name ? (
-                            <div className="bg-gray-900/80 p-1.5 rounded-xl border border-gray-700/80 flex gap-1.5 w-full xl:w-[220px]">
-                               <div className="relative flex-1 bg-gray-800 rounded-lg border border-gray-700/50 focus-within:border-emerald-500 overflow-hidden px-3 py-1.5 flex items-center transition-all">
-                                  <span className="text-gray-500 text-xs font-bold mr-1">Rs.</span>
-                                  <input 
-                                    type="number" 
-                                    step="0.01"
-                                    placeholder="0.00"
-                                    value={paymentInputs[group.name] || ''}
-                                    onChange={(e) => handlePaymentChange(group.name, e.target.value)}
-                                    className="w-full bg-transparent text-sm font-medium text-gray-100 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none placeholder-gray-600"
-                                    autoFocus
-                                  />
+
+                          {/* Type */}
+                          <div className="flex md:block">
+                            <span className="md:hidden text-xs text-gray-500 font-bold mr-2">Type:</span>
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${group.type === 'Family' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
+                              {group.type}
+                            </span>
+                          </div>
+
+                          {/* Paid Total */}
+                          <div className="flex md:block justify-between md:text-right">
+                            <span className="md:hidden text-xs text-gray-500 font-bold">Paid Total:</span>
+                            {group.totalPaid > 0 ? (
+                               <span className="text-emerald-400 font-bold text-xs tracking-wide">
+                                 Rs. {formatLKR(group.totalPaid)}
+                               </span>
+                            ) : <span className="text-gray-600 text-xs">-</span>}
+                          </div>
+
+                          {/* Total Owed */}
+                          <div className="flex md:block justify-between md:text-right">
+                             <span className="md:hidden text-xs text-gray-500 font-bold">Total Owed:</span>
+                             <span className="font-black text-sm text-white tracking-tight">Rs. {formatLKR(group.totalOwed)}</span>
+                          </div>
+
+                          {/* Action */}
+                          <div className="flex md:justify-center mt-2 md:mt-0" onClick={(e) => e.stopPropagation()}>
+                             {activePayment === group.name ? (
+                               <div className="flex items-center gap-1 w-full md:max-w-[140px]">
+                                  <div className="relative flex-1 bg-gray-900 border border-emerald-500/50 rounded-lg overflow-hidden flex items-center px-2 py-1.5">
+                                    <span className="text-gray-500 text-[10px] font-bold mr-1">Rs.</span>
+                                    <input 
+                                      type="number" 
+                                      step="0.01"
+                                      placeholder="0"
+                                      value={paymentInputs[group.name] || ''}
+                                      onChange={(e) => handlePaymentChange(group.name, e.target.value)}
+                                      className="w-full bg-transparent text-xs font-bold text-gray-100 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                      autoFocus
+                                    />
+                                  </div>
+                                  <button 
+                                    onClick={() => submitPayment(group.name)}
+                                    className="bg-emerald-500 hover:bg-emerald-400 text-gray-900 px-2.5 py-1.5 rounded-lg font-bold text-[10px] uppercase transition-colors"
+                                  >
+                                    ✓
+                                  </button>
                                </div>
+                             ) : (
                                <button 
-                                 onClick={() => submitPayment(group.name)}
-                                 className="bg-emerald-500 hover:bg-emerald-400 text-gray-900 font-bold px-4 py-1.5 rounded-lg transition-colors cursor-pointer text-xs uppercase tracking-widest flex items-center justify-center active:scale-95 shadow-md"
+                                  onClick={() => setActivePayment(group.name)}
+                                  className="w-full md:w-auto bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold px-6 py-1.5 rounded-lg transition-colors cursor-pointer text-[10px] uppercase tracking-widest border border-gray-700/50"
                                >
-                                  ✓
+                                  Pay
                                </button>
-                            </div>
-                          ) : (
-                            <button 
-                              onClick={() => setActivePayment(group.name)}
-                              className="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold px-6 py-2 rounded-xl transition-colors cursor-pointer text-xs uppercase tracking-widest flex items-center justify-center active:scale-95 border border-gray-700/50"
-                            >
-                               Pay
-                            </button>
-                          )}
+                             )}
+                          </div>
                         </div>
-                      </div>
 
                       {/* Expanded History Timeline */}
                       {expandedHistory === group.name && (
@@ -249,17 +259,24 @@ const MoneyLentTab = ({
                                            <div className="text-[9px] font-semibold text-gray-500">{timeStr}</div>
                                          </div>
                                          <div className={`absolute -left-[9px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-4 border-gray-900 ${item.status === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
-                                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 py-2.5 px-3 bg-gray-800/30 hover:bg-gray-800/70 rounded-xl transition-colors border border-gray-700/40 shadow-sm">
-                                           <div className="flex items-center gap-3 flex-1 overflow-hidden w-full sm:w-auto">
-                                             <span className="text-sm font-bold text-gray-200 whitespace-nowrap overflow-hidden text-ellipsis">
+                                         <div className="flex items-center justify-between gap-2 sm:gap-4 py-1.5 px-3 bg-gray-800/30 hover:bg-gray-800/70 rounded-xl transition-colors border border-gray-700/40 shadow-sm relative pr-10">
+                                           <div className="flex items-center gap-3 overflow-hidden">
+                                             <span className="text-xs font-bold text-gray-200 whitespace-nowrap overflow-hidden text-ellipsis">
                                                {item.description || 'Borrowed money'}
                                              </span>
                                            </div>
-                                           <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-end">
-                                             <span className="text-sm font-black text-white">
+                                           <div className="flex items-center gap-3 shrink-0">
+                                             <span className="text-xs font-black text-white">
                                                Rs. {formatLKR(item.amount)} 
                                              </span>
                                            </div>
+                                           <button 
+                                              type="button"
+                                              onClick={(e) => { e.stopPropagation(); handleDeleteLentMoney(item.id); }}
+                                              className="absolute right-2 opacity-0 group-hover:opacity-100 p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-all cursor-pointer"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
                                          </div>
                                       </div>
                                     );
@@ -271,17 +288,28 @@ const MoneyLentTab = ({
                                            <div className="text-[9px] font-semibold text-gray-500">{timeStr}</div>
                                          </div>
                                          <div className="absolute -left-[7px] top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-gray-900 bg-emerald-500"></div>
-                                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 py-2.5 px-3 bg-gray-800/30 hover:bg-gray-800/70 rounded-xl transition-colors border border-gray-700/40 shadow-sm">
-                                           <div className="flex items-center gap-3 flex-1 overflow-hidden w-full sm:w-auto">
-                                             <span className="text-sm font-bold text-emerald-400 whitespace-nowrap overflow-hidden text-ellipsis flex items-center gap-2">
+                                         <div className="flex items-center justify-between gap-2 sm:gap-4 py-1.5 px-3 bg-gray-800/30 hover:bg-gray-800/70 rounded-xl transition-colors border border-gray-700/40 shadow-sm relative pr-10">
+                                           <div className="flex items-center gap-3 overflow-hidden">
+                                             <span className="text-xs font-bold text-emerald-400 whitespace-nowrap overflow-hidden text-ellipsis flex items-center gap-2">
                                                <CreditCard className="w-3 h-3" /> Payment Received
                                              </span>
                                            </div>
-                                           <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-end">
-                                             <span className="text-sm font-black text-emerald-400">
+                                           <div className="flex items-center gap-3 shrink-0">
+                                             <span className="text-xs font-black text-emerald-400">
                                                + Rs. {formatLKR(item.amount)} 
                                              </span>
                                            </div>
+                                           <button 
+                                              type="button"
+                                              onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                const pIdx = item.parentRec.paymentHistory.findIndex(p => p.amount === item.amount && p.date === item.date);
+                                                if (pIdx !== -1) handleDeleteLentPayment(item.parentRec.id, pIdx);
+                                              }}
+                                              className="absolute right-2 opacity-0 group-hover:opacity-100 p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-all cursor-pointer"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
                                          </div>
                                       </div>
                                     );
@@ -294,8 +322,9 @@ const MoneyLentTab = ({
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+          </div>
 
           </div>
         </div>

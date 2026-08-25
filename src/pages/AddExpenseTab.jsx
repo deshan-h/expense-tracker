@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlusCircle, TrendingUp, TrendingDown, Plus, Bookmark, Clock, ChevronLeft, Trash2, ChevronDown } from 'lucide-react';
 import { getIconComponent, getIconColor } from '../utils/icons';
 import DateTimePicker from '../components/ui/DateTimePicker';
@@ -41,8 +41,18 @@ const AddExpenseTab = ({
 }) => {
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [templateName, setTemplateName] = useState('');
+  const [templateDesc, setTemplateDesc] = useState('');
   const [isTemplatesExpanded, setIsTemplatesExpanded] = useState(true);
   const [frequency, setFrequency] = useState('Once');
+
+  useEffect(() => {
+    setCategory('');
+    setSubcategory('');
+    setAmount('');
+    setDescription('');
+    setCalcHistory('');
+    setIsTemplatesExpanded(true);
+  }, [setCategory, setSubcategory, setAmount, setDescription, setCalcHistory]);
 
   const onSubmitForm = async (e) => {
     e.preventDefault();
@@ -52,10 +62,11 @@ const AddExpenseTab = ({
         amount: amount || '',
         category: type === 'Expense' ? category : 'Income',
         subcategory: type === 'Expense' ? subcategory : 'Other',
-        description: description || ''
+        description: templateDesc || description || ''
       });
       setIsSavingTemplate(false);
       setTemplateName('');
+      setTemplateDesc('');
     }
     
     if (type === 'Income') {
@@ -199,6 +210,7 @@ const AddExpenseTab = ({
                             if (tpl.category) setCategory(tpl.category);
                             if (tpl.subcategory) setSubcategory(tpl.subcategory);
                             if (tpl.description) setDescription(tpl.description);
+                            setIsTemplatesExpanded(false);
                           }}
                           className="bg-gray-800/60 hover:bg-gray-700 border border-gray-700/50 hover:border-gray-600 rounded-xl py-2 px-3 flex items-center justify-start gap-3 transition-all text-left group/btn shadow-inner"
                         >
@@ -265,9 +277,16 @@ const AddExpenseTab = ({
                     );
                   } else {
                     return (
-                      <div className="animate-in slide-in-from-right-4 duration-300 flex-1 flex flex-col">
+                      <div className={`animate-in slide-in-from-right-4 duration-300 flex flex-col transition-all duration-300 ${isCatExpanded ? 'flex-1' : ''}`}>
                         {/* Selected Category Header */}
-                        <div className="flex items-center justify-between mb-5 border-b border-gray-700/50 pb-4">
+                        <div 
+                          className={`flex items-center justify-between ${isCatExpanded ? 'mb-5 border-b border-gray-700/50 pb-4' : ''} cursor-pointer group`}
+                          onClick={() => {
+                            if (!isIncome && templates && templates.length > 0) {
+                              setIsTemplatesExpanded(!isTemplatesExpanded);
+                            }
+                          }}
+                        >
                           <div className="flex items-center gap-3">
                             {(() => {
                               const c = currentCategories.find(cat => cat.name === category);
@@ -276,71 +295,88 @@ const AddExpenseTab = ({
                               const iconColors = getIconColor(c.icon);
                               return (
                                 <>
-                                  <div className={`p-2 rounded-xl ${iconColors.bg}`}>
-                                    <CatIcon className={`w-5 h-5 ${iconColors.color}`} />
+                                  <div className={`p-2 rounded-xl ${iconColors.bg} shadow-inner`}>
+                                    <CatIcon className={`w-4 h-4 md:w-5 md:h-5 ${iconColors.color}`} />
                                   </div>
                                   <div>
-                                    <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Category</p>
-                                    <p className="text-sm font-black text-gray-100">{c.name}</p>
+                                    <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-0.5">Category</p>
+                                    <p className="text-sm font-black text-gray-100 leading-tight">{c.name}</p>
                                   </div>
                                 </>
                               );
                             })()}
                           </div>
-                      <button type="button" onClick={() => { setCategory(''); setSubcategory(''); }} className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:text-white bg-gray-800 px-3 py-1.5 rounded-full border border-gray-700 transition-all">
-                        <ChevronLeft className="w-3 h-3" /> Back
-                      </button>
-                    </div>
-
-                    {/* Subcategories List (Expense Only) */}
-                    {!isIncome && selectedCatObj && (() => {
-                      const CatIcon = getIconComponent(selectedCatObj.icon);
-                      const iconColors = getIconColor(selectedCatObj.icon);
-                      return (
-                      <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 ml-1">Select Subcategory</p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 max-h-[250px] overflow-y-auto content-start pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-gray-700/50 [&::-webkit-scrollbar-thumb]:rounded-full animate-in fade-in duration-300">
-                          <button type="button" onClick={() => setSubcategory('')} className={`rounded-xl py-2 px-3 flex items-center justify-start gap-2 transition-all text-left shadow-inner border group/subbtn ${subcategory === '' ? 'bg-blue-600/80 text-white border-blue-500 shadow-inner' : 'bg-gray-800/60 hover:bg-gray-700 border-gray-700/50 text-gray-300 hover:text-gray-200 hover:border-gray-600'}`}>
-                            <CatIcon className={`w-3.5 h-3.5 shrink-0 transition-colors ${subcategory === '' ? 'text-white/80' : 'text-gray-500 group-hover/subbtn:text-gray-400'}`} />
-                            <span className="text-[10px] font-bold line-clamp-1 w-full leading-tight">General</span>
-                          </button>
-                          {selectedCatObj.subcategories?.map(sub => (
-                            <button key={sub} type="button" onClick={() => setSubcategory(sub)} className={`rounded-xl py-2 px-3 flex items-center justify-start gap-2 transition-all text-left shadow-inner border group/subbtn ${subcategory === sub ? 'bg-emerald-500/80 text-white border-emerald-400 shadow-inner' : 'bg-gray-800/60 hover:bg-gray-700 border-gray-700/50 text-gray-300 hover:text-gray-200 hover:border-gray-600'}`}>
-                              <CatIcon className={`w-3.5 h-3.5 shrink-0 transition-colors ${subcategory === sub ? 'text-white/80' : 'text-gray-500 group-hover/subbtn:text-gray-400'}`} />
-                              <span className="text-[10px] font-bold line-clamp-1 w-full leading-tight">{sub}</span>
-                            </button>
-                          ))}
                           
-                          {/* Add New Subcategory */}
-                          <div className="flex items-center bg-gray-800/40 rounded-xl border border-gray-700/50 focus-within:bg-gray-700/50 focus-within:border-gray-500 transition-all overflow-hidden col-span-1 sm:col-span-1 shadow-inner">
-                            <input 
-                              type="text" 
-                              value={newSubcategoryNames[selectedCatObj.id] || ''} 
-                              onChange={(e) => handleSubcategoryChange(selectedCatObj.id, e.target.value)} 
-                              onKeyDown={(e) => { 
-                                if (e.key === 'Enter') { 
-                                  e.preventDefault(); 
-                                  handleAddSubcategory(selectedCatObj.id); 
-                                } 
-                              }} 
-                              placeholder="Add new..." 
-                              className="bg-transparent px-3 py-2 text-[10px] text-gray-100 placeholder-gray-500 focus:outline-none flex-1 min-w-0" 
-                            />
+                          <div className="flex items-center gap-3">
                             <button 
                               type="button" 
-                              onClick={() => handleAddSubcategory(selectedCatObj.id)} 
-                              disabled={!newSubcategoryNames[selectedCatObj.id]?.trim()} 
-                              className="text-gray-400 hover:text-emerald-400 px-3 py-2 transition-colors disabled:opacity-50 flex items-center justify-center cursor-pointer bg-black/20 shrink-0 border-l border-gray-700/50"
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                setCategory(''); 
+                                setSubcategory(''); 
+                                if (!isIncome && templates && templates.length > 0) {
+                                  setIsTemplatesExpanded(true); // Open templates when clearing category
+                                }
+                              }} 
+                              className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:text-white bg-gray-800 px-3 py-1.5 rounded-full border border-gray-700 transition-all z-10 hover:shadow-md"
                             >
-                              <Plus className="w-3 h-3" />
+                              <ChevronLeft className="w-3 h-3" /> Back
                             </button>
+                            {!isIncome && templates && templates.length > 0 && (
+                              <ChevronDown className={`w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-transform duration-300 ${isCatExpanded ? 'rotate-180' : ''}`} />
+                            )}
                           </div>
                         </div>
+
+                        {/* Subcategories List (Expense Only) */}
+                        {isCatExpanded && !isIncome && selectedCatObj && (() => {
+                          const CatIcon = getIconComponent(selectedCatObj.icon);
+                          const iconColors = getIconColor(selectedCatObj.icon);
+                          return (
+                          <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 ml-1">Select Subcategory</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 max-h-[250px] overflow-y-auto content-start pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-gray-700/50 [&::-webkit-scrollbar-thumb]:rounded-full animate-in fade-in duration-300">
+                              <button type="button" onClick={() => setSubcategory('')} className={`rounded-xl py-2 px-3 flex items-center justify-start gap-2 transition-all text-left shadow-inner border group/subbtn ${subcategory === '' ? 'bg-blue-600/80 text-white border-blue-500 shadow-inner' : 'bg-gray-800/60 hover:bg-gray-700 border-gray-700/50 text-gray-300 hover:text-gray-200 hover:border-gray-600'}`}>
+                                <CatIcon className={`w-3.5 h-3.5 shrink-0 transition-colors ${subcategory === '' ? 'text-white/80' : 'text-gray-500 group-hover/subbtn:text-gray-400'}`} />
+                                <span className="text-[10px] font-bold line-clamp-1 w-full leading-tight">General</span>
+                              </button>
+                              {selectedCatObj.subcategories?.map(sub => (
+                                <button key={sub} type="button" onClick={() => setSubcategory(sub)} className={`rounded-xl py-2 px-3 flex items-center justify-start gap-2 transition-all text-left shadow-inner border group/subbtn ${subcategory === sub ? 'bg-emerald-500/80 text-white border-emerald-400 shadow-inner' : 'bg-gray-800/60 hover:bg-gray-700 border-gray-700/50 text-gray-300 hover:text-gray-200 hover:border-gray-600'}`}>
+                                  <CatIcon className={`w-3.5 h-3.5 shrink-0 transition-colors ${subcategory === sub ? 'text-white/80' : 'text-gray-500 group-hover/subbtn:text-gray-400'}`} />
+                                  <span className="text-[10px] font-bold line-clamp-1 w-full leading-tight">{sub}</span>
+                                </button>
+                              ))}
+                              
+                              {/* Add New Subcategory */}
+                              <div className="flex items-center bg-gray-800/40 rounded-xl border border-gray-700/50 focus-within:bg-gray-700/50 focus-within:border-gray-500 transition-all overflow-hidden col-span-1 sm:col-span-1 shadow-inner">
+                                <input 
+                                  type="text" 
+                                  value={newSubcategoryNames[selectedCatObj.id] || ''} 
+                                  onChange={(e) => handleSubcategoryChange(selectedCatObj.id, e.target.value)} 
+                                  onKeyDown={(e) => { 
+                                    if (e.key === 'Enter') { 
+                                      e.preventDefault(); 
+                                      handleAddSubcategory(selectedCatObj.id); 
+                                    } 
+                                  }} 
+                                  placeholder="Add new..." 
+                                  className="bg-transparent px-3 py-2 text-[10px] text-gray-100 placeholder-gray-500 focus:outline-none flex-1 min-w-0" 
+                                />
+                                <button 
+                                  type="button" 
+                                  onClick={() => handleAddSubcategory(selectedCatObj.id)} 
+                                  disabled={!newSubcategoryNames[selectedCatObj.id]?.trim()} 
+                                  className="text-gray-400 hover:text-emerald-400 px-3 py-2 transition-colors disabled:opacity-50 flex items-center justify-center cursor-pointer bg-black/20 shrink-0 border-l border-gray-700/50"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          );
+                        })()}
                       </div>
-                      );
-                    })()}
-                  </div>
-                );
+                    );
               }
             })()}
           </div>
@@ -384,7 +420,12 @@ const AddExpenseTab = ({
                 
                 {/* Date & Time */}
                 <div className="flex flex-col gap-3">
-                  <DateTimePicker date={date} setDate={setDate} time={time} setTime={setTime} />
+                  <DateTimePicker 
+                    date={date} 
+                    setDate={setDate} 
+                    time={time} 
+                    setTime={setTime} 
+                  />
                   
                   {!isIncome && (
                     <div className="relative bg-gray-900/80 rounded-2xl border border-gray-700/80 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all overflow-hidden shadow-inner flex items-center px-4 py-2.5">
@@ -416,13 +457,20 @@ const AddExpenseTab = ({
                     </div>
                   </div>
                   {isSavingTemplate && (
-                    <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="mt-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
                       <input 
                         type="text" 
                         value={templateName} 
                         onChange={(e) => setTemplateName(e.target.value)} 
                         required={isSavingTemplate} 
                         placeholder="Template Name (e.g. Daily Coffee)" 
+                        className="w-full bg-gray-800/80 px-4 py-3 text-sm text-gray-100 rounded-xl border border-gray-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" 
+                      />
+                      <input 
+                        type="text" 
+                        value={templateDesc} 
+                        onChange={(e) => setTemplateDesc(e.target.value)} 
+                        placeholder="Template Description (Optional)" 
                         className="w-full bg-gray-800/80 px-4 py-3 text-sm text-gray-100 rounded-xl border border-gray-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" 
                       />
                     </div>
@@ -433,7 +481,7 @@ const AddExpenseTab = ({
                 <div className="mt-auto flex gap-3">
                   <button 
                     type="button" 
-                    onClick={() => { setAmount(''); setCategory(''); setSubcategory(''); setDescription(''); setCalcHistory(''); }} 
+                    onClick={() => { setAmount(''); setCategory(''); setSubcategory(''); setDescription(''); setCalcHistory(''); setTemplateDesc(''); }} 
                     className="bg-gray-800/80 hover:bg-gray-700 text-gray-400 hover:text-rose-400 border border-gray-700 font-black tracking-widest uppercase py-5 px-6 rounded-2xl transition-all shadow-md active:scale-[0.98] flex items-center justify-center shrink-0"
                     title="Clear Fields"
                   >

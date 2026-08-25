@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import toast from 'react-hot-toast';
 import { playSuccessSound, playErrorSound } from '../utils/sounds';
@@ -86,5 +86,29 @@ export const useTransactions = (user) => {
     }
   }, []);
 
-  return { transactions, loading, addExpense, addIncome, deleteTransaction };
+  const updateTransaction = useCallback(async (id, updatedData) => {
+    try {
+      const dataToUpdate = {
+        amount: updatedData.amount,
+        description: updatedData.description,
+        date: new Date(updatedData.date).toISOString()
+      };
+      
+      if (updatedData.category !== undefined) dataToUpdate.category = updatedData.category;
+      if (updatedData.subcategory !== undefined) dataToUpdate.subcategory = updatedData.subcategory;
+      if (updatedData.type !== undefined) dataToUpdate.type = updatedData.type;
+
+      await updateDoc(doc(db, 'transactions', id), dataToUpdate);
+      toast.success("Transaction updated!");
+      playSuccessSound();
+      return true;
+    } catch (error) {
+      console.error("Error updating transaction: ", error);
+      toast.error("Failed to update transaction.");
+      playErrorSound();
+      return false;
+    }
+  }, []);
+
+  return { transactions, loading, addExpense, addIncome, deleteTransaction, updateTransaction };
 };
