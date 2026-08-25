@@ -40,15 +40,27 @@ export const fetchNewSalesSum = async (lastSyncDateStr) => {
 
     snapshot.forEach((doc) => {
       const data = doc.data();
-      if (!data.timestamp) return; // Skip if no timestamp
+      const rawTimestamp = data.timestamp || data.createdAt || data.date;
+      if (!rawTimestamp) {
+        console.warn("Skipping record with no timestamp", doc.id);
+        return;
+      }
 
-      const saleTime = data.timestamp.toDate().getTime();
+      let saleTime;
+      if (typeof rawTimestamp.toDate === 'function') {
+        saleTime = rawTimestamp.toDate().getTime();
+      } else {
+        saleTime = new Date(rawTimestamp).getTime();
+      }
 
       // Only count sales that happened strictly after the last sync
+      console.log(`Checking POS Record ${doc.id}: saleTime=${saleTime} vs lastSyncTime=${lastSyncTime} (${new Date(saleTime).toISOString()})`);
       if (saleTime > lastSyncTime) {
         let income = 0;
+        const saleAmount = Number(data.amount || data.totalAmount || data.total || 0);
+
         if (data.isRepair) {
-          income = Number(data.amount || 0) - Number(data.cost || 0);
+          income = saleAmount - Number(data.cost || 0);
         } else {
           let totalCost = 0;
           if (data.cartItems && Array.isArray(data.cartItems)) {
@@ -56,9 +68,10 @@ export const fetchNewSalesSum = async (lastSyncDateStr) => {
               totalCost += (Number(item.cost || 0) * Number(item.qty || 1));
             });
           }
-          income = Number(data.amount || 0) - totalCost;
+          income = saleAmount - totalCost;
         }
 
+        console.log(`Included POS Record ${doc.id}: Income=${income}`);
         sum += income;
         count++;
         // Keep track of the very latest timestamp we process

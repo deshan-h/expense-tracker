@@ -8,12 +8,10 @@ const HistoryTab = ({
   schedules,
   formatLKR, 
   handleDeleteTransaction,
-  handleDeleteLentPayment,
+  handleDeleteLentHistoryEntry,
   deleteSaving,
   deleteSchedule,
   updateTransaction,
-  updateLentMoney,
-  updateLentPayment,
   updateSaving,
   categories
 }) => {
@@ -66,33 +64,34 @@ const HistoryTab = ({
 
     // Lent Money
     if (lentMoney) {
-      combined = combined.concat(lentMoney.map(l => ({
-        id: l.id,
-        source: 'lent',
-        type: l.status === 'paid' ? 'Lent (Paid)' : 'Lent (Pending)',
-        amount: l.amount,
-        title: l.description || '-',
-        category: 'Money Lent',
-        subcategory: l.type,
-        date: l.date,
-        originalRecord: l
-      })));
-      
-      // Extract partial payments
-      lentMoney.forEach(l => {
-        if (l.paymentHistory && l.paymentHistory.length > 0) {
-          l.paymentHistory.forEach(p => {
-             combined.push({
-               id: p.id || `payment-${Math.random()}`,
-               source: 'lent_payment',
-               type: 'Lent Payment Received',
-               amount: p.amount,
-               title: `Payment from ${l.name}`,
-               category: 'Lent Repayment',
-               subcategory: l.type,
-               date: p.date,
-               originalRecord: Object.assign({}, p, { parentLentId: l.id })
-             });
+      lentMoney.forEach(person => {
+        if (person.history && person.history.length > 0) {
+          person.history.forEach(h => {
+            if (h.entryType === 'borrow') {
+              combined.push({
+                id: h.id,
+                source: 'lent',
+                type: 'Lent (Borrow)',
+                amount: h.amount,
+                title: h.description || `Lent to ${person.name}`,
+                category: 'Money Lent',
+                subcategory: person.type,
+                date: h.date,
+                originalRecord: { ...h, parentLentId: person.id, personName: person.name }
+              });
+            } else if (h.entryType === 'payment') {
+              combined.push({
+                id: h.id,
+                source: 'lent_payment',
+                type: 'Lent (Payment)',
+                amount: h.amount,
+                title: `Payment from ${person.name}`,
+                category: 'Lent Repayment',
+                subcategory: person.type,
+                date: h.date,
+                originalRecord: { ...h, parentLentId: person.id, personName: person.name }
+              });
+            }
           });
         }
       });
@@ -199,20 +198,11 @@ const HistoryTab = ({
   const handleDelete = (record) => {
     if (record.source === 'transaction') {
       handleDeleteTransaction(record.id);
-    } else if (record.source === 'lent') {
-      handleDeleteLentMoney(record.id);
     } else if (record.source === 'saving') {
       deleteSaving(record.id);
-    } else if (record.source === 'lent_payment') {
-      if (handleDeleteLentPayment) {
-        // Find the index of this specific payment in the parent record's paymentHistory
-        const pIdx = lentMoney
-          .find(l => l.id === record.originalRecord.parentLentId)
-          ?.paymentHistory.findIndex(p => p.amount === record.amount && p.date === record.date);
-        
-        if (pIdx !== undefined && pIdx !== -1) {
-          handleDeleteLentPayment(record.originalRecord.parentLentId, pIdx);
-        }
+    } else if (record.source === 'lent' || record.source === 'lent_payment') {
+      if (handleDeleteLentHistoryEntry) {
+        handleDeleteLentHistoryEntry(record.originalRecord.parentLentId, record.id);
       }
     }
   };
@@ -223,15 +213,9 @@ const HistoryTab = ({
       success = await updateTransaction(record.id, updatedData);
     } else if (record.source === 'saving' && updateSaving) {
       success = await updateSaving(record.id, updatedData);
-    } else if (record.source === 'lent' && updateLentMoney) {
-      success = await updateLentMoney(record.id, updatedData);
-    } else if (record.source === 'lent_payment' && updateLentPayment) {
-      const pIdx = lentMoney
-        .find(l => l.id === record.originalRecord.parentLentId)
-        ?.paymentHistory.findIndex(p => p.amount === record.amount && p.date === record.date);
-      if (pIdx !== undefined && pIdx !== -1) {
-        success = await updateLentPayment(record.originalRecord.parentLentId, pIdx, updatedData);
-      }
+    } else if (record.source === 'lent' || record.source === 'lent_payment') {
+      alert("Editing lent history directly is not supported yet.");
+      success = false;
     }
 
     if (success) {

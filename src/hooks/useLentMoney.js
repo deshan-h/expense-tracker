@@ -13,7 +13,9 @@ export const useLentMoney = (user) => {
       return;
     }
 
-    const qLent = query(collection(db, 'moneyLent'), orderBy('date', 'desc'));
+    // Since we use 1 document per person, we can just fetch them all.
+    // We sort by an arbitrary field, or just fetch all and let frontend sort.
+    const qLent = query(collection(db, 'moneyLent'));
     const unsubLent = onSnapshot(qLent, (snapshot) => {
       const lentData = [];
       snapshot.forEach((document) => {
@@ -25,17 +27,45 @@ export const useLentMoney = (user) => {
     return () => unsubLent();
   }, [user]);
 
+  const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
+
   const addLentMoney = useCallback(async (data) => {
     try {
-      await addDoc(collection(db, 'moneyLent'), {
-        type: data.type,
-        name: data.name,
-        amount: data.amount,
-        paidAmount: 0,
-        description: data.description,
+      const amount = parseFloat(data.amount);
+      if (isNaN(amount) || amount <= 0) return false;
+
+      // Find an active ledger for this person
+      const existingDoc = lentMoney.find(r => r.name === data.name && r.status !== 'settled');
+
+      const newItem = {
+        id: generateId(),
+        entryType: 'borrow',
+        amount: amount,
         date: new Date(data.date).toISOString(),
-        status: 'pending'
-      });
+        description: data.description || 'Borrowed money'
+      };
+
+      if (existingDoc) {
+        // Update existing document
+        const newTotalAmount = (existingDoc.totalAmount || 0) + amount;
+        await updateDoc(doc(db, 'moneyLent', existingDoc.id), {
+          totalAmount: newTotalAmount,
+          status: newTotalAmount > (existingDoc.totalPaid || 0) ? 'pending' : 'settled',
+          history: [...(existingDoc.history || []), newItem]
+        });
+      } else {
+        // Create new document
+        await addDoc(collection(db, 'moneyLent'), {
+          name: data.name,
+          type: data.type,
+          totalAmount: amount,
+          totalPaid: 0,
+          status: 'pending',
+          history: [newItem],
+          createdAt: new Date().toISOString()
+        });
+      }
+
       toast.success("Record added!");
       playSuccessSound();
       return true;
@@ -45,54 +75,35 @@ export const useLentMoney = (user) => {
       playErrorSound();
       return false;
     }
-  }, []);
+  }, [lentMoney]);
 
   const receiveLentPayment = useCallback(async (name, paymentAmount) => {
     try {
-      let remainingPayment = parseFloat(paymentAmount);
-      if (isNaN(remainingPayment) || remainingPayment <= 0) return false;
+      const amount = parseFloat(paymentAmount);
+      if (isNaN(amount) || amount <= 0) return false;
 
-      const personPendingRecords = lentMoney
-        .filter(r => r.status !== 'paid' && r.name === name)
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-      for (const record of personPendingRecords) {
-        if (remainingPayment <= 0) break;
-
-        const currentPaid = record.paidAmount || 0;
-        const currentOwed = record.amount - currentPaid;
-
-        if (currentOwed > 0) {
-          let amountToApply = 0;
-          let newStatus = 'pending';
-          let newPaidDate = null;
-
-          if (remainingPayment >= currentOwed) {
-             amountToApply = currentOwed;
-             newStatus = 'paid';
-             newPaidDate = new Date().toISOString();
-          } else {
-             amountToApply = remainingPayment;
-          }
-
-          remainingPayment -= amountToApply;
-
-          const currentHistory = record.paymentHistory || [];
-          const newPayment = {
-            date: new Date().toISOString(),
-            amount: amountToApply
-          };
-
-          await updateDoc(doc(db, 'moneyLent', record.id), {
-            paidAmount: currentPaid + amountToApply,
-            status: newStatus,
-            paymentHistory: [...currentHistory, newPayment],
-            ...(newPaidDate && { paidDate: newPaidDate })
-          });
-        }
+      const existingDoc = lentMoney.find(r => r.name === name && r.status !== 'settled');
+      if (!existingDoc) {
+         toast.error("No active record found for this person.");
+         return false;
       }
 
-      toast.success(`Payment of Rs. ${paymentAmount} received from ${name}!`);
+      const newItem = {
+        id: generateId(),
+        entryType: 'payment',
+        amount: amount,
+        date: new Date().toISOString()
+      };
+
+      const newTotalPaid = (existingDoc.totalPaid || 0) + amount;
+      
+      await updateDoc(doc(db, 'moneyLent', existingDoc.id), {
+        totalPaid: newTotalPaid,
+        status: newTotalPaid >= (existingDoc.totalAmount || 0) ? 'settled' : 'pending',
+        history: [...(existingDoc.history || []), newItem]
+      });
+
+      toast.success(`Payment of Rs. ${amount} received from ${name}!`);
       playSuccessSound();
       return true;
     } catch (error) {
@@ -103,110 +114,53 @@ export const useLentMoney = (user) => {
     }
   }, [lentMoney]);
 
-  const deleteLentMoney = useCallback(async (id) => {
+  const deleteLentHistoryEntry = useCallback(async (docId, entryId) => {
     try {
-      await deleteDoc(doc(db, 'moneyLent', id));
-      toast.success("Record deleted.");
-      playSuccessSound();
-      return true;
-    } catch (error) {
-      console.error("Error deleting lent money: ", error);
-      toast.error("Failed to delete record.");
-      playErrorSound();
-      return false;
-    }
-  }, []);
+      const existingDoc = lentMoney.find(r => r.id === docId);
+      if (!existingDoc) return false;
 
-  const deleteLentPayment = useCallback(async (recordId, paymentIndex) => {
-    try {
-      const record = lentMoney.find(r => r.id === recordId);
-      if (!record || !record.paymentHistory || !record.paymentHistory[paymentIndex]) return false;
+      const entryToDelete = existingDoc.history.find(h => h.id === entryId);
+      if (!entryToDelete) return false;
 
-      const paymentToDelete = record.paymentHistory[paymentIndex];
-      const newPaidAmount = Math.max(0, (record.paidAmount || 0) - paymentToDelete.amount);
-      const newHistory = record.paymentHistory.filter((_, idx) => idx !== paymentIndex);
+      const newHistory = existingDoc.history.filter(h => h.id !== entryId);
       
-      const newStatus = newPaidAmount >= record.amount ? 'paid' : 'pending';
+      let newTotalAmount = existingDoc.totalAmount || 0;
+      let newTotalPaid = existingDoc.totalPaid || 0;
 
-      await updateDoc(doc(db, 'moneyLent', recordId), {
-        paidAmount: newPaidAmount,
-        paymentHistory: newHistory,
-        status: newStatus
-      });
-      
-      toast.success("Payment record deleted.");
-      playSuccessSound();
-      return true;
-    } catch (error) {
-      console.error("Error deleting lent payment: ", error);
-      toast.error("Failed to delete payment record.");
-      playErrorSound();
-      return false;
-    }
-  }, [lentMoney]);
-
-  const updateLentMoney = useCallback(async (id, updatedData) => {
-    try {
-      const dataToUpdate = {
-        amount: updatedData.amount,
-        description: updatedData.description,
-        date: new Date(updatedData.date).toISOString(),
-        name: updatedData.name,
-        type: updatedData.type
-      };
-
-      // Recalculate status based on new amount and existing paidAmount
-      const record = lentMoney.find(r => r.id === id);
-      if (record) {
-        const currentPaid = record.paidAmount || 0;
-        dataToUpdate.status = currentPaid >= updatedData.amount ? 'paid' : 'pending';
+      if (entryToDelete.entryType === 'borrow') {
+        newTotalAmount -= entryToDelete.amount;
+      } else if (entryToDelete.entryType === 'payment') {
+        newTotalPaid -= entryToDelete.amount;
       }
 
-      await updateDoc(doc(db, 'moneyLent', id), dataToUpdate);
-      toast.success("Lent money record updated!");
+      // If both are 0 or below, we can delete the whole document, but let's just update it to settled.
+      // Actually, if history is empty, delete the document!
+      if (newHistory.length === 0) {
+        await deleteDoc(doc(db, 'moneyLent', docId));
+      } else {
+        await updateDoc(doc(db, 'moneyLent', docId), {
+          totalAmount: Math.max(0, newTotalAmount),
+          totalPaid: Math.max(0, newTotalPaid),
+          status: newTotalAmount > newTotalPaid ? 'pending' : 'settled',
+          history: newHistory
+        });
+      }
+
+      toast.success("Entry deleted!");
       playSuccessSound();
       return true;
     } catch (error) {
-      console.error("Error updating lent money: ", error);
-      toast.error("Failed to update record.");
+      console.error("Error deleting entry: ", error);
+      toast.error("Failed to delete entry.");
       playErrorSound();
       return false;
     }
   }, [lentMoney]);
 
-  const updateLentPayment = useCallback(async (recordId, paymentIndex, updatedPaymentData) => {
-    try {
-      const record = lentMoney.find(r => r.id === recordId);
-      if (!record || !record.paymentHistory || !record.paymentHistory[paymentIndex]) return false;
-
-      const oldPayment = record.paymentHistory[paymentIndex];
-      const newHistory = [...record.paymentHistory];
-      newHistory[paymentIndex] = {
-        ...oldPayment,
-        amount: updatedPaymentData.amount,
-        date: new Date(updatedPaymentData.date).toISOString()
-      };
-
-      // Recalculate total paid
-      const newPaidAmount = newHistory.reduce((acc, curr) => acc + curr.amount, 0);
-      const newStatus = newPaidAmount >= record.amount ? 'paid' : 'pending';
-
-      await updateDoc(doc(db, 'moneyLent', recordId), {
-        paidAmount: newPaidAmount,
-        paymentHistory: newHistory,
-        status: newStatus
-      });
-      
-      toast.success("Payment record updated.");
-      playSuccessSound();
-      return true;
-    } catch (error) {
-      console.error("Error updating lent payment: ", error);
-      toast.error("Failed to update payment record.");
-      playErrorSound();
-      return false;
-    }
-  }, [lentMoney]);
-
-  return { lentMoney, addLentMoney, receiveLentPayment, deleteLentMoney, deleteLentPayment, updateLentMoney, updateLentPayment };
+  return {
+    lentMoney,
+    addLentMoney,
+    receiveLentPayment,
+    deleteLentHistoryEntry
+  };
 };

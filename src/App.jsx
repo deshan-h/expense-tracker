@@ -78,7 +78,7 @@ function App() {
   // Custom Hooks mapped
   const { transactions, loading: txLoading, addExpense, addIncome, deleteTransaction, updateTransaction } = useTransactions(user);
   const { categories, addCategory: addCat, deleteCategory: delCat, addSubcategory: addSub, deleteSubcategory: delSub, seedDefaultCategories, DEFAULT_CATEGORIES } = useCategories(user, setCategory);
-  const { lentMoney, addLentMoney: addLent, receiveLentPayment: recLent, deleteLentMoney: delLent, deleteLentPayment: delLentPayment, updateLentMoney, updateLentPayment } = useLentMoney(user);
+  const { lentMoney, addLentMoney: addLent, receiveLentPayment: recLent, deleteLentHistoryEntry } = useLentMoney(user);
   const { syncMetadata, isSyncing, handleSyncPOS } = usePOSSync(user);
   const { savings, addSaving, deleteSaving, updateSaving } = useSavings(user);
   const { schedules, addSchedule, deleteSchedule } = useScheduled(user, addExpense);
@@ -401,12 +401,9 @@ function App() {
                 savings={savings}
                 formatLKR={formatLKR}
                 handleDeleteTransaction={deleteTransaction}
-                handleDeleteLentMoney={delLent}
-                handleDeleteLentPayment={delLentPayment}
+                handleDeleteLentHistoryEntry={deleteLentHistoryEntry}
                 deleteSaving={deleteSaving}
                 updateTransaction={updateTransaction}
-                updateLentMoney={updateLentMoney}
-                updateLentPayment={updateLentPayment}
                 updateSaving={updateSaving}
                 categories={categories}
                 schedules={schedules}
@@ -432,18 +429,14 @@ function App() {
                 lentTime={lentTime}
                 setLentTime={setLentTime}
                 handleAddLentMoney={handleAddLentMoneyLocal}
+                handleAddLentInline={addLent}
                 handleReceiveLentPayment={recLent}
                 formatLKR={formatLKR}
                 handleDeleteTransaction={deleteTransaction}
                 activeLentTab={activeLentTab}
                 setActiveLentTab={setActiveLentTab}
-                totalPendingLent={totalPendingLent}
-                pendingLent={pendingLent}
-                paidLent={paidLent}
-                handleDeleteLentMoney={delLent}
-                handleDeleteLentPayment={delLentPayment}
-                showPaid={showPaid}
-                setShowPaid={setShowPaid}
+                lentMoney={lentMoney}
+                handleDeleteLentHistoryEntry={deleteLentHistoryEntry}
               />
             </Suspense>
           </TabsContent>
