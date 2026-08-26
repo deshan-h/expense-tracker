@@ -214,7 +214,9 @@ const AddExpenseTab = ({
                             if (tpl.amount) setAmount(tpl.amount);
                             if (tpl.category) setCategory(tpl.category);
                             if (tpl.subcategory) setSubcategory(tpl.subcategory);
-                            if (tpl.description) setDescription(tpl.description);
+                            if (tpl.description || tpl.desc) {
+                              setDescription(tpl.description || tpl.desc);
+                            }
                             setIsTemplatesExpanded(false);
                           }}
                           className="bg-gray-800/60 hover:bg-gray-700 border border-gray-700/50 hover:border-gray-600 rounded-xl py-2 px-3 flex items-center justify-start gap-3 transition-all text-left group/btn shadow-inner"

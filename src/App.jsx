@@ -22,6 +22,10 @@ import { useScheduled } from './hooks/useScheduled';
 import { useTemplates } from './hooks/useTemplates';
 import { useWishlist } from './hooks/useWishlist';
 
+// Context
+import { AuthProvider } from './context/AuthContext';
+import { AppProvider } from './context/AppContext';
+
 // Lazy Loaded Pages (Performance Optimization)
 const DashboardTab = lazy(() => import('./pages/DashboardTab'));
 const AddExpenseTab = lazy(() => import('./pages/AddExpenseTab'));
@@ -277,7 +281,25 @@ function App() {
     );
   }
 
+  const contextValue = {
+    transactions, txLoading, addExpense, addIncome, deleteTransaction, updateTransaction,
+    categories, addCat, delCat, addSub, delSub, seedDefaultCategories, DEFAULT_CATEGORIES,
+    lentMoney, addLent, recLent, deleteLentHistoryEntry,
+    syncMetadata, isSyncing, handleSyncPOS,
+    savings, addSaving, deleteSaving, updateSaving,
+    schedules, addSchedule, deleteSchedule,
+    wishlistItems, wishlistLoading, addWishlistItem, completeWishlistItem, deleteWishlistItem, addSubItemToWishlist,
+    templates, addTemplate, deleteTemplate, updateTemplate,
+    formatLKR, COLORS,
+    totalIncome, totalExpense, netBalance,
+    expensesByCategory, chartData,
+    totalPendingLent, totalSavings,
+    thisMonthPlanned, thisMonthWithdrawals
+  };
+
   return (
+    <AuthProvider>
+    <AppProvider value={contextValue}>
     <div className="min-h-screen bg-gray-900 text-gray-100 pb-8 font-sans overflow-x-hidden">
       <Toaster position="top-center" toastOptions={{ style: { background: '#1f2937', color: '#fff', borderRadius: '16px', border: '1px solid #374151' } }} />
       <div className="w-full mx-auto space-y-2 pt-2 relative z-50">
@@ -541,6 +563,8 @@ function App() {
         </div>
       )}
     </div>
+    </AppProvider>
+    </AuthProvider>
   );
 }
 

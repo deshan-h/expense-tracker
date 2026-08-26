@@ -33,7 +33,7 @@ const SettingsTab = ({
       amount: tpl.amount || '',
       category: tpl.category || '',
       subcategory: tpl.subcategory || '',
-      description: tpl.description || ''
+      description: tpl.description || tpl.desc || ''
     });
   };
 
@@ -256,10 +256,10 @@ const SettingsTab = ({
                         <p className="text-gray-200 font-mono text-lg">{tpl.amount}</p>
                       </div>
                     )}
-                    {tpl.description && (
+                    {(tpl.description || tpl.desc) && (
                       <div className="p-4 pt-0 bg-gray-900/40 border-t border-gray-800/80">
                         <p className="text-gray-400 text-xs uppercase tracking-wider mb-1 mt-3">Description</p>
-                        <p className="text-gray-300 text-sm">{tpl.description}</p>
+                        <p className="text-gray-300 text-sm">{tpl.description || tpl.desc}</p>
                       </div>
                     )}
                   </div>
