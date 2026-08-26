@@ -468,4 +468,4 @@ export default function CashFlowChart({ formatCompact, formatLKR }) {
       </div>
     </motion.div>
   );
-}// test
+}
