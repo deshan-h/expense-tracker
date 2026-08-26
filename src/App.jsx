@@ -448,6 +448,26 @@ function App() {
                 lentMoney={lentMoney}
                 handleDeleteLentHistoryEntry={deleteLentHistoryEntry}
               />
+              </Suspense>
+          </TabsContent>
+
+        {/* TAB: HISTORY */}
+          <TabsContent value="history">
+            <Suspense fallback={<TabFallback />}>
+              <HistoryTab 
+                transactions={transactions}
+                lentMoney={lentMoney}
+                savings={savings}
+                formatLKR={formatLKR}
+                handleDeleteTransaction={deleteTransaction}
+                handleDeleteLentHistoryEntry={deleteLentHistoryEntry}
+                deleteSaving={deleteSaving}
+                updateTransaction={updateTransaction}
+                updateSaving={updateSaving}
+                categories={categories}
+                schedules={schedules}
+                deleteSchedule={deleteSchedule}
+              />
             </Suspense>
           </TabsContent>
 
