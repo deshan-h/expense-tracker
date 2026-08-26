@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PiggyBank, PlusCircle, ArrowUpCircle, ArrowDownCircle, Trash2, List } from 'lucide-react';
+import { PiggyBank, PlusCircle, ArrowUpCircle, ArrowDownCircle, Trash2, List, ChevronDown, ChevronUp } from 'lucide-react';
 import DateTimePicker from '../components/ui/DateTimePicker';
 
 const SavingsTab = ({
@@ -13,6 +13,7 @@ const SavingsTab = ({
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [time, setTime] = useState(new Date().toTimeString().slice(0, 5));
+  const [showAddRecord, setShowAddRecord] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,43 +53,56 @@ const SavingsTab = ({
             {/* TOP ROW: Add Record Form */}
             <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl relative z-20 mb-8">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
-                <h3 className="text-xs font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
-                  <PlusCircle className="w-4 h-4 text-pink-500" /> Add Record
-                </h3>
-                <div className="flex p-1 bg-gray-900 rounded-xl w-full sm:w-auto">
-                  {savings.length === 0 && (
-                    <button type="button" onClick={() => setType('Initial')} className={`flex-1 sm:flex-none px-4 py-1.5 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${type === 'Initial' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
-                      Initial
-                    </button>
-                  )}
-                  <button type="button" onClick={() => setType('Deposit')} className={`flex-1 sm:flex-none px-4 py-1.5 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${type === 'Deposit' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
-                    Deposit
-                  </button>
-                  <button type="button" onClick={() => setType('Withdrawal')} className={`flex-1 sm:flex-none px-4 py-1.5 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${type === 'Withdrawal' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
-                    Withdrawal
+                <div 
+                  className="flex items-center gap-2 cursor-pointer group"
+                  onClick={() => setShowAddRecord(!showAddRecord)}
+                >
+                  <h3 className="text-xs font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2 group-hover:text-white transition-colors">
+                    <PlusCircle className="w-4 h-4 text-pink-500" /> Add Record
+                  </h3>
+                  <button type="button" className="text-gray-500 group-hover:text-gray-300 transition-colors bg-gray-800/50 p-1.5 rounded-full ml-2">
+                    {showAddRecord ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </button>
                 </div>
+                
+                {showAddRecord && (
+                  <div className="flex p-1 bg-gray-900 rounded-xl w-full sm:w-auto">
+                    {savings.length === 0 && (
+                      <button type="button" onClick={() => setType('Initial')} className={`flex-1 sm:flex-none px-4 py-1.5 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${type === 'Initial' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
+                        Initial
+                      </button>
+                    )}
+                    <button type="button" onClick={() => setType('Deposit')} className={`flex-1 sm:flex-none px-4 py-1.5 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${type === 'Deposit' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
+                      Deposit
+                    </button>
+                    <button type="button" onClick={() => setType('Withdrawal')} className={`flex-1 sm:flex-none px-4 py-1.5 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${type === 'Withdrawal' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
+                      Withdrawal
+                    </button>
+                  </div>
+                )}
               </div>
 
-              <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-3 items-end">
-                {/* Amount */}
-                <div className="w-full md:w-48 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-pink-500 focus-within:ring-1 focus-within:ring-pink-500 transition-all shadow-inner">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">Rs.</span>
-                  <input type="text" inputMode="decimal" required value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} className="w-full bg-transparent pl-10 pr-3 py-2.5 text-sm font-bold text-white focus:outline-none" placeholder="0.00" />
-                </div>
-                {/* Details */}
-                <div className="w-full md:flex-1 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-pink-500 transition-all shadow-inner">
-                  <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} required className="w-full h-[42px] bg-transparent px-3 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder="E.g., Monthly Savings, Emergency Fund" />
-                </div>
-                {/* Date */}
-                <div className="w-full md:w-44 flex-shrink-0">
-                  <DateTimePicker date={date} setDate={setDate} time={time} setTime={setTime} hideTime={true} />
-                </div>
-                {/* Submit */}
-                <button type="submit" className={`w-full md:w-auto h-[42px] bg-gradient-to-r ${type === 'Deposit' ? 'from-emerald-500 via-teal-500 to-emerald-600' : type === 'Withdrawal' ? 'from-rose-500 via-pink-500 to-rose-600' : 'from-indigo-500 via-purple-500 to-indigo-600'} hover:bg-right bg-[length:200%_auto] text-white font-black tracking-widest uppercase px-6 rounded-xl transition-all shadow-[0_0_15px_-3px_rgba(16,185,129,0.5)] active:scale-[0.98] shrink-0 flex items-center justify-center gap-2`}>
-                  <PlusCircle className="w-4 h-4" /> SAVE
-                </button>
-              </form>
+              {showAddRecord && (
+                <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-3 items-end">
+                  {/* Amount */}
+                  <div className="w-full md:w-48 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-pink-500 focus-within:ring-1 focus-within:ring-pink-500 transition-all shadow-inner">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">Rs.</span>
+                    <input type="text" inputMode="decimal" required value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} className="w-full bg-transparent pl-10 pr-3 py-2.5 text-sm font-bold text-white focus:outline-none" placeholder="0.00" />
+                  </div>
+                  {/* Details */}
+                  <div className="w-full md:flex-1 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-pink-500 transition-all shadow-inner">
+                    <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} required className="w-full h-[42px] bg-transparent px-3 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder="E.g., Monthly Savings, Emergency Fund" />
+                  </div>
+                  {/* Date */}
+                  <div className="w-full md:w-44 flex-shrink-0">
+                    <DateTimePicker date={date} setDate={setDate} time={time} setTime={setTime} hideTime={true} />
+                  </div>
+                  {/* Submit */}
+                  <button type="submit" className={`w-full md:w-auto h-[42px] bg-gradient-to-r ${type === 'Deposit' ? 'from-emerald-500 via-teal-500 to-emerald-600' : type === 'Withdrawal' ? 'from-rose-500 via-pink-500 to-rose-600' : 'from-indigo-500 via-purple-500 to-indigo-600'} hover:bg-right bg-[length:200%_auto] text-white font-black tracking-widest uppercase px-6 rounded-xl transition-all shadow-[0_0_15px_-3px_rgba(16,185,129,0.5)] active:scale-[0.98] shrink-0 flex items-center justify-center gap-2`}>
+                    <PlusCircle className="w-4 h-4" /> SAVE
+                  </button>
+                </form>
+              )}
             </div>
 
             {/* BOTTOM SECTION: Timeline View */}

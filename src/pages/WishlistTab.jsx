@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Target, CheckCircle, PlusCircle, Trash2, X, DollarSign, ListTodo, Activity, ArrowRight, Check, Plus } from 'lucide-react';
+import { Target, CheckCircle, PlusCircle, Trash2, X, DollarSign, ListTodo, Activity, ArrowRight, Check, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const formatLKR = (amount) => {
@@ -18,6 +18,7 @@ export default function WishlistTab({
   const [newItemName, setNewItemName] = useState('');
   const [newEstimatedCost, setNewEstimatedCost] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAddPlan, setShowAddPlan] = useState(false);
 
   // Inline sub-item addition states
   const [activeSubItemInputId, setActiveSubItemInputId] = useState(null);
@@ -111,27 +112,35 @@ export default function WishlistTab({
 
             {/* TOP ROW: Add Record Form */}
             <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl relative z-20 mb-8">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
-                <h3 className="text-xs font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
+              <div 
+                className="flex items-center justify-between cursor-pointer group mb-4"
+                onClick={() => setShowAddPlan(!showAddPlan)}
+              >
+                <h3 className="text-xs font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2 group-hover:text-white transition-colors">
                   <PlusCircle className="w-4 h-4 text-indigo-500" /> Add New Plan
                 </h3>
+                <button type="button" className="text-gray-500 group-hover:text-gray-300 transition-colors bg-gray-800/50 p-1.5 rounded-full">
+                  {showAddPlan ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
               </div>
 
-              <form onSubmit={handleAddItem} className="flex flex-col md:flex-row gap-3 items-end">
-                {/* Details */}
-                <div className="w-full md:flex-1 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-indigo-500 transition-all shadow-inner">
-                  <input type="text" value={newItemName} onChange={e => setNewItemName(e.target.value)} required className="w-full h-[42px] bg-transparent px-3 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder="Item or Work Name (e.g., New Laptop, Car Service)" />
-                </div>
-                {/* Amount */}
-                <div className="w-full md:w-48 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all shadow-inner">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">Rs.</span>
-                  <input type="number" step="0.01" value={newEstimatedCost} onChange={e => setNewEstimatedCost(e.target.value)} className="w-full bg-transparent pl-10 pr-3 py-2.5 text-sm font-bold text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="Estimated Cost (Optional)" />
-                </div>
-                {/* Submit */}
-                <button type="submit" disabled={isSubmitting} className="w-full md:w-auto h-[42px] bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 hover:bg-right bg-[length:200%_auto] text-white font-black tracking-widest uppercase px-6 rounded-xl transition-all shadow-[0_0_15px_-3px_rgba(99,102,241,0.5)] active:scale-[0.98] shrink-0 flex items-center justify-center gap-2">
-                  {isSubmitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <><Target className="w-4 h-4" /> SAVE</>}
-                </button>
-              </form>
+              {showAddPlan && (
+                <form onSubmit={handleAddItem} className="flex flex-col md:flex-row gap-3 items-end mt-4">
+                  {/* Details */}
+                  <div className="w-full md:flex-1 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-indigo-500 transition-all shadow-inner">
+                    <input type="text" value={newItemName} onChange={e => setNewItemName(e.target.value)} required className="w-full h-[42px] bg-transparent px-3 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder="Item or Work Name (e.g., New Laptop, Car Service)" />
+                  </div>
+                  {/* Amount */}
+                  <div className="w-full md:w-48 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all shadow-inner">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">Rs.</span>
+                    <input type="number" step="0.01" value={newEstimatedCost} onChange={e => setNewEstimatedCost(e.target.value)} className="w-full bg-transparent pl-10 pr-3 py-2.5 text-sm font-bold text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="Estimated Cost (Optional)" />
+                  </div>
+                  {/* Submit */}
+                  <button type="submit" disabled={isSubmitting} className="w-full md:w-auto h-[42px] bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 hover:bg-right bg-[length:200%_auto] text-white font-black tracking-widest uppercase px-6 rounded-xl transition-all shadow-[0_0_15px_-3px_rgba(99,102,241,0.5)] active:scale-[0.98] shrink-0 flex items-center justify-center gap-2">
+                    {isSubmitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <><Target className="w-4 h-4" /> SAVE</>}
+                  </button>
+                </form>
+              )}
             </div>
 
             {/* BOTTOM SECTION: LISTS */}

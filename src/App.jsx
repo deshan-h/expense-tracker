@@ -73,6 +73,7 @@ function App() {
   const [lentDescription, setLentDescription] = useState('');
   const [lentDate, setLentDate] = useState(new Date().toISOString().split('T')[0]);
   const [lentTime, setLentTime] = useState(new Date().toTimeString().slice(0, 5));
+  const [lentDueDate, setLentDueDate] = useState('');
   const [activeLentTab, setActiveLentTab] = useState('Family');
   const [showPaid, setShowPaid] = useState(false);
 
@@ -151,16 +152,17 @@ function App() {
     e.preventDefault();
     if (!lentAmount || !lentName) return;
     const fullDate = `${lentDate}T${lentTime}`;
-    const success = await addLent({ type: lentType, name: lentName, amount: parseFloat(lentAmount), description: lentDescription, date: fullDate });
+    const success = await addLent({ type: lentType, name: lentName, amount: parseFloat(lentAmount), description: lentDescription, date: fullDate, dueDate: lentDueDate });
     if (success) {
       setLentAmount('');
       setLentName('');
       setLentDescription('');
+      setLentDueDate('');
       setLentDate(new Date().toISOString().split('T')[0]);
       setLentTime(new Date().toTimeString().slice(0, 5));
       setActiveLentTab(lentType);
     }
-  }, [lentAmount, lentName, lentType, lentDescription, lentDate, addLent]);
+  }, [lentAmount, lentName, lentType, lentDescription, lentDate, lentDueDate, addLent]);
 
   const handleAddCategoryLocal = useCallback(async (e) => {
     e.preventDefault();

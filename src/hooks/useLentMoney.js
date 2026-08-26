@@ -42,7 +42,8 @@ export const useLentMoney = (user) => {
         entryType: 'borrow',
         amount: amount,
         date: new Date(data.date).toISOString(),
-        description: data.description || 'Borrowed money'
+        description: data.description || 'Borrowed money',
+        dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : null
       };
 
       if (existingDoc) {

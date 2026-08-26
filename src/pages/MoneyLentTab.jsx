@@ -11,6 +11,10 @@ const MoneyLentTab = ({
   setLentAmount,
   lentName,
   setLentName,
+  lentDescription,
+  setLentDescription,
+  lentDueDate,
+  setLentDueDate,
   lentDate,
   setLentDate,
   lentTime,
@@ -20,12 +24,19 @@ const MoneyLentTab = ({
   formatLKR,
   handleDeleteLentHistoryEntry
 }) => {
-  // State for tracking active inline action
-  const [activeAction, setActiveAction] = useState(null); // { name: string, type: 'lend' | 'receive' }
-  const [actionInput, setActionInput] = useState('');
-  
   const [expandedHistory, setExpandedHistory] = useState(null);
   const [showSettled, setShowSettled] = useState(false);
+  const [showAddBorrower, setShowAddBorrower] = useState(false);
+
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalGroup, setModalGroup] = useState(null);
+  const [modalType, setModalType] = useState('lend'); // 'lend' | 'receive'
+  const [modalAmount, setModalAmount] = useState('');
+  const [modalDescription, setModalDescription] = useState('');
+  const [modalDueDate, setModalDueDate] = useState('');
+  const [modalDate, setModalDate] = useState(new Date().toISOString().split('T')[0]);
+  const [modalTime, setModalTime] = useState(new Date().toTimeString().slice(0, 5));
 
   const toggleHistory = (name) => {
     setExpandedHistory(prev => prev === name ? null : name);
@@ -37,35 +48,38 @@ const MoneyLentTab = ({
   const activeGroups = allGroups.filter(group => group.status !== 'settled');
   const settledGroups = allGroups.filter(group => group.status === 'settled');
 
-  const handleActionClick = (name, type) => {
-    if (activeAction?.name === name && activeAction?.type === type) {
-      setActiveAction(null);
-    } else {
-      setActiveAction({ name, type });
-      setActionInput('');
-    }
+  const openModal = (group) => {
+    setModalGroup(group);
+    setModalType('lend');
+    setModalAmount('');
+    setModalDescription('');
+    setModalDueDate('');
+    setModalDate(new Date().toISOString().split('T')[0]);
+    setModalTime(new Date().toTimeString().slice(0, 5));
+    setIsModalOpen(true);
   };
 
-  const submitAction = async (group) => {
-    if (!actionInput) return;
-    const amount = parseFloat(actionInput);
+  const handleModalSubmit = async (e) => {
+    e.preventDefault();
+    if (!modalAmount) return;
+    const amount = parseFloat(modalAmount);
     if (isNaN(amount) || amount <= 0) return;
 
-    if (activeAction.type === 'receive') {
-      handleReceiveLentPayment(group.name, actionInput);
-    } else if (activeAction.type === 'lend' && handleAddLentInline) {
-      const now = new Date();
-      const fullDate = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().slice(0, 19);
+    if (modalType === 'receive') {
+      await handleReceiveLentPayment(modalGroup.name, modalAmount);
+    } else if (modalType === 'lend' && handleAddLentInline) {
+      const fullDate = `${modalDate}T${modalTime}`;
       await handleAddLentInline({ 
-        type: group.type, 
-        name: group.name, 
+        type: modalGroup.type, 
+        name: modalGroup.name, 
         amount: amount, 
-        description: 'Additional loan', 
-        date: fullDate 
+        description: modalDescription || 'Additional loan', 
+        date: fullDate,
+        dueDate: modalDueDate
       });
     }
-    setActiveAction(null);
-    setActionInput('');
+    setIsModalOpen(false);
+    setModalGroup(null);
   };
 
   const renderGroup = (group, isSettled = false) => {
@@ -117,40 +131,13 @@ const MoneyLentTab = ({
                <div className="w-full md:w-auto bg-emerald-500/10 text-emerald-500 font-bold px-6 py-1.5 rounded-lg text-[10px] uppercase tracking-widest border border-emerald-500/20 text-center flex items-center justify-center gap-1">
                  <CreditCard className="w-3 h-3" /> SETTLED
                </div>
-             ) : activeAction?.name === group.name ? (
-               <div className="flex items-center gap-1 w-full md:max-w-[150px]">
-                  <div className={`relative flex-1 bg-gray-900 border rounded-lg overflow-hidden flex items-center px-2 py-1.5 ${activeAction.type === 'lend' ? 'border-amber-500/50' : 'border-emerald-500/50'}`}>
-                    <span className="text-gray-500 text-[10px] font-bold mr-1">Rs.</span>
-                    <input 
-                      type="number" 
-                      step="0.01"
-                      placeholder="0"
-                      value={actionInput}
-                      onChange={(e) => setActionInput(e.target.value)}
-                      className="w-full bg-transparent text-xs font-bold text-gray-100 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      autoFocus
-                    />
-                  </div>
-                  <button 
-                    onClick={() => submitAction(group)}
-                    className={`${activeAction.type === 'lend' ? 'bg-amber-500 hover:bg-amber-400 text-gray-900' : 'bg-emerald-500 hover:bg-emerald-400 text-gray-900'} px-2.5 py-1.5 rounded-lg font-bold text-[10px] uppercase transition-colors`}
-                  >
-                    ✓
-                  </button>
-               </div>
              ) : (
                <div className="flex gap-2 w-full md:w-auto justify-end">
                  <button 
-                    onClick={() => handleActionClick(group.name, 'lend')}
-                    className="flex-1 md:flex-none bg-gray-800 hover:bg-amber-500/20 hover:border-amber-500/50 text-gray-300 font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-[10px] uppercase tracking-widest border border-gray-700/50 flex items-center justify-center gap-1"
+                    onClick={() => openModal(group)}
+                    className="w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-1.5 rounded-lg transition-colors cursor-pointer text-[10px] uppercase tracking-widest shadow-md flex items-center justify-center gap-1"
                  >
-                    <Plus className="w-3 h-3" /> Lend
-                 </button>
-                 <button 
-                    onClick={() => handleActionClick(group.name, 'receive')}
-                    className="flex-1 md:flex-none bg-gray-800 hover:bg-emerald-500/20 hover:border-emerald-500/50 text-gray-300 font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-[10px] uppercase tracking-widest border border-gray-700/50 flex items-center justify-center gap-1"
-                 >
-                    <Minus className="w-3 h-3" /> Pay
+                    <Plus className="w-3 h-3" /> Add
                  </button>
                </div>
              )}
@@ -181,10 +168,22 @@ const MoneyLentTab = ({
                            </div>
                            <div className="absolute -left-[9px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-4 border-gray-900 bg-amber-500"></div>
                            <div className="flex items-center justify-between gap-2 sm:gap-4 py-2.5 px-2 hover:bg-gray-800/20 transition-colors border-b border-gray-800/50 relative pr-10">
-                             <div className="flex items-center gap-3 overflow-hidden">
+                             <div className="flex flex-col overflow-hidden justify-center gap-0.5">
                                <span className="text-xs font-bold text-gray-200 whitespace-nowrap overflow-hidden text-ellipsis">
                                  {item.description || 'Borrowed money'}
                                </span>
+                               {item.dueDate && (() => {
+                                 const today = new Date();
+                                 today.setHours(0, 0, 0, 0);
+                                 const dueDate = new Date(item.dueDate);
+                                 dueDate.setHours(0, 0, 0, 0);
+                                 const isOverdue = dueDate < today;
+                                 return (
+                                   <span className={`text-[9px] font-bold uppercase tracking-widest ${isOverdue ? 'text-red-500' : 'text-amber-500/80'}`}>
+                                     Due: {new Date(item.dueDate).toLocaleDateString()}
+                                   </span>
+                                 );
+                               })()}
                              </div>
                              <div className="flex items-center gap-3 shrink-0">
                                <span className="text-xs font-black text-white">
@@ -252,48 +251,71 @@ const MoneyLentTab = ({
 
             {/* TOP ROW: Add Record Form */}
             <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl relative z-20 mb-8">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
+              <div 
+                className="flex items-center justify-between cursor-pointer"
+                onClick={() => setShowAddBorrower(!showAddBorrower)}
+              >
                 <h3 className="text-xs font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
                   <PlusCircle className="w-4 h-4 text-amber-500" /> Add New Borrower
                 </h3>
+                <button type="button" className="text-gray-500 hover:text-gray-300 transition-colors bg-gray-800/50 p-2 rounded-full">
+                  {showAddBorrower ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
               </div>
               
-              <form onSubmit={handleAddLentMoney} className="flex flex-col md:flex-row gap-3 items-end">
-                {/* Name */}
-                <div className="w-full md:flex-1 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-amber-500 transition-all shadow-inner">
-                  <input type="text" required value={lentName} onChange={(e) => setLentName(e.target.value)} className="w-full h-[42px] bg-transparent px-3 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder="Recipient Name" />
-                </div>
+              {showAddBorrower && (
+                <form onSubmit={handleAddLentMoney} className="flex flex-col gap-3 mt-4">
+                  <div className="flex flex-col md:flex-row gap-3 items-end">
+                    {/* Name */}
+                    <div className="w-full md:flex-1 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-amber-500 transition-all shadow-inner">
+                      <input type="text" required value={lentName} onChange={(e) => setLentName(e.target.value)} className="w-full h-[42px] bg-transparent px-3 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder="Recipient Name" />
+                    </div>
 
-                {/* Who (Relationship) */}
-                <div className="w-full md:w-36 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-amber-500 transition-all shadow-inner">
-                  <select required value={lentType} onChange={(e) => setLentType(e.target.value)} className="w-full h-[42px] bg-transparent px-3 text-sm font-medium text-gray-100 focus:outline-none appearance-none cursor-pointer">
-                    <option value="" disabled className="bg-gray-900 text-gray-500">Who?</option>
-                    <option value="Mother" className="bg-gray-900">Mother</option>
-                    <option value="Father" className="bg-gray-900">Father</option>
-                    <option value="Brother" className="bg-gray-900">Brother</option>
-                    <option value="Sister" className="bg-gray-900">Sister</option>
-                    <option value="Friend" className="bg-gray-900">Friend</option>
-                    <option value="Other" className="bg-gray-900">Other</option>
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-gray-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
+                    {/* Who (Relationship) */}
+                    <div className="w-full md:w-36 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-amber-500 transition-all shadow-inner">
+                      <select required value={lentType} onChange={(e) => setLentType(e.target.value)} className="w-full h-[42px] bg-transparent px-3 text-sm font-medium text-gray-100 focus:outline-none appearance-none cursor-pointer">
+                        <option value="" disabled className="bg-gray-900 text-gray-500">Who?</option>
+                        <option value="Mother" className="bg-gray-900">Mother</option>
+                        <option value="Father" className="bg-gray-900">Father</option>
+                        <option value="Brother" className="bg-gray-900">Brother</option>
+                        <option value="Sister" className="bg-gray-900">Sister</option>
+                        <option value="Friend" className="bg-gray-900">Friend</option>
+                        <option value="Other" className="bg-gray-900">Other</option>
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-gray-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
 
-                {/* Amount */}
-                <div className="w-full md:w-40 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500 transition-all shadow-inner">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">Rs.</span>
-                  <input type="number" step="0.01" required value={lentAmount} onChange={(e) => setLentAmount(e.target.value)} className="w-full h-[42px] bg-transparent pl-10 pr-3 text-sm font-bold text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
-                </div>
-                
-                {/* Date */}
-                <div className="w-full md:w-44 flex-shrink-0">
-                  <DateTimePicker date={lentDate} setDate={setLentDate} time={lentTime} setTime={setLentTime} hideTime={true} />
-                </div>
-                
-                {/* Submit */}
-                <button type="submit" className="w-full md:w-auto h-[42px] bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 bg-[length:200%_auto] hover:bg-right text-white font-black tracking-widest uppercase px-6 rounded-xl transition-all shadow-[0_0_15px_-3px_rgba(245,158,11,0.5)] active:scale-[0.98] shrink-0 flex items-center justify-center gap-2">
-                  <Handshake className="w-4 h-4" /> SAVE
-                </button>
-              </form>
+                    {/* Amount */}
+                    <div className="w-full md:w-40 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500 transition-all shadow-inner">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">Rs.</span>
+                      <input type="number" step="0.01" required value={lentAmount} onChange={(e) => setLentAmount(e.target.value)} className="w-full h-[42px] bg-transparent pl-10 pr-3 text-sm font-bold text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
+                    </div>
+                    
+                    {/* Date */}
+                    <div className="w-full md:w-44 flex-shrink-0">
+                      <DateTimePicker date={lentDate} setDate={setLentDate} time={lentTime} setTime={setLentTime} hideTime={true} />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-3 items-end">
+                    {/* Description */}
+                    <div className="w-full md:flex-1 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-amber-500 transition-all shadow-inner">
+                      <input type="text" value={lentDescription} onChange={(e) => setLentDescription(e.target.value)} className="w-full h-[42px] bg-transparent px-3 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder="What is it for? (Optional)" />
+                    </div>
+
+                    {/* Due Date */}
+                    <div className="w-full md:w-44 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-amber-500 transition-all shadow-inner flex flex-col justify-center">
+                      <span className="absolute left-3 top-1 text-[8px] font-bold text-gray-500 uppercase">Due Date</span>
+                      <input type="date" value={lentDueDate} onChange={(e) => setLentDueDate(e.target.value)} className="w-full h-[42px] bg-transparent px-3 pt-4 pb-1 text-sm font-medium text-gray-100 focus:outline-none [color-scheme:dark]" />
+                    </div>
+
+                    {/* Submit */}
+                    <button type="submit" className="w-full md:w-auto h-[42px] bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 bg-[length:200%_auto] hover:bg-right text-white font-black tracking-widest uppercase px-6 rounded-xl transition-all shadow-[0_0_15px_-3px_rgba(245,158,11,0.5)] active:scale-[0.98] shrink-0 flex items-center justify-center gap-2">
+                      <Handshake className="w-4 h-4" /> SAVE
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
 
             {/* BOTTOM SECTION: Manage & Receive Payments */}
@@ -367,6 +389,88 @@ const MoneyLentTab = ({
           </div>
         </div>
       </div>
+
+      {/* ACTION MODAL */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
+          <div className="bg-gray-900 border border-gray-700/50 w-full max-w-md rounded-[2rem] p-6 shadow-2xl relative z-10">
+            <h2 className="text-xl font-black text-white text-center mb-6">Manage: {modalGroup?.name}</h2>
+            
+            {/* Pill Toggle */}
+            <div className="flex bg-gray-800/80 rounded-xl p-1 mb-6 relative border border-gray-700/50 shadow-inner">
+              <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg transition-transform duration-300 ease-in-out ${modalType === 'lend' ? 'translate-x-0 bg-amber-500' : 'translate-x-[calc(100%+4px)] bg-emerald-500'}`} />
+              <button
+                type="button"
+                onClick={() => setModalType('lend')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold uppercase tracking-wider relative z-10 transition-colors ${modalType === 'lend' ? 'text-gray-900' : 'text-gray-400 hover:text-gray-200'}`}
+              >
+                <Plus className="w-4 h-4" /> LEND
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalType('receive')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold uppercase tracking-wider relative z-10 transition-colors ${modalType === 'receive' ? 'text-gray-900' : 'text-gray-400 hover:text-gray-200'}`}
+              >
+                <Minus className="w-4 h-4" /> PAY
+              </button>
+            </div>
+
+            <form onSubmit={handleModalSubmit} className="space-y-4">
+              {/* Amount */}
+              <div className="relative bg-gray-800/50 rounded-xl border border-gray-700/50 focus-within:border-blue-500 transition-colors">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">Rs.</span>
+                <input 
+                  type="number" 
+                  step="0.01" 
+                  required 
+                  autoFocus
+                  value={modalAmount} 
+                  onChange={(e) => setModalAmount(e.target.value)} 
+                  className="w-full h-[50px] bg-transparent pl-12 pr-4 text-lg font-black text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                  placeholder="0.00" 
+                />
+              </div>
+
+              {/* Conditionally render fields based on type */}
+              {modalType === 'lend' && (
+                <>
+                  <div className="relative bg-gray-800/50 rounded-xl border border-gray-700/50 focus-within:border-amber-500 transition-colors">
+                    <input 
+                      type="text" 
+                      value={modalDescription} 
+                      onChange={(e) => setModalDescription(e.target.value)} 
+                      className="w-full h-[45px] bg-transparent px-4 text-sm font-medium text-white focus:outline-none placeholder-gray-500" 
+                      placeholder="What is it for? (Optional)" 
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <DateTimePicker date={modalDate} setDate={setModalDate} time={modalTime} setTime={setModalTime} hideTime={true} />
+                    </div>
+                    <div className="flex-1 relative bg-gray-800/50 rounded-xl border border-gray-700/50 focus-within:border-amber-500 transition-colors flex flex-col justify-center">
+                      <span className="absolute left-3 top-1 text-[8px] font-bold text-gray-500 uppercase">Due Date (Optional)</span>
+                      <input 
+                        type="date" 
+                        value={modalDueDate} 
+                        onChange={(e) => setModalDueDate(e.target.value)} 
+                        className="w-full h-[42px] bg-transparent px-3 pt-4 pb-1 text-sm font-medium text-gray-100 focus:outline-none [color-scheme:dark]" 
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <button 
+                type="submit" 
+                className={`w-full mt-2 h-[50px] font-black tracking-widest uppercase rounded-xl shadow-lg transition-transform active:scale-[0.98] flex items-center justify-center gap-2 ${modalType === 'lend' ? 'bg-amber-500 text-gray-900 hover:bg-amber-400' : 'bg-emerald-500 text-gray-900 hover:bg-emerald-400'}`}
+              >
+                {modalType === 'lend' ? 'SAVE LOAN' : 'PAYMENT RECEIVED'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
