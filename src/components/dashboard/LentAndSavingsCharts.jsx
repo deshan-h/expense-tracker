@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
 import { Handshake, PiggyBank } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
+import ExpenseCalendarWidget from './ExpenseCalendarWidget';
 
 // Custom Tooltip for AreaChart
 const CustomAreaTooltip = ({ active, payload, label, formatLKR }) => {
@@ -120,79 +121,87 @@ export default function LentAndSavingsCharts({ formatCompact, formatLKR }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       
-      {/* Lent Money Chart */}
-      <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.3 }} className="bg-[#0b1120] p-6 rounded-[1.5rem] border border-gray-800/80 shadow-xl flex flex-col h-64">
-        <div className="flex justify-between items-start mb-2">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-blue-500/10 rounded-lg"><Handshake className="w-4 h-4 text-blue-400"/></div>
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Lent Money Trend</span>
+      {/* Left Column: Stacked Charts */}
+      <div className="flex flex-col gap-6 h-full">
+        {/* Lent Money Chart */}
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.3 }} className="bg-[#0b1120] p-6 rounded-[1.5rem] border border-gray-800/80 shadow-xl flex flex-col flex-1 min-h-[250px]">
+          <div className="flex justify-between items-start mb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-blue-500/10 rounded-lg"><Handshake className="w-4 h-4 text-blue-400"/></div>
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Lent Money Trend</span>
+            </div>
+            <div className="flex flex-col items-end">
+              <span className="text-xl font-black text-blue-400">Rs. {formatCompact(totalPendingLent)}</span>
+              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Total Pending</span>
+            </div>
           </div>
-          <div className="flex flex-col items-end">
-            <span className="text-xl font-black text-blue-400">Rs. {formatCompact(totalPendingLent)}</span>
-            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Total Pending</span>
+          <div className="flex-1 w-full min-h-0 mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={cashFlowArray} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
+                <XAxis dataKey="date" stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} minTickGap={20} />
+                <YAxis stroke="#4b5563" fontSize={10} tickFormatter={(val) => formatCompact(val)} tickLine={false} axisLine={false} width={35} />
+                <ReferenceLine x={todayFormattedStr} stroke="#f59e0b" strokeDasharray="3 3" />
+                <defs>
+                  <linearGradient id="colorLentChart" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorReceivedChart" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <Tooltip content={<CustomAreaTooltip formatLKR={formatLKR} />} />
+                <Area type="monotone" dataKey="Lent" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorLentChart)" />
+                <Area type="monotone" dataKey="Received" stroke="#a855f7" strokeWidth={3} fillOpacity={1} fill="url(#colorReceivedChart)" />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
-        </div>
-        <div className="flex-1 w-full min-h-0 mt-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={cashFlowArray} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
-              <XAxis dataKey="date" stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} minTickGap={20} />
-              <YAxis stroke="#4b5563" fontSize={10} tickFormatter={(val) => formatCompact(val)} tickLine={false} axisLine={false} width={35} />
-              <ReferenceLine x={todayFormattedStr} stroke="#f59e0b" strokeDasharray="3 3" />
-              <defs>
-                <linearGradient id="colorLentChart" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                </linearGradient>
-                <linearGradient id="colorReceivedChart" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <Tooltip content={<CustomAreaTooltip formatLKR={formatLKR} />} />
-              <Area type="monotone" dataKey="Lent" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorLentChart)" />
-              <Area type="monotone" dataKey="Received" stroke="#a855f7" strokeWidth={3} fillOpacity={1} fill="url(#colorReceivedChart)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </motion.div>
+        </motion.div>
 
-      {/* Savings Chart */}
-      <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.4 }} className="bg-[#0b1120] p-6 rounded-[1.5rem] border border-gray-800/80 shadow-xl flex flex-col h-64">
-        <div className="flex justify-between items-start mb-2">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-emerald-500/10 rounded-lg"><PiggyBank className="w-4 h-4 text-emerald-400"/></div>
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Savings Trend</span>
+        {/* Savings Chart */}
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.4 }} className="bg-[#0b1120] p-6 rounded-[1.5rem] border border-gray-800/80 shadow-xl flex flex-col flex-1 min-h-[250px]">
+          <div className="flex justify-between items-start mb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-emerald-500/10 rounded-lg"><PiggyBank className="w-4 h-4 text-emerald-400"/></div>
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Savings Trend</span>
+            </div>
+            <div className="flex flex-col items-end">
+              <span className="text-xl font-black text-emerald-400">Rs. {formatCompact(totalSavings)}</span>
+              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Total Balance</span>
+            </div>
           </div>
-          <div className="flex flex-col items-end">
-            <span className="text-xl font-black text-emerald-400">Rs. {formatCompact(totalSavings)}</span>
-            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Total Balance</span>
+          <div className="flex-1 w-full min-h-0 mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={cashFlowArray} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
+                <XAxis dataKey="date" stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} minTickGap={20} />
+                <YAxis stroke="#4b5563" fontSize={10} tickFormatter={(val) => formatCompact(val)} tickLine={false} axisLine={false} width={35} />
+                <ReferenceLine x={todayFormattedStr} stroke="#f59e0b" strokeDasharray="3 3" />
+                <defs>
+                  <linearGradient id="colorDepositChart" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorWithdrawalChart" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <Tooltip content={<CustomAreaTooltip formatLKR={formatLKR} />} />
+                <Area type="monotone" dataKey="Deposit" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorDepositChart)" />
+                <Area type="monotone" dataKey="Withdrawal" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorWithdrawalChart)" />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
-        </div>
-        <div className="flex-1 w-full min-h-0 mt-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={cashFlowArray} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
-              <XAxis dataKey="date" stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} minTickGap={20} />
-              <YAxis stroke="#4b5563" fontSize={10} tickFormatter={(val) => formatCompact(val)} tickLine={false} axisLine={false} width={35} />
-              <ReferenceLine x={todayFormattedStr} stroke="#f59e0b" strokeDasharray="3 3" />
-              <defs>
-                <linearGradient id="colorDepositChart" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                </linearGradient>
-                <linearGradient id="colorWithdrawalChart" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <Tooltip content={<CustomAreaTooltip formatLKR={formatLKR} />} />
-              <Area type="monotone" dataKey="Deposit" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorDepositChart)" />
-              <Area type="monotone" dataKey="Withdrawal" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorWithdrawalChart)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
+
+      {/* Right Column: Expense Calendar */}
+      <div className="flex flex-col h-full">
+        <ExpenseCalendarWidget formatCompact={formatCompact} />
+      </div>
 
     </div>
   );
