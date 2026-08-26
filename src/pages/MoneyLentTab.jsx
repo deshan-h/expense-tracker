@@ -256,21 +256,35 @@ const MoneyLentTab = ({
         <div className="w-full relative z-10 mt-2">
           <div className="flex flex-col">
 
-            {/* TOP ROW: Add Record Bar */}
-            <div className="mb-8 relative z-20">
-              <div 
-                onClick={() => setShowAddBorrower(!showAddBorrower)}
-                className={`w-full h-[56px] rounded-2xl flex items-center justify-center cursor-pointer transition-all duration-300 relative overflow-hidden group border ${showAddBorrower ? 'bg-amber-500/20 border-amber-500/50 shadow-[0_0_20px_-5px_rgba(245,158,11,0.4)]' : 'bg-gray-900/60 border-gray-700 hover:bg-gray-800 hover:border-amber-500/50 shadow-lg'}`}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-amber-500/0 via-amber-500/10 to-amber-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out"></div>
-                <h3 className={`text-sm font-black uppercase tracking-[0.2em] flex items-center gap-3 transition-colors ${showAddBorrower ? 'text-amber-400' : 'text-gray-300 group-hover:text-white'}`}>
-                  <PlusCircle className={`w-5 h-5 transition-transform duration-300 ${showAddBorrower ? 'rotate-45 text-rose-400' : 'text-amber-500'}`} /> 
-                  {showAddBorrower ? 'CLOSE' : 'ADD NEW BORROWER'}
+            {/* MAIN SECTION: Manage Lent & Add Borrower */}
+            <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl flex flex-col relative z-20 space-y-6 mb-6">
+              
+              <div className="flex items-center justify-between px-2">
+                <h3 className="text-sm font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-blue-500" /> Manage Lent & Payments
                 </h3>
+                <div className="bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-xl flex flex-col items-end shadow-inner">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Total Owed</span>
+                  <span className="text-sm font-black text-blue-400 leading-tight">
+                    Rs. {formatLKR(activeGroups.reduce((acc, curr) => acc + ((curr.totalAmount || 0) - (curr.totalPaid || 0)), 0))}
+                  </span>
+                </div>
+              </div>
+
+              {/* Add New Borrower Bar */}
+              <div 
+                className="flex items-center justify-between cursor-pointer group bg-gray-950/30 p-3 rounded-xl border border-gray-800/50 hover:bg-gray-900/50 transition-colors"
+                onClick={() => setShowAddBorrower(!showAddBorrower)}
+              >
+                <h3 className="text-xs font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2 group-hover:text-white transition-colors">
+                  <PlusCircle className="w-4 h-4 text-orange-500" /> Add New Borrower
+                </h3>
+                <div className="text-gray-500 group-hover:text-gray-300 transition-colors bg-gray-800/50 p-1.5 rounded-full flex items-center justify-center">
+                  {showAddBorrower ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </div>
               </div>
               
               {showAddBorrower && (
-                <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl mt-4 animate-in fade-in zoom-in-95 duration-300">
                 <form onSubmit={handleAddLentMoney} className="flex flex-col gap-3 mt-4">
                   <div className="flex flex-col md:flex-row gap-3 items-end">
                     {/* Name */}
@@ -322,25 +336,8 @@ const MoneyLentTab = ({
                     </button>
                   </div>
                 </form>
-                </div>
               )}
-            </div>
-
-            {/* BOTTOM SECTION: Manage & Receive Payments */}
-            <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl flex flex-col relative z-10 space-y-6">
-              <div className="flex items-center justify-between px-2 mb-2">
-                <h3 className="text-sm font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-blue-500" /> Manage Lent & Payments
-                </h3>
-                <div className="bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-xl flex flex-col items-end shadow-inner">
-                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Total Owed</span>
-                  <span className="text-sm font-black text-blue-400 leading-tight">
-                    Rs. {formatLKR(activeGroups.reduce((acc, curr) => acc + ((curr.totalAmount || 0) - (curr.totalPaid || 0)), 0))}
-                  </span>
-                </div>
-              </div>
-              
-              {activeGroups.length === 0 ? (
+              {/* Active Groups Table */}              {activeGroups.length === 0 ? (
                  <div className="text-center bg-gray-950/30 p-10 rounded-3xl border border-gray-800 border-dashed flex flex-col items-center justify-center h-full min-h-[300px]">
                    <Users className="w-12 h-12 text-gray-600 mb-4" />
                    <p className="text-gray-500 font-medium">No one currently owes you money.<br/>You're all settled up!</p>

@@ -325,13 +325,13 @@ function App() {
                     <PlusCircle className="w-5 h-5 sm:w-4 sm:h-4 text-emerald-400" /> <span className="hidden sm:inline text-sm">Add New</span>
                   </TabsTrigger>
                   <TabsTrigger value="lent" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
-                    <Handshake className="w-5 h-5 sm:w-4 sm:h-4 text-amber-500" /> <span className="hidden sm:inline text-sm">Lent</span>
+                    <Handshake className="w-5 h-5 sm:w-4 sm:h-4 text-orange-400" /> <span className="hidden sm:inline text-sm">Lent</span>
                   </TabsTrigger>
                   <TabsTrigger value="savings" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
-                    <PiggyBank className="w-5 h-5 sm:w-4 sm:h-4 text-pink-500" /> <span className="hidden sm:inline text-sm">Savings</span>
+                    <PiggyBank className="w-5 h-5 sm:w-4 sm:h-4 text-pink-400" /> <span className="hidden sm:inline text-sm">Savings</span>
                   </TabsTrigger>
                   <TabsTrigger value="wishlist" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
-                    <Target className="w-5 h-5 sm:w-4 sm:h-4 text-purple-500" /> <span className="hidden sm:inline text-sm">Wishlist</span>
+                    <Target className="w-5 h-5 sm:w-4 sm:h-4 text-amber-400" /> <span className="hidden sm:inline text-sm">Wishlist</span>
                   </TabsTrigger>
                   <TabsTrigger value="history" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
                     <List className="w-5 h-5 sm:w-4 sm:h-4 text-indigo-400" /> <span className="hidden sm:inline text-sm">History</span>
@@ -422,7 +422,27 @@ function App() {
             </Suspense>
           </TabsContent>
 
-        {/* TAB 3: LENT MONEY */}
+        {/* TAB 4: HISTORY */}
+          <TabsContent value="history">
+            <Suspense fallback={<TabFallback />}>
+              <HistoryTab 
+                transactions={transactions}
+                lentMoney={lentMoney}
+                savings={savings}
+                formatLKR={formatLKR}
+                handleDeleteTransaction={deleteTransaction}
+                handleDeleteLentHistoryEntry={deleteLentHistoryEntry}
+                deleteSaving={deleteSaving}
+                updateTransaction={updateTransaction}
+                updateSaving={updateSaving}
+                categories={categories}
+                schedules={schedules}
+                deleteSchedule={deleteSchedule}
+              />
+            </Suspense>
+          </TabsContent>
+
+        {/* TAB 5: LENT MONEY */}
           <TabsContent value="lent">
             <Suspense fallback={<TabFallback />}>
               <MoneyLentTab 
@@ -447,26 +467,6 @@ function App() {
                 setActiveLentTab={setActiveLentTab}
                 lentMoney={lentMoney}
                 handleDeleteLentHistoryEntry={deleteLentHistoryEntry}
-              />
-              </Suspense>
-          </TabsContent>
-
-        {/* TAB: HISTORY */}
-          <TabsContent value="history">
-            <Suspense fallback={<TabFallback />}>
-              <HistoryTab 
-                transactions={transactions}
-                lentMoney={lentMoney}
-                savings={savings}
-                formatLKR={formatLKR}
-                handleDeleteTransaction={deleteTransaction}
-                handleDeleteLentHistoryEntry={deleteLentHistoryEntry}
-                deleteSaving={deleteSaving}
-                updateTransaction={updateTransaction}
-                updateSaving={updateSaving}
-                categories={categories}
-                schedules={schedules}
-                deleteSchedule={deleteSchedule}
               />
             </Suspense>
           </TabsContent>

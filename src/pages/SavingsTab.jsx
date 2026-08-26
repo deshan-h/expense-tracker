@@ -50,31 +50,45 @@ const SavingsTab = ({
         <div className="w-full relative z-10 mt-2">
           <div className="flex flex-col">
 
-            {/* TOP ROW: Add Record Bar */}
-            <div className="mb-8 relative z-20">
-              <div 
-                onClick={() => setShowAddRecord(!showAddRecord)}
-                className={`w-full h-[56px] rounded-2xl flex items-center justify-center cursor-pointer transition-all duration-300 relative overflow-hidden group border ${showAddRecord ? 'bg-pink-500/20 border-pink-500/50 shadow-[0_0_20px_-5px_rgba(236,72,153,0.4)]' : 'bg-gray-900/60 border-gray-700 hover:bg-gray-800 hover:border-pink-500/50 shadow-lg'}`}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-pink-500/0 via-pink-500/10 to-pink-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out"></div>
-                <h3 className={`text-sm font-black uppercase tracking-[0.2em] flex items-center gap-3 transition-colors ${showAddRecord ? 'text-pink-400' : 'text-gray-300 group-hover:text-white'}`}>
-                  <PlusCircle className={`w-5 h-5 transition-transform duration-300 ${showAddRecord ? 'rotate-45 text-rose-400' : 'text-pink-500'}`} /> 
-                  {showAddRecord ? 'CLOSE' : 'ADD RECORD'}
+            {/* MAIN SECTION: Savings History & Add Record */}
+            <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl flex flex-col relative z-20 space-y-6 mb-6">
+              
+              {/* Header */}
+              <div className="flex items-center justify-between px-2">
+                <h3 className="text-sm font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <List className="w-4 h-4 text-purple-500" /> Savings History
                 </h3>
+                <div className="bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl flex flex-col items-end shadow-inner">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Total Balance</span>
+                  <span className="text-sm font-black text-emerald-500 leading-tight">Rs. {formatLKR(totalSavings)}</span>
+                </div>
               </div>
 
+              {/* Add Record Bar */}
+              <div 
+                className="flex items-center justify-between cursor-pointer group bg-gray-950/30 p-3 rounded-xl border border-gray-800/50 hover:bg-gray-900/50 transition-colors"
+                onClick={() => setShowAddRecord(!showAddRecord)}
+              >
+                <h3 className="text-xs font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2 group-hover:text-white transition-colors">
+                  <PlusCircle className="w-4 h-4 text-pink-500" /> Add Record
+                </h3>
+                <div className="text-gray-500 group-hover:text-gray-300 transition-colors bg-gray-800/50 p-1.5 rounded-full flex items-center justify-center">
+                  {showAddRecord ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </div>
+              </div>
+              
               {showAddRecord && (
-                <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl mt-4 animate-in fade-in zoom-in-95 duration-300">
-                  <div className="flex p-1 bg-gray-900 rounded-xl w-full sm:w-max mb-4">
+                <div className="mt-4 flex flex-col gap-4">
+                  <div className="flex p-1 bg-gray-900/80 rounded-xl w-full sm:w-max self-start border border-gray-700/50">
                     {savings.length === 0 && (
-                      <button type="button" onClick={() => setType('Initial')} className={`flex-1 sm:flex-none px-6 py-2 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${type === 'Initial' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
+                      <button type="button" onClick={() => setType('Initial')} className={`flex-1 sm:flex-none px-6 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${type === 'Initial' ? 'bg-indigo-500 text-white shadow-[0_0_15px_-3px_rgba(99,102,241,0.5)]' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
                         Initial
                       </button>
                     )}
-                    <button type="button" onClick={() => setType('Deposit')} className={`flex-1 sm:flex-none px-6 py-2 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${type === 'Deposit' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
+                    <button type="button" onClick={() => setType('Deposit')} className={`flex-1 sm:flex-none px-6 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${type === 'Deposit' ? 'bg-emerald-500 text-white shadow-[0_0_15px_-3px_rgba(16,185,129,0.5)]' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
                       Deposit
                     </button>
-                    <button type="button" onClick={() => setType('Withdrawal')} className={`flex-1 sm:flex-none px-6 py-2 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${type === 'Withdrawal' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
+                    <button type="button" onClick={() => setType('Withdrawal')} className={`flex-1 sm:flex-none px-6 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${type === 'Withdrawal' ? 'bg-rose-500 text-white shadow-[0_0_15px_-3px_rgba(244,63,94,0.5)]' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
                       Withdrawal
                     </button>
                   </div>
@@ -99,20 +113,7 @@ const SavingsTab = ({
                 </form>
                 </div>
               )}
-            </div>
-
-            {/* BOTTOM SECTION: Timeline View */}
-            <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl flex flex-col relative z-10">
-              <div className="flex items-center justify-between px-2 mb-6">
-                <h3 className="text-sm font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
-                  <List className="w-4 h-4 text-purple-500" /> Savings History
-                </h3>
-                <div className="bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl flex flex-col items-end shadow-inner">
-                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Total Balance</span>
-                  <span className="text-sm font-black text-emerald-500 leading-tight">Rs. {formatLKR(totalSavings)}</span>
-                </div>
-              </div>
-              
+              {/* Savings Table */}
               <div className="relative overflow-y-auto hide-scrollbar flex-1 pr-1 pb-4">
                 {savings.length === 0 ? (
                   <div className="text-center py-12 bg-gray-900/40 rounded-3xl border border-gray-800 border-dashed">
