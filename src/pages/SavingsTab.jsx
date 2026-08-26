@@ -50,39 +50,34 @@ const SavingsTab = ({
         <div className="w-full relative z-10 mt-2">
           <div className="flex flex-col">
 
-            {/* TOP ROW: Add Record Form */}
-            <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl relative z-20 mb-8">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
-                <div 
-                  className="flex items-center gap-2 cursor-pointer group"
-                  onClick={() => setShowAddRecord(!showAddRecord)}
-                >
-                  <h3 className="text-xs font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2 group-hover:text-white transition-colors">
-                    <PlusCircle className="w-4 h-4 text-pink-500" /> Add Record
-                  </h3>
-                  <button type="button" className="text-gray-500 group-hover:text-gray-300 transition-colors bg-gray-800/50 p-1.5 rounded-full ml-2">
-                    {showAddRecord ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </button>
-                </div>
-                
-                {showAddRecord && (
-                  <div className="flex p-1 bg-gray-900 rounded-xl w-full sm:w-auto">
-                    {savings.length === 0 && (
-                      <button type="button" onClick={() => setType('Initial')} className={`flex-1 sm:flex-none px-4 py-1.5 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${type === 'Initial' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
-                        Initial
-                      </button>
-                    )}
-                    <button type="button" onClick={() => setType('Deposit')} className={`flex-1 sm:flex-none px-4 py-1.5 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${type === 'Deposit' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
-                      Deposit
-                    </button>
-                    <button type="button" onClick={() => setType('Withdrawal')} className={`flex-1 sm:flex-none px-4 py-1.5 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${type === 'Withdrawal' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
-                      Withdrawal
-                    </button>
-                  </div>
-                )}
+            {/* TOP ROW: Add Record Bar */}
+            <div className="mb-8 relative z-20">
+              <div 
+                onClick={() => setShowAddRecord(!showAddRecord)}
+                className={`w-full h-[56px] rounded-2xl flex items-center justify-center cursor-pointer transition-all duration-300 relative overflow-hidden group border ${showAddRecord ? 'bg-pink-500/20 border-pink-500/50 shadow-[0_0_20px_-5px_rgba(236,72,153,0.4)]' : 'bg-gray-900/60 border-gray-700 hover:bg-gray-800 hover:border-pink-500/50 shadow-lg'}`}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-pink-500/0 via-pink-500/10 to-pink-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out"></div>
+                <h3 className={`text-sm font-black uppercase tracking-[0.2em] flex items-center gap-3 transition-colors ${showAddRecord ? 'text-pink-400' : 'text-gray-300 group-hover:text-white'}`}>
+                  <PlusCircle className={`w-5 h-5 transition-transform duration-300 ${showAddRecord ? 'rotate-45 text-rose-400' : 'text-pink-500'}`} /> 
+                  {showAddRecord ? 'CLOSE' : 'ADD RECORD'}
+                </h3>
               </div>
 
               {showAddRecord && (
+                <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl mt-4 animate-in fade-in zoom-in-95 duration-300">
+                  <div className="flex p-1 bg-gray-900 rounded-xl w-full sm:w-max mb-4">
+                    {savings.length === 0 && (
+                      <button type="button" onClick={() => setType('Initial')} className={`flex-1 sm:flex-none px-6 py-2 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${type === 'Initial' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
+                        Initial
+                      </button>
+                    )}
+                    <button type="button" onClick={() => setType('Deposit')} className={`flex-1 sm:flex-none px-6 py-2 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${type === 'Deposit' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
+                      Deposit
+                    </button>
+                    <button type="button" onClick={() => setType('Withdrawal')} className={`flex-1 sm:flex-none px-6 py-2 text-[10px] md:text-xs font-semibold rounded-lg transition-all ${type === 'Withdrawal' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
+                      Withdrawal
+                    </button>
+                  </div>
                 <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-3 items-end">
                   {/* Amount */}
                   <div className="w-full md:w-48 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-pink-500 focus-within:ring-1 focus-within:ring-pink-500 transition-all shadow-inner">
@@ -102,6 +97,7 @@ const SavingsTab = ({
                     <PlusCircle className="w-4 h-4" /> SAVE
                   </button>
                 </form>
+                </div>
               )}
             </div>
 

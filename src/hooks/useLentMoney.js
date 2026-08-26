@@ -78,7 +78,7 @@ export const useLentMoney = (user) => {
     }
   }, [lentMoney]);
 
-  const receiveLentPayment = useCallback(async (name, paymentAmount) => {
+  const receiveLentPayment = useCallback(async (name, paymentAmount, dateStr) => {
     try {
       const amount = parseFloat(paymentAmount);
       if (isNaN(amount) || amount <= 0) return false;
@@ -93,7 +93,7 @@ export const useLentMoney = (user) => {
         id: generateId(),
         entryType: 'payment',
         amount: amount,
-        date: new Date().toISOString()
+        date: dateStr || new Date().toISOString()
       };
 
       const newTotalPaid = (existingDoc.totalPaid || 0) + amount;

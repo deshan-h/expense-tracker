@@ -4,55 +4,26 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const quickActions = [
   {
-    label: 'Day before yesterday',
-    getOffset: (d) => -2,
-    formatInfo: (targetDate) => targetDate.toLocaleDateString(undefined, { weekday: 'short' })
-  },
-  {
     label: 'Yesterday',
-    getOffset: (d) => -1,
-    formatInfo: (targetDate) => targetDate.toLocaleDateString(undefined, { weekday: 'short' })
+    getOffset: () => -1,
+    formatInfo: (targetDate) => targetDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
   },
   { 
     label: 'Today', 
-    getOffset: (d) => 0, 
-    formatInfo: (targetDate) => targetDate.toLocaleDateString(undefined, { weekday: 'short' }) 
+    getOffset: () => 0, 
+    formatInfo: (targetDate) => targetDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) 
   },
   { 
     label: 'Tomorrow', 
-    getOffset: (d) => 1, 
-    formatInfo: (targetDate) => targetDate.toLocaleDateString(undefined, { weekday: 'short' }) 
-  },
-  { 
-    label: 'This weekend', 
-    getOffset: (d) => { const diff = 6 - d.getDay(); return diff >= 0 ? diff : diff + 7; }, 
-    formatInfo: (targetDate) => targetDate.toLocaleDateString(undefined, { weekday: 'short' }) 
-  },
-  { 
-    label: 'Next week', 
-    getOffset: (d) => { const diff = 1 - d.getDay(); return (diff > 0 ? diff : diff + 7); }, 
+    getOffset: () => 1, 
     formatInfo: (targetDate) => targetDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) 
-  },
-  { 
-    label: 'Next weekend', 
-    getOffset: (d) => { const diff = 6 - d.getDay(); return (diff >= 0 ? diff : diff + 7) + 7; }, 
-    formatInfo: (targetDate) => targetDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) 
-  },
-  { 
-    label: '2 weeks', 
-    getOffset: (d) => 14, 
-    formatInfo: (targetDate) => targetDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) 
-  },
-  { 
-    label: '4 weeks', 
-    getOffset: (d) => 28, 
-    formatInfo: (targetDate) => targetDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) 
-  },
+  }
 ];
 
 const DateTimePicker = ({ date, setDate, time, setTime, hideTime = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [placement, setPlacement] = useState('bottom');
   
   // Use current date as fallback if invalid
   const initialDate = date ? new Date(date) : new Date();
@@ -69,6 +40,24 @@ const DateTimePicker = ({ date, setDate, time, setTime, hideTime = false }) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Boundary checking
+  useEffect(() => {
+    if (isOpen && wrapperRef.current) {
+      const rect = wrapperRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      
+      // If there isn't enough space below (e.g. 400px), but there is space above, render upwards
+      if (spaceBelow < 400 && rect.top > 400) {
+        setPlacement('top');
+      } else {
+        setPlacement('bottom');
+      }
+    } else {
+      // Reset calendar view when closed
+      setShowCalendar(false);
+    }
+  }, [isOpen]);
 
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
@@ -155,49 +144,53 @@ const DateTimePicker = ({ date, setDate, time, setTime, hideTime = false }) => {
               onClick={() => setIsOpen(false)}
             />
             <motion.div 
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              initial={{ opacity: 0, y: placement === 'top' ? 10 : -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              exit={{ opacity: 0, y: placement === 'top' ? 10 : -10, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="fixed z-50 inset-x-4 top-[10%] sm:absolute sm:top-full sm:mt-2 sm:inset-auto sm:right-0 sm:w-max sm:max-w-[calc(100vw-2rem)] origin-top sm:origin-top-right bg-[#1e1e1e] border border-gray-700/80 rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] overflow-y-auto max-h-[85vh] flex flex-col md:flex-row"
+              className={`fixed z-50 inset-x-4 top-[10%] sm:absolute sm:inset-auto sm:right-0 sm:w-max sm:min-w-[320px] bg-[#1e1e1e] border border-gray-700/80 rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden max-h-[85vh] flex flex-col ${
+                placement === 'top' 
+                  ? 'sm:bottom-full sm:mb-2 origin-bottom sm:origin-bottom-right' 
+                  : 'sm:top-full sm:mt-2 origin-top sm:origin-top-right'
+              }`}
             >
-              {/* Left Column: Quick Selects & Frequency */}
-              <div className={`w-full ${showCalendar ? 'md:w-[240px] border-b md:border-b-0 md:border-r' : 'sm:w-[260px]'} border-gray-700/50 flex flex-col p-2 gap-2`}>
-                <div className="space-y-1">
-                  {quickActions.map((action, idx) => {
-                    const now = new Date();
-                    now.setDate(now.getDate() + action.getOffset(now));
-                    const targetInfo = action.formatInfo(now);
-                    
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleQuickSelect(action.getOffset)}
-                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-gray-800/80 transition-colors group"
-                      >
-                        <span className="text-sm font-medium text-gray-200 group-hover:text-white transition-colors">{action.label}</span>
-                        <span className="text-[11px] font-medium text-gray-500">{targetInfo}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+              {/* Top Row: Quick Selects */}
+              <div className="w-full flex justify-between p-3 gap-2 bg-gray-900/50 border-b border-gray-700/50">
+                {quickActions.map((action, idx) => {
+                  const now = new Date();
+                  now.setDate(now.getDate() + action.getOffset(now));
+                  const targetInfo = action.formatInfo(now);
+                  
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleQuickSelect(action.getOffset)}
+                      className="flex-1 flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-gray-800/40 border border-gray-700/50 hover:bg-gray-700 hover:border-gray-600 transition-all group"
+                    >
+                      <span className="text-xs font-bold text-gray-300 group-hover:text-white transition-colors">{action.label}</span>
+                      <span className="text-[10px] font-medium text-blue-400/80">{targetInfo}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
-                {!showCalendar && (
+              {!showCalendar && (
+                <div className="p-4">
                   <button
                     type="button"
                     onClick={() => setShowCalendar(true)}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2.5 mt-2 rounded-lg bg-gray-800/50 hover:bg-gray-800 text-gray-300 transition-colors border border-gray-700/50 text-sm font-medium"
+                    className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-gray-800/50 hover:bg-gray-800 text-gray-300 transition-colors border border-gray-700/50 text-sm font-bold"
                   >
-                    <CalendarIcon className="w-4 h-4 text-gray-400" />
-                    Custom Date
+                    <CalendarIcon className="w-4 h-4 text-blue-400" />
+                    Select Custom Date
                   </button>
-                )}
-              </div>
+                </div>
+              )}
 
-              {/* Right Column: Calendar & Time */}
+              {/* Bottom: Calendar & Time */}
               {showCalendar && (
-                <div className="flex-1 p-5 flex flex-col w-full sm:w-[320px]">
+                <div className="p-5 flex flex-col w-full">
                   
                   {/* Calendar Header */}
                   <div className="flex items-center justify-between mb-4 px-1">

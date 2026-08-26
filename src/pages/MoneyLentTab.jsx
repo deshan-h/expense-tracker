@@ -34,7 +34,11 @@ const MoneyLentTab = ({
   const [modalType, setModalType] = useState('lend'); // 'lend' | 'receive'
   const [modalAmount, setModalAmount] = useState('');
   const [modalDescription, setModalDescription] = useState('');
-  const [modalDueDate, setModalDueDate] = useState('');
+  const [modalDueDate, setModalDueDate] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    return d.toISOString().split('T')[0];
+  });
   const [modalDate, setModalDate] = useState(new Date().toISOString().split('T')[0]);
   const [modalTime, setModalTime] = useState(new Date().toTimeString().slice(0, 5));
 
@@ -53,7 +57,9 @@ const MoneyLentTab = ({
     setModalType('lend');
     setModalAmount('');
     setModalDescription('');
-    setModalDueDate('');
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    setModalDueDate(d.toISOString().split('T')[0]);
     setModalDate(new Date().toISOString().split('T')[0]);
     setModalTime(new Date().toTimeString().slice(0, 5));
     setIsModalOpen(true);
@@ -66,7 +72,8 @@ const MoneyLentTab = ({
     if (isNaN(amount) || amount <= 0) return;
 
     if (modalType === 'receive') {
-      await handleReceiveLentPayment(modalGroup.name, modalAmount);
+      const fullDate = `${modalDate}T${modalTime}`;
+      await handleReceiveLentPayment(modalGroup.name, modalAmount, fullDate);
     } else if (modalType === 'lend' && handleAddLentInline) {
       const fullDate = `${modalDate}T${modalTime}`;
       await handleAddLentInline({ 
@@ -249,21 +256,21 @@ const MoneyLentTab = ({
         <div className="w-full relative z-10 mt-2">
           <div className="flex flex-col">
 
-            {/* TOP ROW: Add Record Form */}
-            <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl relative z-20 mb-8">
+            {/* TOP ROW: Add Record Bar */}
+            <div className="mb-8 relative z-20">
               <div 
-                className="flex items-center justify-between cursor-pointer"
                 onClick={() => setShowAddBorrower(!showAddBorrower)}
+                className={`w-full h-[56px] rounded-2xl flex items-center justify-center cursor-pointer transition-all duration-300 relative overflow-hidden group border ${showAddBorrower ? 'bg-amber-500/20 border-amber-500/50 shadow-[0_0_20px_-5px_rgba(245,158,11,0.4)]' : 'bg-gray-900/60 border-gray-700 hover:bg-gray-800 hover:border-amber-500/50 shadow-lg'}`}
               >
-                <h3 className="text-xs font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
-                  <PlusCircle className="w-4 h-4 text-amber-500" /> Add New Borrower
+                <div className="absolute inset-0 bg-gradient-to-r from-amber-500/0 via-amber-500/10 to-amber-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out"></div>
+                <h3 className={`text-sm font-black uppercase tracking-[0.2em] flex items-center gap-3 transition-colors ${showAddBorrower ? 'text-amber-400' : 'text-gray-300 group-hover:text-white'}`}>
+                  <PlusCircle className={`w-5 h-5 transition-transform duration-300 ${showAddBorrower ? 'rotate-45 text-rose-400' : 'text-amber-500'}`} /> 
+                  {showAddBorrower ? 'CLOSE' : 'ADD NEW BORROWER'}
                 </h3>
-                <button type="button" className="text-gray-500 hover:text-gray-300 transition-colors bg-gray-800/50 p-2 rounded-full">
-                  {showAddBorrower ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
               </div>
               
               {showAddBorrower && (
+                <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl mt-4 animate-in fade-in zoom-in-95 duration-300">
                 <form onSubmit={handleAddLentMoney} className="flex flex-col gap-3 mt-4">
                   <div className="flex flex-col md:flex-row gap-3 items-end">
                     {/* Name */}
@@ -304,9 +311,9 @@ const MoneyLentTab = ({
                     </div>
 
                     {/* Due Date */}
-                    <div className="w-full md:w-44 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-amber-500 transition-all shadow-inner flex flex-col justify-center">
-                      <span className="absolute left-3 top-1 text-[8px] font-bold text-gray-500 uppercase">Due Date</span>
-                      <input type="date" value={lentDueDate} onChange={(e) => setLentDueDate(e.target.value)} className="w-full h-[42px] bg-transparent px-3 pt-4 pb-1 text-sm font-medium text-gray-100 focus:outline-none [color-scheme:dark]" />
+                    <div className="w-full md:w-56 flex flex-col justify-center">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 px-1">Due Date (Optional)</span>
+                      <DateTimePicker date={lentDueDate} setDate={setLentDueDate} hideTime={true} />
                     </div>
 
                     {/* Submit */}
@@ -315,6 +322,7 @@ const MoneyLentTab = ({
                     </button>
                   </div>
                 </form>
+                </div>
               )}
             </div>
 
@@ -434,32 +442,29 @@ const MoneyLentTab = ({
 
               {/* Conditionally render fields based on type */}
               {modalType === 'lend' && (
-                <>
-                  <div className="relative bg-gray-800/50 rounded-xl border border-gray-700/50 focus-within:border-amber-500 transition-colors">
-                    <input 
-                      type="text" 
-                      value={modalDescription} 
-                      onChange={(e) => setModalDescription(e.target.value)} 
-                      className="w-full h-[45px] bg-transparent px-4 text-sm font-medium text-white focus:outline-none placeholder-gray-500" 
-                      placeholder="What is it for? (Optional)" 
-                    />
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="flex-1">
-                      <DateTimePicker date={modalDate} setDate={setModalDate} time={modalTime} setTime={setModalTime} hideTime={true} />
-                    </div>
-                    <div className="flex-1 relative bg-gray-800/50 rounded-xl border border-gray-700/50 focus-within:border-amber-500 transition-colors flex flex-col justify-center">
-                      <span className="absolute left-3 top-1 text-[8px] font-bold text-gray-500 uppercase">Due Date (Optional)</span>
-                      <input 
-                        type="date" 
-                        value={modalDueDate} 
-                        onChange={(e) => setModalDueDate(e.target.value)} 
-                        className="w-full h-[42px] bg-transparent px-3 pt-4 pb-1 text-sm font-medium text-gray-100 focus:outline-none [color-scheme:dark]" 
-                      />
-                    </div>
-                  </div>
-                </>
+                <div className="relative bg-gray-800/50 rounded-xl border border-gray-700/50 focus-within:border-amber-500 transition-colors">
+                  <input 
+                    type="text" 
+                    value={modalDescription} 
+                    onChange={(e) => setModalDescription(e.target.value)} 
+                    className="w-full h-[45px] bg-transparent px-4 text-sm font-medium text-white focus:outline-none placeholder-gray-500" 
+                    placeholder="What is it for? (Optional)" 
+                  />
+                </div>
               )}
+
+              <div className="flex gap-3">
+                <div className="flex-1 flex flex-col justify-center">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 px-1">Date</span>
+                  <DateTimePicker date={modalDate} setDate={setModalDate} time={modalTime} setTime={setModalTime} hideTime={true} />
+                </div>
+                {modalType === 'lend' && (
+                  <div className="flex-1 flex flex-col justify-center">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 px-1">Due Date (Optional)</span>
+                    <DateTimePicker date={modalDueDate} setDate={setModalDueDate} hideTime={true} />
+                  </div>
+                )}
+              </div>
 
               <button 
                 type="submit" 

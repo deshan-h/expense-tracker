@@ -110,36 +110,37 @@ export default function WishlistTab({
         <div className="w-full relative z-10 mt-2">
           <div className="flex flex-col">
 
-            {/* TOP ROW: Add Record Form */}
-            <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl relative z-20 mb-8">
+            {/* TOP ROW: Add Record Bar */}
+            <div className="mb-8 relative z-20">
               <div 
-                className="flex items-center justify-between cursor-pointer group mb-4"
                 onClick={() => setShowAddPlan(!showAddPlan)}
+                className={`w-full h-[56px] rounded-2xl flex items-center justify-center cursor-pointer transition-all duration-300 relative overflow-hidden group border ${showAddPlan ? 'bg-indigo-500/20 border-indigo-500/50 shadow-[0_0_20px_-5px_rgba(99,102,241,0.4)]' : 'bg-gray-900/60 border-gray-700 hover:bg-gray-800 hover:border-indigo-500/50 shadow-lg'}`}
               >
-                <h3 className="text-xs font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2 group-hover:text-white transition-colors">
-                  <PlusCircle className="w-4 h-4 text-indigo-500" /> Add New Plan
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/0 via-indigo-500/10 to-indigo-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out"></div>
+                <h3 className={`text-sm font-black uppercase tracking-[0.2em] flex items-center gap-3 transition-colors ${showAddPlan ? 'text-indigo-400' : 'text-gray-300 group-hover:text-white'}`}>
+                  <PlusCircle className={`w-5 h-5 transition-transform duration-300 ${showAddPlan ? 'rotate-45 text-rose-400' : 'text-indigo-500'}`} /> 
+                  {showAddPlan ? 'CLOSE' : 'ADD NEW PLAN'}
                 </h3>
-                <button type="button" className="text-gray-500 group-hover:text-gray-300 transition-colors bg-gray-800/50 p-1.5 rounded-full">
-                  {showAddPlan ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
               </div>
 
               {showAddPlan && (
-                <form onSubmit={handleAddItem} className="flex flex-col md:flex-row gap-3 items-end mt-4">
-                  {/* Details */}
-                  <div className="w-full md:flex-1 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-indigo-500 transition-all shadow-inner">
-                    <input type="text" value={newItemName} onChange={e => setNewItemName(e.target.value)} required className="w-full h-[42px] bg-transparent px-3 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder="Item or Work Name (e.g., New Laptop, Car Service)" />
-                  </div>
-                  {/* Amount */}
-                  <div className="w-full md:w-48 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all shadow-inner">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">Rs.</span>
-                    <input type="number" step="0.01" value={newEstimatedCost} onChange={e => setNewEstimatedCost(e.target.value)} className="w-full bg-transparent pl-10 pr-3 py-2.5 text-sm font-bold text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="Estimated Cost (Optional)" />
-                  </div>
-                  {/* Submit */}
-                  <button type="submit" disabled={isSubmitting} className="w-full md:w-auto h-[42px] bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 hover:bg-right bg-[length:200%_auto] text-white font-black tracking-widest uppercase px-6 rounded-xl transition-all shadow-[0_0_15px_-3px_rgba(99,102,241,0.5)] active:scale-[0.98] shrink-0 flex items-center justify-center gap-2">
-                    {isSubmitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <><Target className="w-4 h-4" /> SAVE</>}
-                  </button>
-                </form>
+                <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl mt-4 animate-in fade-in zoom-in-95 duration-300">
+                  <form onSubmit={handleAddItem} className="flex flex-col md:flex-row gap-3 items-end">
+                    {/* Details */}
+                    <div className="w-full md:flex-1 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-indigo-500 transition-all shadow-inner">
+                      <input type="text" value={newItemName} onChange={e => setNewItemName(e.target.value)} required className="w-full h-[42px] bg-transparent px-3 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder="Item or Work Name (e.g., New Laptop, Car Service)" />
+                    </div>
+                    {/* Amount */}
+                    <div className="w-full md:w-48 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all shadow-inner">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">Rs.</span>
+                      <input type="number" step="0.01" value={newEstimatedCost} onChange={e => setNewEstimatedCost(e.target.value)} className="w-full bg-transparent pl-10 pr-3 py-2.5 text-sm font-bold text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="Estimated Cost (Optional)" />
+                    </div>
+                    {/* Submit */}
+                    <button type="submit" disabled={isSubmitting} className="w-full md:w-auto h-[42px] bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 hover:bg-right bg-[length:200%_auto] text-white font-black tracking-widest uppercase px-6 rounded-xl transition-all shadow-[0_0_15px_-3px_rgba(99,102,241,0.5)] active:scale-[0.98] shrink-0 flex items-center justify-center gap-2">
+                      {isSubmitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <><Target className="w-4 h-4" /> SAVE</>}
+                    </button>
+                  </form>
+                </div>
               )}
             </div>
 
