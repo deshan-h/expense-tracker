@@ -84,7 +84,7 @@ function App() {
   const { schedules, addSchedule, deleteSchedule } = useScheduled(user, addExpense);
   const { wishlistItems, loading: wishlistLoading, addWishlistItem, completeWishlistItem, deleteWishlistItem, addSubItemToWishlist } = useWishlist(user, addExpense);
 
-  const handleAddTransaction = useCallback(async (e) => {
+  const handleAddTransaction = useCallback(async (e, overrideDesc = null) => {
     e.preventDefault();
     let finalAmount = amount;
     if (calcHistory) {
@@ -101,7 +101,8 @@ function App() {
     if (!finalAmount || isNaN(parseFloat(finalAmount))) return;
     
     const fullDate = `${date}T${time}`;
-    const success = await addExpense({ category, subcategory, amount: parseFloat(finalAmount), description, date: fullDate, isTracked });
+    const finalDesc = overrideDesc !== null ? overrideDesc : description;
+    const success = await addExpense({ category, subcategory, amount: parseFloat(finalAmount), description: finalDesc, date: fullDate, isTracked });
     
     if (success) {
       setAmount('');
@@ -113,7 +114,7 @@ function App() {
     }
   }, [amount, calcHistory, category, subcategory, description, date, time, isTracked, addExpense]);
 
-  const handleAddIncomeLocal = useCallback(async (e, incomeCategory) => {
+  const handleAddIncomeLocal = useCallback(async (e, incomeCategory, overrideDesc = null) => {
     e.preventDefault();
     let finalAmount = amount;
     if (calcHistory) {
@@ -130,7 +131,8 @@ function App() {
     if (!finalAmount || isNaN(parseFloat(finalAmount))) return;
     
     const fullDate = `${date}T${time}`;
-    const success = await addIncome({ category: incomeCategory, amount: parseFloat(finalAmount), description, date: fullDate });
+    const finalDesc = overrideDesc !== null ? overrideDesc : description;
+    const success = await addIncome({ category: incomeCategory, amount: parseFloat(finalAmount), description: finalDesc, date: fullDate });
     
     if (success) {
       setAmount('');
@@ -199,9 +201,7 @@ function App() {
 
   const selectedCatObj = useMemo(() => categories.find(c => c.name === category), [categories, category]);
 
-  const pendingLent = useMemo(() => lentMoney.filter(record => record.status !== 'paid'), [lentMoney]);
-  const paidLent = useMemo(() => lentMoney.filter(record => record.status === 'paid'), [lentMoney]);
-  const totalPendingLent = useMemo(() => pendingLent.reduce((acc, curr) => acc + (curr.amount - (curr.paidAmount || 0)), 0), [pendingLent]);
+  const totalPendingLent = useMemo(() => lentMoney.reduce((acc, curr) => acc + ((curr.totalAmount || 0) - (curr.totalPaid || 0)), 0), [lentMoney]);
 
   const totalSavings = useMemo(() => savings.reduce((acc, curr) => {
     if (curr.type === 'Deposit' || curr.type === 'Initial') return acc + curr.amount;

@@ -25,6 +25,14 @@ const HistoryTab = ({
   const [filterSubcategory, setFilterSubcategory] = useState('All');
   const [amountRange, setAmountRange] = useState({ min: '', max: '' });
   
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+  
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterSource, sortBy, dateRange, filterCategory, filterSubcategory, amountRange]);
+  
   // Edit State
   const [editingRecord, setEditingRecord] = useState(null);
 
@@ -223,6 +231,13 @@ const HistoryTab = ({
     }
   };
 
+  const totalPages = Math.ceil(filteredAndSortedHistory.length / itemsPerPage);
+  const safeCurrentPage = Math.min(currentPage, totalPages > 0 ? totalPages : 1);
+  const currentRecords = filteredAndSortedHistory.slice(
+    (safeCurrentPage - 1) * itemsPerPage,
+    safeCurrentPage * itemsPerPage
+  );
+
   return (
     <div className="w-[100vw] relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
       <div className="px-2 md:px-4 pt-0 pb-4 w-full max-w-[1600px] mx-auto">
@@ -405,7 +420,7 @@ const HistoryTab = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800/40">
-                  {filteredAndSortedHistory.map((record) => (
+                  {currentRecords.map((record) => (
                     <tr key={record.id} className="hover:bg-gray-800/60 transition-colors group">
                       <td className="px-4 py-2.5">
                         <div className="flex flex-col">
@@ -474,6 +489,34 @@ const HistoryTab = ({
               </table>
             )}
             </div>
+            
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-5 py-4 border-t border-gray-800 bg-gray-900/40">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">
+                  Showing {(safeCurrentPage - 1) * itemsPerPage + 1} to {Math.min(safeCurrentPage * itemsPerPage, filteredAndSortedHistory.length)} of {filteredAndSortedHistory.length}
+                </span>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
+                    disabled={safeCurrentPage === 1}
+                    className="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 text-xs font-bold uppercase tracking-wider border border-gray-700 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-inner"
+                  >
+                    Prev
+                  </button>
+                  <div className="flex items-center justify-center min-w-[32px] font-bold text-gray-400 text-sm">
+                    {safeCurrentPage}
+                  </div>
+                  <button 
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
+                    disabled={safeCurrentPage === totalPages}
+                    className="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 text-xs font-bold uppercase tracking-wider border border-gray-700 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-inner"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

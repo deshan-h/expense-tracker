@@ -56,6 +56,7 @@ const AddExpenseTab = ({
 
   const onSubmitForm = async (e) => {
     e.preventDefault();
+    let overrideDesc = null;
     if (isSavingTemplate && templateName.trim()) {
       await addTemplate({
         name: templateName,
@@ -64,6 +65,9 @@ const AddExpenseTab = ({
         subcategory: type === 'Expense' ? subcategory : 'Other',
         description: templateDesc || description || ''
       });
+      if (!description && templateDesc) {
+        overrideDesc = templateDesc;
+      }
       setIsSavingTemplate(false);
       setTemplateName('');
       setTemplateDesc('');
@@ -71,18 +75,19 @@ const AddExpenseTab = ({
     
     if (type === 'Income') {
       if (handleAddIncome) {
-        await handleAddIncome(e, category || 'Other');
+        await handleAddIncome(e, category || 'Other', overrideDesc);
       }
     } else {
       if (frequency !== 'Once' && addSchedule) {
         const fullDate = `${date}T${time}`;
-        await addSchedule({ category, subcategory, amount: parseFloat(amount), description, nextDate: fullDate, frequency });
+        const finalDesc = overrideDesc !== null ? overrideDesc : description;
+        await addSchedule({ category, subcategory, amount: parseFloat(amount), description: finalDesc, nextDate: fullDate, frequency });
         setAmount('');
         setCalcHistory('');
         setDescription('');
         setFrequency('Once');
       } else {
-        handleAddTransaction(e);
+        handleAddTransaction(e, overrideDesc);
       }
     }
   };

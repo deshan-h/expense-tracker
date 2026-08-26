@@ -35,6 +35,7 @@ export const useTemplates = (user) => {
         amount: data.amount,
         category: data.category,
         subcategory: data.subcategory || '',
+        description: data.description || '',
         createdAt: serverTimestamp()
       });
       toast.success(`Template "${data.name}" saved!`);
@@ -68,7 +69,8 @@ export const useTemplates = (user) => {
         name: data.name,
         amount: data.amount,
         category: data.category,
-        subcategory: data.subcategory || ''
+        subcategory: data.subcategory || '',
+        description: data.description || ''
       });
       toast.success(`Template updated!`);
       playSuccessSound();
