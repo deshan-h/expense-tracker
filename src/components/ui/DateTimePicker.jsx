@@ -75,6 +75,11 @@ const DateTimePicker = ({ date, setDate, time, setTime, hideTime = false }) => {
   const setLocalDate = (d) => {
     const tzOffset = d.getTimezoneOffset() * 60000;
     const localISODate = (new Date(d - tzOffset)).toISOString().split('T')[0];
+    
+    if (localISODate !== date && setTime && !hideTime) {
+      setTime('00:00');
+    }
+    
     setDate(localISODate);
   };
 

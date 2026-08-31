@@ -56,7 +56,7 @@ function App() {
   const [calcHistory, setCalcHistory] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [time, setTime] = useState('12:00');
+  const [time, setTime] = useState(new Date().toTimeString().slice(0, 5));
   const [isTracked, setIsTracked] = useState(true);
 
   // Category Form State
@@ -72,7 +72,6 @@ function App() {
   const [lentAmount, setLentAmount] = useState('');
   const [lentDescription, setLentDescription] = useState('');
   const [lentDate, setLentDate] = useState(new Date().toISOString().split('T')[0]);
-  const [lentTime, setLentTime] = useState(new Date().toTimeString().slice(0, 5));
   const [lentDueDate, setLentDueDate] = useState(() => {
     const d = new Date();
     d.setMonth(d.getMonth() + 1);
@@ -118,7 +117,7 @@ function App() {
       setCalcHistory('');
       setDescription('');
       setDate(new Date().toISOString().split('T')[0]);
-      setTime('12:00');
+      setTime(new Date().toTimeString().slice(0, 5));
       setIsTracked(true);
     }
   }, [amount, calcHistory, category, subcategory, description, date, time, isTracked, addExpense]);
@@ -148,14 +147,14 @@ function App() {
       setCalcHistory('');
       setDescription('');
       setDate(new Date().toISOString().split('T')[0]);
-      setTime('12:00');
+      setTime(new Date().toTimeString().slice(0, 5));
     }
   }, [amount, calcHistory, description, date, time, addIncome]);
 
   const handleAddLentMoneyLocal = useCallback(async (e) => {
     e.preventDefault();
     if (!lentAmount || !lentName) return;
-    const fullDate = `${lentDate}T${lentTime}`;
+    const fullDate = `${lentDate}T00:00:00.000Z`; // Force time to be midnight for lent money
     const success = await addLent({ type: lentType, name: lentName, amount: parseFloat(lentAmount), description: lentDescription, date: fullDate, dueDate: lentDueDate });
     if (success) {
       setLentAmount('');
@@ -165,7 +164,6 @@ function App() {
       d.setMonth(d.getMonth() + 1);
       setLentDueDate(d.toISOString().split('T')[0]);
       setLentDate(new Date().toISOString().split('T')[0]);
-      setLentTime(new Date().toTimeString().slice(0, 5));
       setActiveLentTab(lentType);
     }
   }, [lentAmount, lentName, lentType, lentDescription, lentDate, lentDueDate, addLent]);
@@ -456,8 +454,6 @@ function App() {
                 setLentDescription={setLentDescription}
                 lentDate={lentDate}
                 setLentDate={setLentDate}
-                lentTime={lentTime}
-                setLentTime={setLentTime}
                 handleAddLentMoney={handleAddLentMoneyLocal}
                 handleAddLentInline={addLent}
                 handleReceiveLentPayment={recLent}

@@ -17,8 +17,6 @@ const MoneyLentTab = ({
   setLentDueDate,
   lentDate,
   setLentDate,
-  lentTime,
-  setLentTime,
   lentMoney,
   handleReceiveLentPayment,
   formatLKR,
@@ -40,7 +38,6 @@ const MoneyLentTab = ({
     return d.toISOString().split('T')[0];
   });
   const [modalDate, setModalDate] = useState(new Date().toISOString().split('T')[0]);
-  const [modalTime, setModalTime] = useState(new Date().toTimeString().slice(0, 5));
 
   const toggleHistory = (name) => {
     setExpandedHistory(prev => prev === name ? null : name);
@@ -61,7 +58,6 @@ const MoneyLentTab = ({
     d.setMonth(d.getMonth() + 1);
     setModalDueDate(d.toISOString().split('T')[0]);
     setModalDate(new Date().toISOString().split('T')[0]);
-    setModalTime(new Date().toTimeString().slice(0, 5));
     setIsModalOpen(true);
   };
 
@@ -72,10 +68,10 @@ const MoneyLentTab = ({
     if (isNaN(amount) || amount <= 0) return;
 
     if (modalType === 'receive') {
-      const fullDate = `${modalDate}T${modalTime}`;
+      const fullDate = `${modalDate}T00:00:00.000Z`;
       await handleReceiveLentPayment(modalGroup.name, modalAmount, fullDate);
     } else if (modalType === 'lend' && handleAddLentInline) {
-      const fullDate = `${modalDate}T${modalTime}`;
+      const fullDate = `${modalDate}T00:00:00.000Z`;
       await handleAddLentInline({ 
         type: modalGroup.type, 
         name: modalGroup.name, 
@@ -164,14 +160,12 @@ const MoneyLentTab = ({
                   return history.map((item, i) => {
                     const dateObj = new Date(item.date);
                     const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    const timeStr = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
                     if (item.entryType === 'borrow') {
                       return (
                         <div key={item.id || `borrow-${i}`} className="relative pl-4 sm:pl-6 group/item">
                            <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 text-right w-max">
                              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{dateStr}</div>
-                             <div className="text-[9px] font-semibold text-gray-500">{timeStr}</div>
                            </div>
                            <div className="absolute -left-[9px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-4 border-gray-900 bg-amber-500"></div>
                            <div className="flex items-center justify-between gap-2 sm:gap-4 py-2.5 px-2 hover:bg-gray-800/20 transition-colors border-b border-gray-800/50 relative pr-10">
@@ -212,7 +206,6 @@ const MoneyLentTab = ({
                         <div key={item.id || `payment-${i}`} className="relative pl-4 sm:pl-6 group/item">
                            <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 text-right w-max">
                              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{dateStr}</div>
-                             <div className="text-[9px] font-semibold text-gray-500">{timeStr}</div>
                            </div>
                            <div className="absolute -left-[7px] top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-gray-900 bg-emerald-500"></div>
                            <div className="flex items-center justify-between gap-2 sm:gap-4 py-2.5 px-2 hover:bg-gray-800/20 transition-colors border-b border-gray-800/50 relative pr-10">
@@ -314,7 +307,7 @@ const MoneyLentTab = ({
                     
                     {/* Date */}
                     <div className="w-full md:w-44 flex-shrink-0">
-                      <DateTimePicker date={lentDate} setDate={setLentDate} time={lentTime} setTime={setLentTime} hideTime={true} />
+                      <DateTimePicker date={lentDate} setDate={setLentDate} hideTime={true} />
                     </div>
                   </div>
 
@@ -453,7 +446,7 @@ const MoneyLentTab = ({
               <div className="flex gap-3">
                 <div className="flex-1 flex flex-col justify-center">
                   <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 px-1">Date</span>
-                  <DateTimePicker date={modalDate} setDate={setModalDate} time={modalTime} setTime={setModalTime} hideTime={true} />
+                  <DateTimePicker date={modalDate} setDate={setModalDate} hideTime={true} />
                 </div>
                 {modalType === 'lend' && (
                   <div className="flex-1 flex flex-col justify-center">

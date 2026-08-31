@@ -488,7 +488,16 @@ const AddExpenseTab = ({
                 <div className="mt-auto flex gap-3">
                   <button 
                     type="button" 
-                    onClick={() => { setAmount(''); setCategory(''); setSubcategory(''); setDescription(''); setCalcHistory(''); setTemplateDesc(''); }} 
+                    onClick={() => { 
+                      setAmount(''); 
+                      setCategory(''); 
+                      setSubcategory(''); 
+                      setDescription(''); 
+                      setCalcHistory(''); 
+                      setTemplateDesc(''); 
+                      setDate(new Date().toISOString().split('T')[0]);
+                      setTime(new Date().toTimeString().slice(0, 5));
+                    }} 
                     className="bg-gray-800/80 hover:bg-gray-700 text-gray-400 hover:text-rose-400 border border-gray-700 font-black tracking-widest uppercase py-5 px-6 rounded-2xl transition-all shadow-md active:scale-[0.98] flex items-center justify-center shrink-0"
                     title="Clear Fields"
                   >
