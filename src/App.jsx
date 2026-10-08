@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
-import { PlusCircle, LayoutDashboard, List, FolderTree, Handshake, TrendingUp, MoreVertical, LogOut, PiggyBank, CalendarClock, Settings, Target } from 'lucide-react';
+import { PlusCircle, LayoutDashboard, List, FolderTree, Handshake, TrendingUp, MoreVertical, LogOut, PiggyBank, CalendarClock, Settings, Target, Bell } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { signOut } from 'firebase/auth';
 import { auth } from './firebase';
@@ -35,6 +35,7 @@ const MoneyLentTab = lazy(() => import('./pages/MoneyLentTab'));
 const SettingsTab = lazy(() => import('./pages/SettingsTab'));
 const SavingsTab = lazy(() => import('./pages/SavingsTab'));
 const WishlistTab = lazy(() => import('./pages/WishlistTab'));
+const SchedulesTab = lazy(() => import('./pages/SchedulesTab'));
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
 
@@ -43,6 +44,59 @@ const TabFallback = () => (
     <div className="w-8 h-8 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
   </div>
 );
+
+const NotificationItem = ({ schedule, skipSchedule, approveSchedule }) => {
+  const [editableAmount, setEditableAmount] = useState(schedule.amount ? schedule.amount.toString() : '');
+
+  const handleApprove = async () => {
+    const finalAmount = parseFloat(editableAmount);
+    if (isNaN(finalAmount) || finalAmount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+    await approveSchedule({ ...schedule, amount: finalAmount });
+  };
+
+  return (
+    <div className="bg-gray-800/60 p-4 rounded-2xl border border-gray-700/50 flex flex-col gap-3 relative overflow-hidden group hover:border-gray-600 transition-all">
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 pointer-events-none"></div>
+      
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start z-10 gap-3">
+        <div>
+          <h4 className="font-bold text-gray-100">{schedule.description || schedule.category}</h4>
+          <div className="text-xs text-gray-400 flex gap-2 mt-1">
+            <span className="bg-gray-700/50 px-2 py-0.5 rounded-full">{schedule.category}</span>
+            <span className="bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded-full">{schedule.frequency}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 bg-gray-900/80 px-3 py-1.5 rounded-xl border border-gray-700 focus-within:border-blue-500 transition-all shrink-0">
+          <span className="text-gray-400 text-sm font-bold">LKR</span>
+          <input 
+            type="number"
+            value={editableAmount}
+            onChange={(e) => setEditableAmount(e.target.value)}
+            className="w-20 bg-transparent text-right text-rose-400 font-black focus:outline-none"
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-2 w-full mt-2 z-10">
+        <button 
+          onClick={async () => await skipSchedule(schedule)}
+          className="flex-1 py-2 px-3 bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 rounded-xl font-bold transition-all border border-gray-600 active:scale-95 text-xs text-center"
+        >
+          Skip
+        </button>
+        <button 
+          onClick={handleApprove}
+          className="flex-[2] py-2 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold transition-all shadow-md active:scale-95 text-xs text-center uppercase tracking-wide"
+        >
+          Verify & Add
+        </button>
+      </div>
+    </div>
+  );
+};
 
 function App() {
   const { user, authLoading } = useAuth();
@@ -82,14 +136,15 @@ function App() {
 
   // Modal States
   const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Custom Hooks mapped
   const { transactions, loading: txLoading, addExpense, addIncome, deleteTransaction, updateTransaction } = useTransactions(user);
-  const { categories, addCategory: addCat, deleteCategory: delCat, addSubcategory: addSub, deleteSubcategory: delSub, seedDefaultCategories, DEFAULT_CATEGORIES } = useCategories(user, setCategory);
+  const { categories, addCategory: addCat, deleteCategory: delCat, addSubcategory: addSub, deleteSubcategory: delSub, seedDefaultCategories, DEFAULT_CATEGORIES, updateCategoryTarget } = useCategories(user, setCategory);
   const { lentMoney, addLentMoney: addLent, receiveLentPayment: recLent, deleteLentHistoryEntry } = useLentMoney(user);
   const { syncMetadata, isSyncing, handleSyncPOS } = usePOSSync(user);
   const { savings, addSaving, deleteSaving, updateSaving } = useSavings(user);
-  const { schedules, addSchedule, deleteSchedule } = useScheduled(user, addExpense);
+  const { schedules, pendingAskSchedules, addSchedule, deleteSchedule, approveSchedule, skipSchedule } = useScheduled(user, addExpense);
   const { wishlistItems, loading: wishlistLoading, addWishlistItem, completeWishlistItem, deleteWishlistItem, addSubItemToWishlist } = useWishlist(user, addExpense);
 
   const handleAddTransaction = useCallback(async (e, overrideDesc = null) => {
@@ -331,6 +386,9 @@ function App() {
                   <TabsTrigger value="wishlist" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
                     <Target className="w-5 h-5 sm:w-4 sm:h-4 text-amber-400" /> <span className="hidden sm:inline text-sm">Wishlist</span>
                   </TabsTrigger>
+                  <TabsTrigger value="schedules" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
+                    <CalendarClock className="w-5 h-5 sm:w-4 sm:h-4 text-cyan-400" /> <span className="hidden sm:inline text-sm">Schedules</span>
+                  </TabsTrigger>
                   <TabsTrigger value="history" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
                     <List className="w-5 h-5 sm:w-4 sm:h-4 text-indigo-400" /> <span className="hidden sm:inline text-sm">History</span>
                   </TabsTrigger>
@@ -340,14 +398,72 @@ function App() {
                 </TabsList>
               </div>
 
-              <button
-                onClick={() => setShowSignOutModal(true)}
-                title="Sign Out"
-                className="p-2 sm:px-4 sm:py-2 bg-gray-800/80 hover:bg-red-500/10 text-red-500 hover:text-red-400 border border-gray-700/50 hover:border-red-500/30 rounded-md transition-all duration-300 text-sm font-bold shadow-md flex-shrink-0 flex items-center justify-center gap-2 group"
-              >
-                <LogOut className="w-5 h-5 group-hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] transition-all" />
-                <span className="hidden sm:inline">Sign Out</span>
-              </button>
+              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                <div className="relative">
+                  <button
+                    onClick={() => setShowNotifications(!showNotifications)}
+                    title="Notifications"
+                    className="relative p-2 sm:px-4 sm:py-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-400 hover:text-white border border-gray-700/50 rounded-md transition-all duration-300 shadow-md flex items-center justify-center gap-2 group"
+                  >
+                    <Bell className="w-5 h-5 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all" />
+                    {pendingAskSchedules && pendingAskSchedules.length > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-lg">
+                        {pendingAskSchedules.length}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* NOTIFICATIONS DROPDOWN */}
+                  {showNotifications && (
+                    <div className="absolute right-0 top-full mt-3 z-[100] bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-2xl shadow-2xl w-[90vw] max-w-[450px] sm:w-[450px] flex flex-col gap-4 p-4 md:p-6 animate-in slide-in-from-top-2 fade-in duration-200" style={{ transformOrigin: 'top right' }}>
+                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500/80 via-indigo-500/80 to-blue-500/80"></div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-blue-500/10 rounded-xl border border-blue-500/20 shadow-inner">
+                            <Bell className="w-5 h-5 text-blue-400 drop-shadow-md" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-black text-white tracking-wide">Notifications</h3>
+                            <p className="text-[10px] text-gray-400 mt-0.5">Pending Scheduled Expenses</p>
+                          </div>
+                        </div>
+                        <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-white transition-colors bg-gray-800/50 p-2 rounded-full">
+                          <MoreVertical className="w-4 h-4 opacity-0 pointer-events-none absolute" />
+                          <span className="font-black px-2 text-xs">X</span>
+                        </button>
+                      </div>
+
+                      <div className="overflow-y-auto hide-scrollbar space-y-4 max-h-[60vh]">
+                        {pendingAskSchedules && pendingAskSchedules.length > 0 ? (
+                          pendingAskSchedules.map((schedule) => (
+                            <NotificationItem 
+                              key={schedule.id}
+                              schedule={schedule}
+                              skipSchedule={skipSchedule}
+                              approveSchedule={approveSchedule}
+                            />
+                          ))
+                        ) : (
+                          <div className="text-center py-8 text-gray-500 bg-gray-800/30 rounded-2xl border border-gray-800/50">
+                            <Bell className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                            <p className="font-medium text-xs">No new notifications</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => setShowSignOutModal(true)}
+                  title="Sign Out"
+                  className="p-2 sm:px-4 sm:py-2 bg-gray-800/80 hover:bg-red-500/10 text-red-500 hover:text-red-400 border border-gray-700/50 hover:border-red-500/30 rounded-md transition-all duration-300 text-sm font-bold shadow-md flex items-center justify-center gap-2 group"
+                >
+                  <LogOut className="w-5 h-5 group-hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] transition-all" />
+                  <span className="hidden sm:inline">Sign Out</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -467,6 +583,19 @@ function App() {
             </Suspense>
           </TabsContent>
 
+          <TabsContent value="schedules">
+            <Suspense fallback={<TabFallback />}>
+              <SchedulesTab 
+                schedules={schedules}
+                addSchedule={addSchedule}
+                deleteSchedule={deleteSchedule}
+                formatLKR={formatLKR}
+                categories={categories}
+                templates={templates}
+              />
+            </Suspense>
+          </TabsContent>
+
           <TabsContent value="settings" className="space-y-6">
             <Suspense fallback={<TabFallback />}>
               <SettingsTab
@@ -485,6 +614,8 @@ function App() {
                 newSubcategoryNames={newSubcategoryNames}
                 handleSubcategoryChange={handleSubcategoryChange}
                 handleAddSubcategory={handleAddSubcategoryLocal}
+                updateCategoryTarget={updateCategoryTarget}
+                transactions={transactions}
                 templates={templates}
                 deleteTemplate={deleteTemplate}
                 updateTemplate={updateTemplate}
@@ -566,6 +697,7 @@ function App() {
           </div>
         </div>
       )}
+
     </div>
     </AppProvider>
     </AuthProvider>

@@ -96,7 +96,7 @@ export default function CashFlowChart({ formatCompact, formatLKR }) {
     }
   });
 
-  const activeSchedules = schedules.filter(s => s.status === 'active');
+  const activeSchedules = schedules.filter(s => s.status === 'active' && !s.askBefore);
   const startOfMonth = new Date(currentYear, currentMonth, 1);
   const endOfMonth = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59);
 
@@ -435,6 +435,10 @@ export default function CashFlowChart({ formatCompact, formatLKR }) {
           <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Savings</span>
           <span className="text-sm font-black text-purple-400">Rs. {formatCompact(chartTotalSavings)}</span>
         </div>
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold text-sky-500 uppercase tracking-wider">Scheduled</span>
+          <span className="text-sm font-black text-sky-400">Rs. {formatCompact(displayedPlanned)}</span>
+        </div>
       </div>
 
       <div className="h-[250px] w-full">
@@ -449,6 +453,10 @@ export default function CashFlowChart({ formatCompact, formatLKR }) {
                 <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4}/>
                 <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
               </linearGradient>
+              <linearGradient id="colorPlanned" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.4}/>
+                <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+              </linearGradient>
             </defs>
             <XAxis dataKey="day" stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} />
             <YAxis stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} tickFormatter={val => formatCompact(val)} />
@@ -459,6 +467,7 @@ export default function CashFlowChart({ formatCompact, formatLKR }) {
               <ReferenceLine x={todayReferenceX} stroke="#3b82f6" strokeDasharray="3 3" label={{ position: 'insideTopRight', value: 'Today', fill: '#3b82f6', fontSize: 10, fontWeight: 'bold' }} />
             )}
             
+            <Area type="monotone" dataKey="Planned" stroke="#0ea5e9" strokeWidth={2} strokeDasharray="5 5" fillOpacity={1} fill="url(#colorPlanned)" />
             <Area type="monotone" dataKey="Lent" stroke="#eab308" strokeWidth={2} fillOpacity={0.1} fill="#eab308" />
             <Area type="monotone" dataKey="Savings" stroke="#a855f7" strokeWidth={2} fillOpacity={0.1} fill="#a855f7" />
             <Area type="monotone" dataKey="Income" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" />

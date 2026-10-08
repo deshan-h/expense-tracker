@@ -129,5 +129,21 @@ export const useCategories = (user, setCategory) => {
     }
   }, []);
 
-  return { categories, addCategory, deleteCategory, addSubcategory, deleteSubcategory, seedDefaultCategories, DEFAULT_CATEGORIES };
+  const updateCategoryTarget = useCallback(async (catId, targetAmount) => {
+    try {
+      await updateDoc(doc(db, 'categories', catId), {
+        target: targetAmount ? Number(targetAmount) : null
+      });
+      toast.success("Category target updated!");
+      playSuccessSound();
+      return true;
+    } catch (error) {
+      console.error("Error updating category target: ", error);
+      toast.error("Failed to update target.");
+      playErrorSound();
+      return false;
+    }
+  }, []);
+
+  return { categories, addCategory, deleteCategory, addSubcategory, deleteSubcategory, seedDefaultCategories, DEFAULT_CATEGORIES, updateCategoryTarget };
 };

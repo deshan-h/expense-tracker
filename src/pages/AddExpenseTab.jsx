@@ -36,14 +36,13 @@ const AddExpenseTab = ({
   templates,
   addTemplate,
   transactions = [],
-  addSchedule,
   formatLKR
 }) => {
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [templateDesc, setTemplateDesc] = useState('');
   const [isTemplatesExpanded, setIsTemplatesExpanded] = useState(true);
-  const [frequency, setFrequency] = useState('Once');
+  const [forceCatClosed, setForceCatClosed] = useState(false);
 
   useEffect(() => {
     setCategory('');
@@ -52,6 +51,7 @@ const AddExpenseTab = ({
     setDescription('');
     setCalcHistory('');
     setIsTemplatesExpanded(true);
+    setForceCatClosed(false);
   }, [setCategory, setSubcategory, setAmount, setDescription, setCalcHistory]);
 
   const onSubmitForm = async (e) => {
@@ -78,17 +78,7 @@ const AddExpenseTab = ({
         await handleAddIncome(e, category || 'Other', overrideDesc);
       }
     } else {
-      if (frequency !== 'Once' && addSchedule) {
-        const fullDate = `${date}T${time}`;
-        const finalDesc = overrideDesc !== null ? overrideDesc : description;
-        await addSchedule({ category, subcategory, amount: parseFloat(amount), description: finalDesc, nextDate: fullDate, frequency });
-        setAmount('');
-        setCalcHistory('');
-        setDescription('');
-        setFrequency('Once');
-      } else {
-        handleAddTransaction(e, overrideDesc);
-      }
+      handleAddTransaction(e, overrideDesc);
     }
   };
 
@@ -217,7 +207,7 @@ const AddExpenseTab = ({
                             if (tpl.description || tpl.desc) {
                               setDescription(tpl.description || tpl.desc);
                             }
-                            setIsTemplatesExpanded(false);
+                            setForceCatClosed(true);
                           }}
                           className="bg-gray-800/60 hover:bg-gray-700 border border-gray-700/50 hover:border-gray-600 rounded-xl py-2 px-3 flex items-center justify-start gap-3 transition-all text-left group/btn shadow-inner"
                         >
@@ -232,7 +222,7 @@ const AddExpenseTab = ({
               
               {/* Category Grid */}
               {(() => {
-                const isCatExpanded = isIncome || !isTemplatesExpanded || !templates || templates.length === 0;
+                const isCatExpanded = !forceCatClosed && (isIncome || !isTemplatesExpanded || !templates || templates.length === 0);
                 return (
                   <div className={`bg-gray-900/60 backdrop-blur-md p-5 rounded-3xl border border-gray-700/50 shadow-inner flex flex-col transition-all duration-300 ${isCatExpanded ? 'flex-1' : ''}`}>
                     {(() => {
@@ -244,7 +234,9 @@ const AddExpenseTab = ({
                         <div 
                           className={`flex items-center justify-between ${isCatExpanded ? 'mb-4' : ''} cursor-pointer group`}
                           onClick={() => {
-                            if (!isIncome && templates && templates.length > 0) {
+                            if (forceCatClosed) {
+                              setForceCatClosed(false);
+                            } else if (!isIncome && templates && templates.length > 0) {
                               setIsTemplatesExpanded(!isTemplatesExpanded);
                             }
                           }}
@@ -289,7 +281,9 @@ const AddExpenseTab = ({
                         <div 
                           className={`flex items-center justify-between ${isCatExpanded ? 'mb-5 border-b border-gray-700/50 pb-4' : ''} cursor-pointer group`}
                           onClick={() => {
-                            if (!isIncome && templates && templates.length > 0) {
+                            if (forceCatClosed) {
+                              setForceCatClosed(false);
+                            } else if (!isIncome && templates && templates.length > 0) {
                               setIsTemplatesExpanded(!isTemplatesExpanded);
                             }
                           }}
@@ -321,6 +315,7 @@ const AddExpenseTab = ({
                                 e.stopPropagation(); 
                                 setCategory(''); 
                                 setSubcategory(''); 
+                                setForceCatClosed(false);
                                 if (!isIncome && templates && templates.length > 0) {
                                   setIsTemplatesExpanded(true); // Open templates when clearing category
                                 }
@@ -392,14 +387,43 @@ const AddExpenseTab = ({
     </div>
     {/* COLUMN 2 */}
             <div className="flex flex-col justify-start bg-gray-900/60 backdrop-blur-md p-6 rounded-3xl border border-gray-700/50 shadow-inner h-full">
-              <div className="flex flex-col h-full space-y-6">
+              <div className="flex flex-col h-full gap-4">
                 
+                {/* Selected Category Box (above Amount) */}
+                {category && (
+                  <div className="bg-gray-800/80 backdrop-blur-md rounded-2xl p-3 border border-gray-700 flex items-center justify-between shadow-inner">
+                    <div className="flex items-center gap-3">
+                      {(() => {
+                        const c = categories.find(cat => cat.name === category);
+                        if (!c) return null;
+                        const CatIcon = getIconComponent(c.icon);
+                        const iconColors = getIconColor(c.icon);
+                        return (
+                          <>
+                            <div className={`p-2 rounded-xl ${iconColors.bg} shadow-inner`}>
+                              <CatIcon className={`w-4 h-4 ${iconColors.color}`} />
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-0.5">Selected Category</p>
+                              <p className="text-sm font-black text-gray-100 leading-tight">
+                                {c.name} {subcategory ? <span className="text-gray-400 font-medium">/ {subcategory}</span> : ''}
+                              </p>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
+
                 {/* Amount Field (Smaller & Colored) */}
-                <div className={`bg-gray-900/80 backdrop-blur-md p-5 rounded-3xl border shadow-inner transition-all ${isIncome ? 'border-emerald-500/30' : 'border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.1)]'}`}>
-                  <p className="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-[0.2em] ml-1">
-                    {calcHistory ? <span className="text-blue-400 font-black tracking-widest drop-shadow-md">{calcHistory}</span> : 'Amount'}
-                  </p>
-                  <div className={`flex items-center text-4xl md:text-5xl font-black ${isIncome ? 'text-emerald-400' : 'text-rose-400'}`}>
+                <div className={`bg-gray-900/80 backdrop-blur-md px-5 py-4 rounded-3xl border shadow-inner transition-all ${isIncome ? 'border-emerald-500/30' : 'border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.1)]'}`}>
+                  {calcHistory && (
+                    <p className="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-[0.2em] ml-1">
+                      <span className="text-blue-400 font-black tracking-widest drop-shadow-md">{calcHistory}</span>
+                    </p>
+                  )}
+                  <div className={`flex items-center text-3xl md:text-4xl font-black ${isIncome ? 'text-emerald-400' : 'text-rose-400'}`}>
                     <span className="text-gray-500 mr-3 text-2xl font-bold">Rs.</span>
                     <input 
                       type="text" 
@@ -418,39 +442,22 @@ const AddExpenseTab = ({
                 </div>
 
                 {/* Details */}
-                <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Details</p>
-                  <div className={`relative bg-gray-900/80 rounded-2xl border border-gray-700/80 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all overflow-hidden shadow-inner`}>
-                    <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full bg-transparent px-5 py-4 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder={`What was this ${type.toLowerCase()} for?`} />
-                  </div>
+                <div className={`relative bg-gray-900/80 rounded-2xl border border-gray-700/80 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all overflow-hidden shadow-inner h-[48px] flex items-center`}>
+                  <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full bg-transparent px-4 py-2 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder={`What was this ${type.toLowerCase()} for?`} />
                 </div>
                 
                 {/* Date & Time */}
-                <div className="flex flex-col gap-3">
-                  <DateTimePicker 
-                    date={date} 
-                    setDate={setDate} 
-                    time={time} 
-                    setTime={setTime} 
-                  />
-                  
-                  {!isIncome && (
-                    <div className="relative bg-gray-900/80 rounded-2xl border border-gray-700/80 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all overflow-hidden shadow-inner flex items-center px-4 py-2.5">
-                      <select required value={frequency} onChange={(e) => setFrequency(e.target.value)} className="w-full bg-transparent text-sm font-medium text-gray-100 focus:outline-none appearance-none cursor-pointer">
-                        <option value="Once" className="bg-gray-800">One-Time (No Repeat)</option>
-                        <option value="Daily" className="bg-gray-800">Daily</option>
-                        <option value="Weekly" className="bg-gray-800">Weekly</option>
-                        <option value="Monthly" className="bg-gray-800">Monthly</option>
-                        <option value="Yearly" className="bg-gray-800">Yearly</option>
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-gray-400 pointer-events-none shrink-0 ml-2" />
-                    </div>
-                  )}
-                </div>
+                <DateTimePicker 
+                  date={date} 
+                  setDate={setDate} 
+                  time={time} 
+                  setTime={setTime} 
+                />
+                
 
                 {/* SAVE AS TEMPLATE */}
-                <div className="bg-gray-900/40 p-5 rounded-2xl border border-gray-700/50 transition-all">
-                  <div className="flex items-center justify-between cursor-pointer" onClick={() => {
+                <div className="bg-gray-900/40 rounded-2xl border border-gray-700/50 transition-all h-[48px] flex items-center px-4">
+                  <div className="flex items-center justify-between cursor-pointer w-full" onClick={() => {
                       setIsSavingTemplate(!isSavingTemplate);
                       if (!isSavingTemplate && !templateName.trim()) {
                         setTemplateName(subcategory || category || '');
@@ -463,8 +470,9 @@ const AddExpenseTab = ({
                       <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${isSavingTemplate ? 'translate-x-5' : 'translate-x-0'}`}></div>
                     </div>
                   </div>
-                  {isSavingTemplate && (
-                    <div className="mt-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                </div>
+                {isSavingTemplate && (
+                    <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
                       <input 
                         type="text" 
                         value={templateName} 
@@ -482,7 +490,6 @@ const AddExpenseTab = ({
                       />
                     </div>
                   )}
-                </div>
 
                 {/* Actions */}
                 <div className="mt-auto flex gap-3">
@@ -497,6 +504,8 @@ const AddExpenseTab = ({
                       setTemplateDesc(''); 
                       setDate(new Date().toISOString().split('T')[0]);
                       setTime(new Date().toTimeString().slice(0, 5));
+                      setForceCatClosed(false);
+                      setIsTemplatesExpanded(true);
                     }} 
                     className="bg-gray-800/80 hover:bg-gray-700 text-gray-400 hover:text-rose-400 border border-gray-700 font-black tracking-widest uppercase py-5 px-6 rounded-2xl transition-all shadow-md active:scale-[0.98] flex items-center justify-center shrink-0"
                     title="Clear Fields"

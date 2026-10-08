@@ -20,7 +20,7 @@ const quickActions = [
   }
 ];
 
-const DateTimePicker = ({ date, setDate, time, setTime, hideTime = false }) => {
+const DateTimePicker = ({ date, setDate, time, setTime, hideTime = false, className = '', optional = false, placeholder = "Select Date" }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [placement, setPlacement] = useState('bottom');
@@ -97,9 +97,10 @@ const DateTimePicker = ({ date, setDate, time, setTime, hideTime = false }) => {
     setIsOpen(false);
   };
 
-  const selectedDateObj = date ? new Date(date) : new Date();
+  const selectedDateObj = date ? new Date(date) : (optional ? null : new Date());
   
   const isSelected = (day) => {
+    if (!selectedDateObj) return false;
     return selectedDateObj.getDate() === day && 
            selectedDateObj.getMonth() === month && 
            selectedDateObj.getFullYear() === year;
@@ -117,16 +118,16 @@ const DateTimePicker = ({ date, setDate, time, setTime, hideTime = false }) => {
   const blanks = Array.from({ length: adjustedFirstDay }, (_, i) => i);
 
   return (
-    <div className="relative w-full" ref={wrapperRef}>
+    <div className={`relative w-full ${className || ''}`} ref={wrapperRef}>
       {/* Input Field Trigger */}
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full h-[42px] bg-gray-900/80 rounded-xl border border-gray-700/80 hover:border-blue-500 hover:ring-1 hover:ring-blue-500 transition-all overflow-hidden shadow-inner cursor-pointer flex flex-row items-center justify-between px-3 sm:px-4 py-2.5 gap-2"
+        className="w-full h-[48px] bg-gray-900/80 rounded-2xl border border-gray-700/80 hover:border-blue-500 hover:ring-1 hover:ring-blue-500 transition-all overflow-hidden shadow-inner cursor-pointer flex flex-row items-center justify-between px-4 gap-2"
       >
         <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
           <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 shrink-0" />
-          <span className="text-xs sm:text-sm font-medium text-gray-100 whitespace-nowrap overflow-hidden text-ellipsis">
-            {selectedDateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+          <span className={`text-xs sm:text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis ${selectedDateObj ? 'text-gray-100' : 'text-gray-500'}`}>
+            {selectedDateObj ? selectedDateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : placeholder}
           </span>
         </div>
         {!hideTime && (
@@ -203,6 +204,11 @@ const DateTimePicker = ({ date, setDate, time, setTime, hideTime = false }) => {
                       {currentMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
                     </div>
                     <div className="flex items-center gap-3">
+                      {optional && (
+                        <button type="button" onClick={() => { setDate(''); setIsOpen(false); }} className="text-xs font-medium text-red-400 hover:text-red-300 transition-colors cursor-pointer mr-2">
+                          Clear
+                        </button>
+                      )}
                       <button type="button" onClick={handleGoToToday} className="text-xs font-medium text-gray-400 hover:text-gray-200 transition-colors cursor-pointer">
                         Today
                       </button>

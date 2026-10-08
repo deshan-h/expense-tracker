@@ -1,12 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import SummaryCards from '../components/dashboard/SummaryCards';
 import CashFlowChart from '../components/dashboard/CashFlowChart';
-import CashFlowSummary from '../components/dashboard/CashFlowSummary';
+import CategoryTracker from '../components/dashboard/CategoryTracker';
 import LentAndSavingsCharts from '../components/dashboard/LentAndSavingsCharts';
 import ExpenseBreakdownComparison from '../components/dashboard/ExpenseBreakdownComparison';
 import YearlyOverviewChart from '../components/dashboard/YearlyOverviewChart';
+import ScheduledExpensesChart from '../components/dashboard/ScheduledExpensesChart';
 
-const DashboardTab = ({ formatLKR }) => {
+const DashboardTab = ({ 
+  transactions, 
+  totalIncome, 
+  totalExpense, 
+  netBalance, 
+  totalPendingLent, 
+  totalSavings, 
+  thisMonthWithdrawals, 
+  thisMonthPlanned, 
+  schedules, 
+  lentMoney, 
+  savings, 
+  wishlistItems, 
+  formatLKR, 
+  chartData 
+}) => {
 
   const [now, setNow] = useState(Date.now());
   
@@ -50,16 +66,19 @@ const DashboardTab = ({ formatLKR }) => {
         {/* 2. VISUALIZATIONS GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <CashFlowChart formatCompact={formatCompact} formatLKR={formatLKR} />
-          <CashFlowSummary formatCompact={formatCompact} />
+          <CategoryTracker formatLKR={formatLKR} />
         </div>
 
         {/* 3. LENT & SAVINGS CHARTS */}
         <LentAndSavingsCharts formatCompact={formatCompact} formatLKR={formatLKR} />
 
-        {/* 4. EXPENSE BREAKDOWN COMPARISON */}
+        {/* 4. SCHEDULED PROJECTIONS */}
+        <ScheduledExpensesChart schedules={schedules} formatLKR={formatLKR} formatCompact={formatCompact} />
+
+        {/* 5. EXPENSE BREAKDOWN COMPARISON */}
         <ExpenseBreakdownComparison formatCompact={formatCompact} formatLKR={formatLKR} />
 
-        {/* 5. YEARLY OVERVIEW BAR CHART */}
+        {/* 6. YEARLY OVERVIEW BAR CHART */}
         <YearlyOverviewChart formatCompact={formatCompact} />
 
       </div>
