@@ -613,9 +613,6 @@ const AddExpenseTab = ({
                             <div>
                               <h4 className="font-bold text-gray-200 text-[11px] md:text-xs flex items-center gap-2 group-hover:text-white transition-colors">
                                 <span className="line-clamp-1 max-w-[130px]">{t.subcategory || t.category}</span>
-                                {isToday && (
-                                  <span className="px-1.5 py-0.5 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 text-[7px] font-black tracking-widest uppercase shadow-sm">Today</span>
-                                )}
                               </h4>
                               <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">{t.category}</p>
                             </div>
