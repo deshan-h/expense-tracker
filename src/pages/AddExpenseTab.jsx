@@ -45,7 +45,7 @@ const AddExpenseTab = ({
   const [forceCatClosed, setForceCatClosed] = useState(false);
   const [isTemplateSelected, setIsTemplateSelected] = useState(false);
 
-  useEffect(() => {
+    useEffect(() => {
     setCategory('');
     setSubcategory('');
     setAmount('');
@@ -53,7 +53,8 @@ const AddExpenseTab = ({
     setCalcHistory('');
     setIsTemplatesExpanded(true);
     setForceCatClosed(false);
-  }, [setCategory, setSubcategory, setAmount, setDescription, setCalcHistory]);
+    setIsTemplateSelected(false);
+  }, [type, setCategory, setSubcategory, setAmount, setDescription, setCalcHistory]);
 
   const onSubmitForm = async (e) => {
     e.preventDefault();

@@ -31,11 +31,6 @@ export const useCategories = (user, setCategory) => {
         catData.push({ id: document.id, ...document.data() });
       });
       setCategories(catData);
-      
-      // If we provided a setter for the default category in the form, update it if it's empty
-      if (catData.length > 0 && setCategory) {
-        setCategory(prev => prev === '' ? catData[0].name : prev);
-      }
     });
 
     return () => unsubCat();
