@@ -185,111 +185,24 @@ const AddExpenseTab = ({
                 </div>
               )}
 
-              {/* Templates Section */}
-              {!isIncome && templates && templates.length > 0 && (
-                <div className={`bg-gray-900/60 backdrop-blur-md p-5 rounded-3xl border border-gray-700/50 shadow-inner flex flex-col transition-all duration-300 ${isTemplatesExpanded ? 'flex-1' : ''}`}>
-                  <div 
-                    className="flex items-center justify-between cursor-pointer group"
-                    onClick={() => setIsTemplatesExpanded(!isTemplatesExpanded)}
-                  >
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2 group-hover:text-gray-200 transition-colors">
-                      <Bookmark className="w-3.5 h-3.5 text-purple-400" /> Templates
-                    </p>
-                    <ChevronDown className={`w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-transform duration-300 ${isTemplatesExpanded ? 'rotate-180' : ''}`} />
-                  </div>
-                  
-                  {isTemplatesExpanded && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4 flex-1 overflow-y-auto content-start pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-gray-700/50 [&::-webkit-scrollbar-thumb]:rounded-full animate-in fade-in slide-in-from-top-2 duration-300">
-                      {templates.map(tpl => (
-                        <button
-                          key={tpl.id}
-                          type="button"
-                          onClick={() => {
-                            if (tpl.amount) setAmount(tpl.amount);
-                            if (tpl.category) setCategory(tpl.category);
-                            if (tpl.subcategory) setSubcategory(tpl.subcategory);
-                            if (tpl.description || tpl.desc) {
-                              setDescription(tpl.description || tpl.desc);
-                            }
-                            setForceCatClosed(true);
-                            setIsTemplateSelected(true);
-                          }}
-                          className="bg-gray-800/60 hover:bg-gray-700 border border-gray-700/50 hover:border-gray-600 rounded-xl py-2 px-3 flex items-center justify-start gap-3 transition-all text-left group/btn shadow-inner"
-                        >
-                          <Bookmark className="w-4 h-4 text-purple-400/50 group-hover/btn:text-purple-400 transition-colors shrink-0" />
-                          <span className="text-[10px] font-bold text-gray-300 line-clamp-1 w-full leading-tight">{tpl.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              {/* Category Grid */}
+              {/* Unified Box for Templates and Categories */}
               {(() => {
-                const isCatExpanded = !forceCatClosed && (isIncome || !isTemplatesExpanded || !templates || templates.length === 0);
-                return (
-                  <div className={`bg-gray-900/60 backdrop-blur-md p-5 rounded-3xl border border-gray-700/50 shadow-inner flex flex-col transition-all duration-300 ${isCatExpanded ? 'flex-1' : ''}`}>
-                    {(() => {
-                      const currentCategories = categories.filter(c => isIncome ? c.type === 'Income' : (!c.type || c.type === 'Expense'));
-                      
-                      if (!category || isIncome || isTemplateSelected) {
-                        return (
-                          <>
-                        <div 
-                          className={`flex items-center justify-between ${isCatExpanded ? 'mb-4' : ''} cursor-pointer group`}
-                          onClick={() => {
-                            if (forceCatClosed) {
-                              setForceCatClosed(false);
-                            } else if (!isIncome && templates && templates.length > 0) {
-                              setIsTemplatesExpanded(!isTemplatesExpanded);
-                            }
-                          }}
-                        >
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 group-hover:text-gray-200 transition-colors">Select Category</p>
-                          <div className="flex items-center gap-2">
-                            {currentCategories.length === 0 && <p className="text-[9px] font-bold text-rose-400 bg-rose-400/10 px-2 py-1 rounded-full border border-rose-400/20 uppercase tracking-wider">Empty</p>}
-                            {!isIncome && templates && templates.length > 0 && (
-                              <ChevronDown className={`w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-transform duration-300 ${isCatExpanded ? 'rotate-180' : ''}`} />
-                            )}
-                          </div>
-                        </div>
-                        
-                        {isCatExpanded && (
-                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 flex-1 overflow-y-auto content-start [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-gray-700/50 [&::-webkit-scrollbar-thumb]:rounded-full animate-in fade-in duration-300">
-                            {currentCategories.map((c, i) => {
-                              const CatIcon = getIconComponent(c.icon);
-                              const iconColors = getIconColor(c.icon);
-                              const isSelected = category === c.name;
-                              return (
-                                    <button 
-                                      key={c.id} 
-                                      type="button" 
-                                      onClick={() => { setCategory(c.name); setSubcategory(''); setIsTemplateSelected(false); }} 
-                                      className={`py-3 px-1 md:py-4 md:px-2 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all text-center border border-gray-700/50 hover:bg-gray-700/50 shadow-inner group/btn overflow-hidden ${isSelected ? (isIncome ? 'bg-emerald-500/20 border-emerald-500/50 shadow-[inset_0_0_15px_rgba(16,185,129,0.2)]' : 'bg-gray-700/50') : 'bg-gray-800/40'}`}
-                                    >
-                                      <div className={`p-2 transition-all rounded-xl ${iconColors.bg}`}>
-                                        <CatIcon className={`w-5 h-5 md:w-6 md:h-6 transition-all ${iconColors.color}`} />
-                                      </div>
-                                      <span className={`text-[9px] leading-tight md:text-[10px] font-bold w-full break-words whitespace-normal ${isSelected ? 'text-gray-100' : 'text-gray-300 group-hover/btn:text-gray-200'}`}>{c.name}</span>
-                                    </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </>
-                    );
-                  } else {
+                const currentCategories = categories.filter(c => isIncome ? c.type === 'Income' : (!c.type || c.type === 'Expense'));
+                const hasTemplates = !isIncome && templates && templates.length > 0;
+                
+                // If a category is selected (and not from a template), show subcategories view
+                if (category && !forceCatClosed && !isTemplateSelected && !isIncome) {
                     return (
-                      <div className={`animate-in slide-in-from-right-4 duration-300 flex flex-col transition-all duration-300 ${isCatExpanded ? 'flex-1' : ''}`}>
+                      <div className="bg-gray-900/60 backdrop-blur-md p-5 rounded-3xl border border-gray-700/50 shadow-inner flex flex-col transition-all duration-300 flex-1 animate-in slide-in-from-right-4">
                         {/* Selected Category Header */}
                         <div 
-                          className={`flex items-center justify-between ${isCatExpanded ? 'mb-5 border-b border-gray-700/50 pb-4' : ''} cursor-pointer group`}
+                          className="flex items-center justify-between mb-5 border-b border-gray-700/50 pb-4 cursor-pointer group"
                           onClick={() => {
-                            if (forceCatClosed) {
-                              setForceCatClosed(false);
-                            } else if (!isIncome && templates && templates.length > 0) {
-                              setIsTemplatesExpanded(!isTemplatesExpanded);
+                            setCategory(''); 
+                            setSubcategory(''); 
+                            setForceCatClosed(false);
+                            if (hasTemplates) {
+                              setIsTemplatesExpanded(true);
                             }
                           }}
                         >
@@ -321,28 +234,25 @@ const AddExpenseTab = ({
                                 setCategory(''); 
                                 setSubcategory(''); 
                                 setForceCatClosed(false);
-                                if (!isIncome && templates && templates.length > 0) {
-                                  setIsTemplatesExpanded(true); // Open templates when clearing category
+                                if (hasTemplates) {
+                                  setIsTemplatesExpanded(true);
                                 }
                               }} 
                               className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:text-white bg-gray-800 px-3 py-1.5 rounded-full border border-gray-700 transition-all z-10 hover:shadow-md"
                             >
                               <ChevronLeft className="w-3 h-3" /> Back
                             </button>
-                            {!isIncome && templates && templates.length > 0 && (
-                              <ChevronDown className={`w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-transform duration-300 ${isCatExpanded ? 'rotate-180' : ''}`} />
-                            )}
                           </div>
                         </div>
 
-                        {/* Subcategories List (Expense Only) */}
-                        {isCatExpanded && !isIncome && selectedCatObj && (() => {
+                        {/* Subcategories List */}
+                        {selectedCatObj && (() => {
                           const CatIcon = getIconComponent(selectedCatObj.icon);
                           const iconColors = getIconColor(selectedCatObj.icon);
                           return (
-                          <div>
+                          <div className="flex-1 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-gray-700/50 [&::-webkit-scrollbar-thumb]:rounded-full">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 ml-1">Select Subcategory</p>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 max-h-[250px] overflow-y-auto content-start pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-gray-700/50 [&::-webkit-scrollbar-thumb]:rounded-full animate-in fade-in duration-300">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 animate-in fade-in duration-300">
                               <button type="button" onClick={() => setSubcategory('')} className={`rounded-xl py-2 px-3 flex items-center justify-start gap-2 transition-all text-left shadow-inner border group/subbtn ${subcategory === '' ? 'bg-blue-600/80 text-white border-blue-500 shadow-inner' : 'bg-gray-800/60 hover:bg-gray-700 border-gray-700/50 text-gray-300 hover:text-gray-200 hover:border-gray-600'}`}>
                                 <CatIcon className={`w-3.5 h-3.5 shrink-0 transition-colors ${subcategory === '' ? 'text-white/80' : 'text-gray-500 group-hover/subbtn:text-gray-400'}`} />
                                 <span className="text-[10px] font-bold line-clamp-1 w-full leading-tight">General</span>
@@ -384,12 +294,85 @@ const AddExpenseTab = ({
                         })()}
                       </div>
                     );
-              }
-            })()}
-          </div>
-        );
-      })()}
-    </div>
+                }
+
+                // Normal Mode (Selection)
+                return (
+                  <div className="bg-gray-900/60 backdrop-blur-md p-5 rounded-3xl border border-gray-700/50 shadow-inner flex flex-col transition-all duration-300 flex-1">
+                    
+                    {/* Pill Switcher */}
+                    {hasTemplates && (
+                      <div className="flex bg-gray-800/80 p-1 rounded-2xl mb-4 w-full max-w-[240px] mx-auto border border-gray-700 shadow-inner justify-between relative">
+                        <button 
+                          type="button"
+                          onClick={() => setIsTemplatesExpanded(true)}
+                          className={`flex-1 py-1.5 rounded-xl text-[11px] font-bold transition-all uppercase tracking-wider ${isTemplatesExpanded ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}
+                        >
+                          Templates
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => setIsTemplatesExpanded(false)}
+                          className={`flex-1 py-1.5 rounded-xl text-[11px] font-bold transition-all uppercase tracking-wider ${!isTemplatesExpanded ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}
+                        >
+                          Categories
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Content View */}
+                    <div className="flex-1 overflow-y-auto content-start pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-gray-700/50 [&::-webkit-scrollbar-thumb]:rounded-full">
+                      {(hasTemplates && isTemplatesExpanded) ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                          {templates.map(tpl => (
+                            <button
+                              key={tpl.id}
+                              type="button"
+                              onClick={() => {
+                                if (tpl.amount) setAmount(tpl.amount);
+                                if (tpl.category) setCategory(tpl.category);
+                                if (tpl.subcategory) setSubcategory(tpl.subcategory);
+                                if (tpl.description || tpl.desc) {
+                                  setDescription(tpl.description || tpl.desc);
+                                }
+                                setForceCatClosed(true);
+                                setIsTemplateSelected(true);
+                              }}
+                              className="bg-gray-800/60 hover:bg-gray-700 border border-gray-700/50 hover:border-gray-600 rounded-xl py-2 px-3 flex items-center justify-start gap-3 transition-all text-left group/btn shadow-inner"
+                            >
+                              <Bookmark className="w-4 h-4 text-purple-400/50 group-hover/btn:text-purple-400 transition-colors shrink-0" />
+                              <span className="text-[10px] font-bold text-gray-300 line-clamp-1 w-full leading-tight">{tpl.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 animate-in fade-in duration-300">
+                          {currentCategories.length === 0 && <p className="text-[9px] font-bold text-rose-400 col-span-full">Empty</p>}
+                          {currentCategories.map((c, i) => {
+                            const CatIcon = getIconComponent(c.icon);
+                            const iconColors = getIconColor(c.icon);
+                            return (
+                                  <button 
+                                    key={c.id} 
+                                    type="button" 
+                                    onClick={() => { setCategory(c.name); setSubcategory(''); setIsTemplateSelected(false); setForceCatClosed(false); }} 
+                                    className="py-2 px-1 md:py-2.5 md:px-2 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all text-center border border-gray-700/50 hover:bg-gray-700/50 shadow-inner group/btn overflow-hidden bg-gray-800/40"
+                                  >
+                                    <div className={`p-1.5 transition-all rounded-lg ${iconColors.bg}`}>
+                                      <CatIcon className={`w-4 h-4 md:w-5 md:h-5 transition-all ${iconColors.color}`} />
+                                    </div>
+                                    <span className="text-[9px] leading-tight md:text-[10px] font-bold w-full break-words whitespace-normal text-gray-300 group-hover/btn:text-gray-200">{c.name}</span>
+                                  </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+                );
+              })()}
+            </div>
     {/* COLUMN 2 */}
             <div className="flex flex-col justify-start bg-gray-900/60 backdrop-blur-md p-6 rounded-3xl border border-gray-700/50 shadow-inner h-full">
               <div className="flex flex-col h-full gap-4">
