@@ -78,7 +78,7 @@ export const useLentMoney = (user) => {
     }
   }, [lentMoney]);
 
-  const receiveLentPayment = useCallback(async (name, paymentAmount, dateStr) => {
+  const receiveLentPayment = useCallback(async (name, paymentAmount, dateStr, description = '') => {
     try {
       const amount = parseFloat(paymentAmount);
       if (isNaN(amount) || amount <= 0) return false;
@@ -93,7 +93,8 @@ export const useLentMoney = (user) => {
         id: generateId(),
         entryType: 'payment',
         amount: amount,
-        date: dateStr || new Date().toISOString()
+        date: dateStr || new Date().toISOString(),
+        description: description || 'Payment received'
       };
 
       const newTotalPaid = (existingDoc.totalPaid || 0) + amount;
@@ -158,10 +159,28 @@ export const useLentMoney = (user) => {
     }
   }, [lentMoney]);
 
+  const clearSettledAccounts = useCallback(async () => {
+    try {
+      const settled = lentMoney.filter(r => r.status === 'settled');
+      for (const item of settled) {
+        await deleteDoc(doc(db, 'moneyLent', item.id));
+      }
+      toast.success("Settled accounts cleared!");
+      playSuccessSound();
+      return true;
+    } catch (error) {
+      console.error("Error clearing settled accounts: ", error);
+      toast.error("Failed to clear settled accounts.");
+      playErrorSound();
+      return false;
+    }
+  }, [lentMoney]);
+
   return {
     lentMoney,
     addLentMoney,
     receiveLentPayment,
-    deleteLentHistoryEntry
+    deleteLentHistoryEntry,
+    clearSettledAccounts
   };
 };

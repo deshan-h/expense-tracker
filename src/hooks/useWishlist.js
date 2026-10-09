@@ -61,7 +61,7 @@ export const useWishlist = (user, addExpense) => {
 
       // 2. Add as an actual expense
       if (addExpense) {
-        const fullDate = new Date().toISOString().split('T')[0] + 'T' + new Date().toTimeString().slice(0, 5);
+        const fullDate = new Date().toLocaleDateString('en-CA') + 'T' + new Date().toTimeString().slice(0, 5);
         await addExpense({
           category: category || 'Wishlist',
           subcategory: subcategory || item.name,

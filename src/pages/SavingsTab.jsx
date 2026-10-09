@@ -11,7 +11,7 @@ const SavingsTab = ({
   const [type, setType] = useState('Deposit'); // 'Deposit' or 'Withdrawal'
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(new Date().toLocaleDateString('en-CA'));
   const [time, setTime] = useState(new Date().toTimeString().slice(0, 5));
   const [showAddRecord, setShowAddRecord] = useState(false);
 
@@ -29,7 +29,7 @@ const SavingsTab = ({
     if (success) {
       setAmount('');
       setDescription('');
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(new Date().toLocaleDateString('en-CA'));
       setTime(new Date().toTimeString().slice(0, 5));
     }
   };
@@ -51,69 +51,75 @@ const SavingsTab = ({
           <div className="flex flex-col">
 
             {/* MAIN SECTION: Savings History & Add Record */}
-            <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 shadow-xl flex flex-col relative z-20 space-y-6 mb-6">
-              
-              {/* Header */}
-              <div className="flex items-center justify-between px-2">
-                <h3 className="text-sm font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
-                  <List className="w-4 h-4 text-purple-500" /> Savings History
-                </h3>
-                <div className="bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl flex flex-col items-end shadow-inner">
-                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Total Balance</span>
-                  <span className="text-sm font-black text-emerald-500 leading-tight">Rs. {formatLKR(totalSavings)}</span>
-                </div>
-              </div>
-
-              {/* Add Record Bar */}
+            <div className="bg-gray-900/60 backdrop-blur-xl p-2 sm:p-2.5 rounded-[1.25rem] border border-gray-800/80 shadow-2xl flex flex-col relative z-20 mb-6">
+              {/* Header Row */}
               <div 
-                className="flex items-center justify-between cursor-pointer group bg-gray-950/30 p-3 rounded-xl border border-gray-800/50 hover:bg-gray-900/50 transition-colors"
+                className="flex items-center justify-between cursor-pointer group px-2 py-1"
                 onClick={() => setShowAddRecord(!showAddRecord)}
               >
-                <h3 className="text-xs font-bold text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2 group-hover:text-white transition-colors">
-                  <PlusCircle className="w-4 h-4 text-pink-500" /> Add Record
-                </h3>
-                <div className="text-gray-500 group-hover:text-gray-300 transition-colors bg-gray-800/50 p-1.5 rounded-full flex items-center justify-center">
-                  {showAddRecord ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-[0.8rem] bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 shadow-inner">
+                    <PiggyBank className="w-5 h-5" />
+                  </div>
+                  <div className="flex flex-col justify-center">
+                    <span className="text-[9px] font-bold text-gray-500 uppercase tracking-[0.2em] leading-none mb-1">Total Savings</span>
+                    <span className="text-sm sm:text-base font-black text-white leading-none">Rs. {formatLKR(totalSavings)}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center">
+                  <div className="flex items-center gap-1.5 text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-[0.75rem] group-hover:bg-emerald-500/20 transition-all shadow-inner">
+                    <PlusCircle className="w-4 h-4" />
+                    {showAddRecord ? <ChevronUp className="w-3.5 h-3.5 opacity-70" /> : <ChevronDown className="w-3.5 h-3.5 opacity-70" />}
+                  </div>
                 </div>
               </div>
               
               {showAddRecord && (
-                <div className="mt-4 flex flex-col gap-4">
-                  <div className="flex p-1 bg-gray-900/80 rounded-xl w-full sm:w-max self-start border border-gray-700/50">
-                    {savings.length === 0 && (
-                      <button type="button" onClick={() => setType('Initial')} className={`flex-1 sm:flex-none px-6 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${type === 'Initial' ? 'bg-indigo-500 text-white shadow-[0_0_15px_-3px_rgba(99,102,241,0.5)]' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
-                        Initial
+                <div className="mt-4 pt-4 border-t border-gray-800/50">
+                  <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row gap-3 items-center">
+                    {/* Type Toggles */}
+                    <div className="flex p-1 bg-gray-900/80 rounded-xl w-full lg:w-max shrink-0 border border-gray-700/50 h-[48px]">
+                      {savings.length === 0 && (
+                        <button type="button" onClick={() => setType('Initial')} className={`flex-1 lg:flex-none px-4 h-full flex items-center justify-center text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${type === 'Initial' ? 'bg-indigo-500 text-white shadow-[0_0_15px_-3px_rgba(99,102,241,0.5)]' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
+                          Initial
+                        </button>
+                      )}
+                      <button type="button" onClick={() => setType('Deposit')} className={`flex-1 lg:flex-none px-4 h-full flex items-center justify-center text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${type === 'Deposit' ? 'bg-emerald-500 text-white shadow-[0_0_15px_-3px_rgba(16,185,129,0.5)]' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
+                        Deposit
                       </button>
-                    )}
-                    <button type="button" onClick={() => setType('Deposit')} className={`flex-1 sm:flex-none px-6 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${type === 'Deposit' ? 'bg-emerald-500 text-white shadow-[0_0_15px_-3px_rgba(16,185,129,0.5)]' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
-                      Deposit
+                      <button type="button" onClick={() => setType('Withdrawal')} className={`flex-1 lg:flex-none px-4 h-full flex items-center justify-center text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${type === 'Withdrawal' ? 'bg-rose-500 text-white shadow-[0_0_15px_-3px_rgba(244,63,94,0.5)]' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
+                        Withdrawal
+                      </button>
+                    </div>
+
+                    {/* Amount */}
+                    <div className="relative w-full lg:flex-[1.2] h-[48px] bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-pink-500 focus-within:ring-1 focus-within:ring-pink-500 transition-all shadow-inner shrink-0">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">Rs.</span>
+                      <input type="text" inputMode="decimal" required value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} className="w-full h-full bg-transparent pl-10 pr-3 text-sm font-bold text-white focus:outline-none" placeholder="0.00" />
+                    </div>
+                    {/* Details */}
+                    <div className="relative w-full lg:flex-[2] h-[48px] bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-pink-500 transition-all shadow-inner shrink-0">
+                      <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} required className="w-full h-full bg-transparent px-4 text-sm font-medium text-white focus:outline-none placeholder-gray-500" placeholder="Description" />
+                    </div>
+                    {/* Date */}
+                    <div className="w-full lg:w-[140px] shrink-0">
+                      <DateTimePicker date={date} setDate={setDate} time={time} setTime={setTime} hideTime={true} />
+                    </div>
+                    {/* Submit */}
+                    <button type="submit" className={`w-full lg:w-[48px] h-[48px] shrink-0 bg-gradient-to-r ${type === 'Deposit' ? 'from-emerald-500 via-teal-500 to-emerald-600' : type === 'Withdrawal' ? 'from-rose-500 via-pink-500 to-rose-600' : 'from-indigo-500 via-purple-500 to-indigo-600'} flex items-center justify-center rounded-xl transition-all shadow-[0_0_15px_-3px_rgba(16,185,129,0.5)] active:scale-[0.98]`}>
+                      <PlusCircle className="w-5 h-5 text-white" />
                     </button>
-                    <button type="button" onClick={() => setType('Withdrawal')} className={`flex-1 sm:flex-none px-6 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${type === 'Withdrawal' ? 'bg-rose-500 text-white shadow-[0_0_15px_-3px_rgba(244,63,94,0.5)]' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>
-                      Withdrawal
-                    </button>
-                  </div>
-                <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-3 items-end">
-                  {/* Amount */}
-                  <div className="w-full md:w-48 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-pink-500 focus-within:ring-1 focus-within:ring-pink-500 transition-all shadow-inner">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-xs">Rs.</span>
-                    <input type="text" inputMode="decimal" required value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} className="w-full bg-transparent pl-10 pr-3 py-2.5 text-sm font-bold text-white focus:outline-none" placeholder="0.00" />
-                  </div>
-                  {/* Details */}
-                  <div className="w-full md:flex-1 relative bg-gray-900/80 rounded-xl border border-gray-700/80 focus-within:border-pink-500 transition-all shadow-inner">
-                    <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} required className="w-full h-[42px] bg-transparent px-3 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder="E.g., Monthly Savings, Emergency Fund" />
-                  </div>
-                  {/* Date */}
-                  <div className="w-full md:w-44 flex-shrink-0">
-                    <DateTimePicker date={date} setDate={setDate} time={time} setTime={setTime} hideTime={true} />
-                  </div>
-                  {/* Submit */}
-                  <button type="submit" className={`w-full md:w-auto h-[42px] bg-gradient-to-r ${type === 'Deposit' ? 'from-emerald-500 via-teal-500 to-emerald-600' : type === 'Withdrawal' ? 'from-rose-500 via-pink-500 to-rose-600' : 'from-indigo-500 via-purple-500 to-indigo-600'} hover:bg-right bg-[length:200%_auto] text-white font-black tracking-widest uppercase px-6 rounded-xl transition-all shadow-[0_0_15px_-3px_rgba(16,185,129,0.5)] active:scale-[0.98] shrink-0 flex items-center justify-center gap-2`}>
-                    <PlusCircle className="w-4 h-4" /> SAVE
-                  </button>
-                </form>
+                  </form>
                 </div>
               )}
-              {/* Savings Table */}
+            </div>
+
+            {/* Savings Table */}
+            <div className="bg-gray-900/60 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800/80 shadow-2xl flex flex-col relative z-20 mb-6">
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2 mb-6">
+                <List className="w-4 h-4 text-gray-600" /> Transaction History
+              </h3>
               <div className="relative overflow-y-auto hide-scrollbar flex-1 pr-1 pb-4">
                 {savings.length === 0 ? (
                   <div className="text-center py-12 bg-gray-900/40 rounded-3xl border border-gray-800 border-dashed">

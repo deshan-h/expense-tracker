@@ -109,7 +109,7 @@ function App() {
   const [amount, setAmount] = useState('');
   const [calcHistory, setCalcHistory] = useState('');
   const [description, setDescription] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(new Date().toLocaleDateString('en-CA'));
   const [time, setTime] = useState(new Date().toTimeString().slice(0, 5));
   const [isTracked, setIsTracked] = useState(true);
 
@@ -125,11 +125,11 @@ function App() {
   const [lentName, setLentName] = useState('');
   const [lentAmount, setLentAmount] = useState('');
   const [lentDescription, setLentDescription] = useState('');
-  const [lentDate, setLentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [lentDate, setLentDate] = useState(new Date().toLocaleDateString('en-CA'));
   const [lentDueDate, setLentDueDate] = useState(() => {
     const d = new Date();
     d.setMonth(d.getMonth() + 1);
-    return d.toISOString().split('T')[0];
+    return d.toLocaleDateString('en-CA');
   });
   const [activeLentTab, setActiveLentTab] = useState('Family');
   const [showPaid, setShowPaid] = useState(false);
@@ -141,7 +141,7 @@ function App() {
   // Custom Hooks mapped
   const { transactions, loading: txLoading, addExpense, addIncome, deleteTransaction, updateTransaction } = useTransactions(user);
   const { categories, addCategory: addCat, deleteCategory: delCat, addSubcategory: addSub, deleteSubcategory: delSub, seedDefaultCategories, DEFAULT_CATEGORIES, updateCategoryTarget } = useCategories(user, setCategory);
-  const { lentMoney, addLentMoney: addLent, receiveLentPayment: recLent, deleteLentHistoryEntry } = useLentMoney(user);
+  const { lentMoney, addLentMoney: addLent, receiveLentPayment: recLent, deleteLentHistoryEntry, clearSettledAccounts } = useLentMoney(user);
   const { syncMetadata, isSyncing, handleSyncPOS } = usePOSSync(user);
   const { savings, addSaving, deleteSaving, updateSaving } = useSavings(user);
   const { schedules, pendingAskSchedules, addSchedule, deleteSchedule, approveSchedule, skipSchedule } = useScheduled(user, addExpense);
@@ -171,7 +171,7 @@ function App() {
       setAmount('');
       setCalcHistory('');
       setDescription('');
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(new Date().toLocaleDateString('en-CA'));
       setTime(new Date().toTimeString().slice(0, 5));
       setIsTracked(true);
     }
@@ -201,7 +201,7 @@ function App() {
       setAmount('');
       setCalcHistory('');
       setDescription('');
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(new Date().toLocaleDateString('en-CA'));
       setTime(new Date().toTimeString().slice(0, 5));
     }
   }, [amount, calcHistory, description, date, time, addIncome]);
@@ -217,8 +217,8 @@ function App() {
       setLentDescription('');
       const d = new Date();
       d.setMonth(d.getMonth() + 1);
-      setLentDueDate(d.toISOString().split('T')[0]);
-      setLentDate(new Date().toISOString().split('T')[0]);
+      setLentDueDate(d.toLocaleDateString('en-CA'));
+      setLentDate(new Date().toLocaleDateString('en-CA'));
       setActiveLentTab(lentType);
     }
   }, [lentAmount, lentName, lentType, lentDescription, lentDate, lentDueDate, addLent]);
@@ -579,6 +579,7 @@ function App() {
                 setActiveLentTab={setActiveLentTab}
                 lentMoney={lentMoney}
                 handleDeleteLentHistoryEntry={deleteLentHistoryEntry}
+                handleClearSettledAccounts={clearSettledAccounts}
               />
             </Suspense>
           </TabsContent>

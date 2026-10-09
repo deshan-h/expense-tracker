@@ -43,6 +43,7 @@ const AddExpenseTab = ({
   const [templateDesc, setTemplateDesc] = useState('');
   const [isTemplatesExpanded, setIsTemplatesExpanded] = useState(true);
   const [forceCatClosed, setForceCatClosed] = useState(false);
+  const [isTemplateSelected, setIsTemplateSelected] = useState(false);
 
   useEffect(() => {
     setCategory('');
@@ -115,9 +116,12 @@ const AddExpenseTab = ({
       setAmount(lastNum || '');
     }
   };
-
-  const recentTransactions = transactions.filter(t => t.type === 'Expense' || t.type === 'Income').slice(0, 10);
-
+  const recentTransactions = transactions.filter(t => {
+    if (t.type !== 'Expense' && t.type !== 'Income') return false;
+    const d = new Date(t.date);
+    const today = new Date();
+    return d.toDateString() === today.toDateString();
+  });
   const isIncome = type === 'Income';
 
   return (
@@ -208,6 +212,7 @@ const AddExpenseTab = ({
                               setDescription(tpl.description || tpl.desc);
                             }
                             setForceCatClosed(true);
+                            setIsTemplateSelected(true);
                           }}
                           className="bg-gray-800/60 hover:bg-gray-700 border border-gray-700/50 hover:border-gray-600 rounded-xl py-2 px-3 flex items-center justify-start gap-3 transition-all text-left group/btn shadow-inner"
                         >
@@ -228,7 +233,7 @@ const AddExpenseTab = ({
                     {(() => {
                       const currentCategories = categories.filter(c => isIncome ? c.type === 'Income' : (!c.type || c.type === 'Expense'));
                       
-                      if (!category || isIncome) {
+                      if (!category || isIncome || isTemplateSelected) {
                         return (
                           <>
                         <div 
@@ -260,7 +265,7 @@ const AddExpenseTab = ({
                                     <button 
                                       key={c.id} 
                                       type="button" 
-                                      onClick={() => { setCategory(c.name); setSubcategory(''); }} 
+                                      onClick={() => { setCategory(c.name); setSubcategory(''); setIsTemplateSelected(false); }} 
                                       className={`py-3 px-1 md:py-4 md:px-2 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all text-center border border-gray-700/50 hover:bg-gray-700/50 shadow-inner group/btn overflow-hidden ${isSelected ? (isIncome ? 'bg-emerald-500/20 border-emerald-500/50 shadow-[inset_0_0_15px_rgba(16,185,129,0.2)]' : 'bg-gray-700/50') : 'bg-gray-800/40'}`}
                                     >
                                       <div className={`p-2 transition-all rounded-xl ${iconColors.bg}`}>
@@ -296,12 +301,12 @@ const AddExpenseTab = ({
                               const iconColors = getIconColor(c.icon);
                               return (
                                 <>
-                                  <div className={`p-2 rounded-xl ${iconColors.bg} shadow-inner`}>
+                                  <div className={`p-2 rounded-xl ${iconColors.bg} shrink-0`}>
                                     <CatIcon className={`w-4 h-4 md:w-5 md:h-5 ${iconColors.color}`} />
                                   </div>
-                                  <div>
-                                    <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-0.5">Category</p>
-                                    <p className="text-sm font-black text-gray-100 leading-tight">{c.name}</p>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-sm font-extrabold text-gray-100">{c.name}</span>
+                                    {subcategory && <span className="text-gray-400 font-medium">/ {subcategory}</span>}
                                   </div>
                                 </>
                               );
@@ -390,31 +395,40 @@ const AddExpenseTab = ({
               <div className="flex flex-col h-full gap-4">
                 
                 {/* Selected Category Box (above Amount) */}
-                {category && (
-                  <div className="bg-gray-800/80 backdrop-blur-md rounded-2xl p-3 border border-gray-700 flex items-center justify-between shadow-inner">
-                    <div className="flex items-center gap-3">
-                      {(() => {
-                        const c = categories.find(cat => cat.name === category);
-                        if (!c) return null;
-                        const CatIcon = getIconComponent(c.icon);
-                        const iconColors = getIconColor(c.icon);
+                <div className="bg-gray-800/80 backdrop-blur-md rounded-2xl p-3 border border-gray-700 flex items-center justify-between shadow-inner min-h-[52px]">
+                  <div className="flex items-center gap-3">
+                    {(() => {
+                      if (!category) {
                         return (
                           <>
-                            <div className={`p-2 rounded-xl ${iconColors.bg} shadow-inner`}>
-                              <CatIcon className={`w-4 h-4 ${iconColors.color}`} />
+                            <div className="p-2 rounded-xl bg-gray-700/50 shrink-0">
+                              <div className="w-4 h-4 rounded-full border-2 border-gray-500/30 border-dashed" />
                             </div>
-                            <div>
-                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-0.5">Selected Category</p>
-                              <p className="text-sm font-black text-gray-100 leading-tight">
-                                {c.name} {subcategory ? <span className="text-gray-400 font-medium">/ {subcategory}</span> : ''}
-                              </p>
+                            <div className="flex items-center gap-1">
+                              <span className="text-sm font-extrabold text-gray-500 italic">No category selected</span>
                             </div>
                           </>
                         );
-                      })()}
-                    </div>
+                      }
+
+                      const c = categories.find(cat => cat.name === category);
+                      if (!c) return null;
+                      const CatIcon = getIconComponent(c.icon);
+                      const iconColors = getIconColor(c.icon);
+                      return (
+                        <>
+                          <div className={`p-2 rounded-xl ${iconColors.bg} shrink-0`}>
+                            <CatIcon className={`w-4 h-4 ${iconColors.color}`} />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm font-extrabold text-gray-100">{c.name}</span>
+                            {subcategory && <span className="text-gray-400 font-medium">/ {subcategory}</span>}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
-                )}
+                </div>
 
                 {/* Amount Field (Smaller & Colored) */}
                 <div className={`bg-gray-900/80 backdrop-blur-md px-5 py-4 rounded-3xl border shadow-inner transition-all ${isIncome ? 'border-emerald-500/30' : 'border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.1)]'}`}>
@@ -441,11 +455,6 @@ const AddExpenseTab = ({
                   )}
                 </div>
 
-                {/* Details */}
-                <div className={`relative bg-gray-900/80 rounded-2xl border border-gray-700/80 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all overflow-hidden shadow-inner h-[48px] flex items-center`}>
-                  <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full bg-transparent px-4 py-2 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder={`What was this ${type.toLowerCase()} for?`} />
-                </div>
-                
                 {/* Date & Time */}
                 <DateTimePicker 
                   date={date} 
@@ -453,7 +462,13 @@ const AddExpenseTab = ({
                   time={time} 
                   setTime={setTime} 
                 />
+
+                {/* Details */}
+                <div className={`relative bg-gray-900/80 rounded-2xl border border-gray-700/80 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all overflow-hidden shadow-inner h-[48px] flex items-center`}>
+                  <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full bg-transparent px-4 py-2 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder={`What was this ${type.toLowerCase()} for?`} />
+                </div>
                 
+
 
                 {/* SAVE AS TEMPLATE */}
                 <div className="bg-gray-900/40 rounded-2xl border border-gray-700/50 transition-all h-[48px] flex items-center px-4">
@@ -502,9 +517,10 @@ const AddExpenseTab = ({
                       setDescription(''); 
                       setCalcHistory(''); 
                       setTemplateDesc(''); 
-                      setDate(new Date().toISOString().split('T')[0]);
+                      setDate(new Date().toLocaleDateString('en-CA'));
                       setTime(new Date().toTimeString().slice(0, 5));
                       setForceCatClosed(false);
+                      setIsTemplateSelected(false);
                       setIsTemplatesExpanded(true);
                     }} 
                     className="bg-gray-800/80 hover:bg-gray-700 text-gray-400 hover:text-rose-400 border border-gray-700 font-black tracking-widest uppercase py-5 px-6 rounded-2xl transition-all shadow-md active:scale-[0.98] flex items-center justify-center shrink-0"
@@ -530,8 +546,35 @@ const AddExpenseTab = ({
                 <div className="p-1.5 bg-purple-500/10 rounded-lg">
                   <Clock className="w-3.5 h-3.5 text-purple-400" />
                 </div>
-                Recent Transactions
+                Today
               </h3>
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const totalExpense = recentTransactions
+                    .filter(t => t.type === 'Expense')
+                    .reduce((sum, t) => sum + t.amount, 0);
+                  const totalIncome = recentTransactions
+                    .filter(t => t.type === 'Income')
+                    .reduce((sum, t) => sum + t.amount, 0);
+                  
+                  return (
+                    <>
+                      {totalExpense > 0 && (
+                        <div className="text-[10px] md:text-xs font-black text-rose-400 bg-rose-500/10 px-2 py-1 rounded-lg border border-rose-500/20 shadow-inner flex items-center gap-1" title="Today's Total Expense">
+                          <TrendingDown className="w-3 h-3" />
+                          Rs. {totalExpense.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                        </div>
+                      )}
+                      {totalIncome > 0 && (
+                        <div className="text-[10px] md:text-xs font-black text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20 shadow-inner flex items-center gap-1" title="Today's Total Income">
+                          <TrendingUp className="w-3 h-3" />
+                          Rs. {totalIncome.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
             </div>
 
             <div className="relative overflow-y-auto hide-scrollbar flex-1 pr-1 z-10 pt-1">
@@ -539,7 +582,7 @@ const AddExpenseTab = ({
               
               <div className="space-y-4">
                 {recentTransactions.length === 0 ? (
-                  <p className="text-gray-500 italic text-[11px] pl-[72px]">No recent transactions.</p>
+                  <p className="text-gray-500 italic text-[11px] pl-[72px]">No transactions today.</p>
                 ) : (
                   recentTransactions.map((t, i) => {
                     const isTxIncome = t.type === 'Income';

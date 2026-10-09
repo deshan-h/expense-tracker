@@ -534,7 +534,7 @@ const HistoryTab = ({
 };
 
 const EditRecordModal = ({ record, onClose, onSave, categories }) => {
-  const [date, setDate] = useState(record?.date ? new Date(record.date).toISOString().split('T')[0] : '');
+  const [date, setDate] = useState(record?.date ? new Date(record.date).toLocaleDateString('en-CA') : '');
   const [amount, setAmount] = useState(record?.amount || '');
   const [description, setDescription] = useState(record?.originalRecord?.description || record?.originalRecord?.name || '');
   
