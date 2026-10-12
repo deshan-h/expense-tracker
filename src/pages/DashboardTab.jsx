@@ -6,6 +6,7 @@ import LentAndSavingsCharts from '../components/dashboard/LentAndSavingsCharts';
 import ExpenseBreakdownComparison from '../components/dashboard/ExpenseBreakdownComparison';
 import YearlyOverviewChart from '../components/dashboard/YearlyOverviewChart';
 import ScheduledExpensesChart from '../components/dashboard/ScheduledExpensesChart';
+import TemplateRenewalsWidget from '../components/dashboard/TemplateRenewalsWidget';
 
 const DashboardTab = ({ 
   transactions, 
@@ -21,7 +22,8 @@ const DashboardTab = ({
   savings, 
   wishlistItems, 
   formatLKR, 
-  chartData 
+  chartData,
+  templates = []
 }) => {
 
   const [now, setNow] = useState(Date.now());
@@ -68,6 +70,9 @@ const DashboardTab = ({
           <CashFlowChart formatCompact={formatCompact} formatLKR={formatLKR} />
           <CategoryTracker formatLKR={formatLKR} />
         </div>
+
+        {/* 2.5 RENEWAL CYCLES & RECURRING BILLS WIDGET */}
+        <TemplateRenewalsWidget templates={templates} formatLKR={formatLKR} />
 
         {/* 3. LENT & SAVINGS CHARTS */}
         <LentAndSavingsCharts formatCompact={formatCompact} formatLKR={formatLKR} />

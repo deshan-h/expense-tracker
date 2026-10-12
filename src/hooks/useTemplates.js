@@ -36,6 +36,9 @@ export const useTemplates = (user) => {
         category: data.category,
         subcategory: data.subcategory || '',
         description: data.description || '',
+        trackCycle: Boolean(data.trackCycle),
+        cycleDays: data.cycleDays ? Number(data.cycleDays) : null,
+        lastPaidDate: data.lastPaidDate || null,
         createdAt: serverTimestamp()
       });
       toast.success(`Template "${data.name}" saved!`);
@@ -65,15 +68,17 @@ export const useTemplates = (user) => {
 
   const updateTemplate = useCallback(async (id, data) => {
     try {
-      await updateDoc(doc(db, 'templates', id), {
-        name: data.name,
-        amount: data.amount,
-        category: data.category,
-        subcategory: data.subcategory || '',
-        description: data.description || ''
-      });
-      toast.success(`Template updated!`);
-      playSuccessSound();
+      const updateData = {};
+      if (data.name !== undefined) updateData.name = data.name;
+      if (data.amount !== undefined) updateData.amount = data.amount;
+      if (data.category !== undefined) updateData.category = data.category;
+      if (data.subcategory !== undefined) updateData.subcategory = data.subcategory || '';
+      if (data.description !== undefined) updateData.description = data.description || '';
+      if (data.trackCycle !== undefined) updateData.trackCycle = Boolean(data.trackCycle);
+      if (data.cycleDays !== undefined) updateData.cycleDays = data.cycleDays ? Number(data.cycleDays) : null;
+      if (data.lastPaidDate !== undefined) updateData.lastPaidDate = data.lastPaidDate;
+
+      await updateDoc(doc(db, 'templates', id), updateData);
       return true;
     } catch (error) {
       console.error("Error updating template: ", error);

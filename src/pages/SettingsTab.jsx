@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { FolderTree, Trash2, X, ChevronDown, ChevronUp, Settings, Bookmark, Edit2, Check } from 'lucide-react';
+import { FolderTree, Trash2, X, ChevronDown, ChevronUp, Settings, Bookmark, Edit2, Check, RotateCw } from 'lucide-react';
 import { AVAILABLE_ICONS, getIconComponent, getIconColor } from '../utils/icons';
+import DateTimePicker from '../components/ui/DateTimePicker';
 
 const SettingsTab = ({
   handleAddCategory,
@@ -28,7 +29,16 @@ const SettingsTab = ({
   const [editingTargetId, setEditingTargetId] = useState(null);
   const [editTargetValue, setEditTargetValue] = useState('');
   const [editingTemplateId, setEditingTemplateId] = useState(null);
-  const [editFormData, setEditFormData] = useState({ name: '', amount: '', category: '', subcategory: '', description: '' });
+  const [editFormData, setEditFormData] = useState({ 
+    name: '', 
+    amount: '', 
+    category: '', 
+    subcategory: '', 
+    description: '',
+    trackCycle: false,
+    cycleDays: '30',
+    lastPaidDate: ''
+  });
   const [activeTab, setActiveTab] = useState('categories');
 
   const handleEditClick = (tpl) => {
@@ -38,13 +48,25 @@ const SettingsTab = ({
       amount: tpl.amount || '',
       category: tpl.category || '',
       subcategory: tpl.subcategory || '',
-      description: tpl.description || tpl.desc || ''
+      description: tpl.description || tpl.desc || '',
+      trackCycle: Boolean(tpl.trackCycle),
+      cycleDays: tpl.cycleDays ? String(tpl.cycleDays) : '30',
+      lastPaidDate: tpl.lastPaidDate || ''
     });
   };
 
   const handleSaveEdit = async (id) => {
     if (!editFormData.name.trim() || !editFormData.category) return;
-    await updateTemplate(id, editFormData);
+    await updateTemplate(id, {
+      name: editFormData.name,
+      amount: editFormData.amount,
+      category: editFormData.category,
+      subcategory: editFormData.subcategory,
+      description: editFormData.description,
+      trackCycle: editFormData.trackCycle,
+      cycleDays: editFormData.trackCycle ? (Number(editFormData.cycleDays) || 30) : null,
+      lastPaidDate: editFormData.trackCycle ? (editFormData.lastPaidDate || new Date().toLocaleDateString('en-CA')) : null
+    });
     setEditingTemplateId(null);
   };
   
@@ -314,10 +336,11 @@ const SettingsTab = ({
               <table className="w-full text-left border-collapse min-w-[800px]">
                 <thead>
                   <tr className="bg-gray-800/80 border-b border-gray-700/80">
-                    <th className="px-6 py-4 text-xs uppercase tracking-wider text-gray-400 font-semibold w-[25%]">Template Name</th>
-                    <th className="px-6 py-4 text-xs uppercase tracking-wider text-gray-400 font-semibold w-[20%]">Category</th>
-                    <th className="px-6 py-4 text-xs uppercase tracking-wider text-gray-400 font-semibold w-[15%]">Amount</th>
-                    <th className="px-6 py-4 text-xs uppercase tracking-wider text-gray-400 font-semibold w-[30%]">Description</th>
+                    <th className="px-6 py-4 text-xs uppercase tracking-wider text-gray-400 font-semibold w-[22%]">Template Name</th>
+                    <th className="px-6 py-4 text-xs uppercase tracking-wider text-gray-400 font-semibold w-[18%]">Category</th>
+                    <th className="px-6 py-4 text-xs uppercase tracking-wider text-gray-400 font-semibold w-[14%]">Amount</th>
+                    <th className="px-6 py-4 text-xs uppercase tracking-wider text-gray-400 font-semibold w-[18%]">Cycle Tracking</th>
+                    <th className="px-6 py-4 text-xs uppercase tracking-wider text-gray-400 font-semibold w-[18%]">Description</th>
                     <th className="px-6 py-4 text-xs uppercase tracking-wider text-gray-400 font-semibold text-right w-[10%]">Actions</th>
                   </tr>
                 </thead>
@@ -327,7 +350,7 @@ const SettingsTab = ({
                       const selectedCat = categories.find(c => c.name === editFormData.category);
                       return (
                         <tr key={tpl.id} className="bg-gray-800/50">
-                          <td colSpan="5" className="p-4">
+                          <td colSpan="6" className="p-4">
                             <div className="bg-gray-900/80 border border-blue-500/50 rounded-xl p-5 shadow-inner">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <div>
@@ -356,15 +379,70 @@ const SettingsTab = ({
                                 ) : (
                                   <div>
                                     <label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1 block">Description (Optional)</label>
-                                    <input type="text" value={editFormData.description} onChange={e => setEditFormData({...editFormData, description: e.target.value})} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-blue-500" placeholder="e.g. Daily Coffee" />
+                                    <input type="text" value={editFormData.description} onChange={e => setEditFormData({...editFormData, description: e.target.value})} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-blue-500" placeholder="e.g. Monthly Wifi Bill" />
                                   </div>
                                 )}
                                 {selectedCat && selectedCat.subcategories && selectedCat.subcategories.length > 0 && (
                                   <div className="md:col-span-2">
                                     <label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1 block">Description (Optional)</label>
-                                    <input type="text" value={editFormData.description} onChange={e => setEditFormData({...editFormData, description: e.target.value})} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-blue-500" placeholder="e.g. Daily Coffee" />
+                                    <input type="text" value={editFormData.description} onChange={e => setEditFormData({...editFormData, description: e.target.value})} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-blue-500" placeholder="e.g. Monthly Wifi Bill" />
                                   </div>
                                 )}
+
+                                {/* Cycle Tracking Settings */}
+                                <div className="md:col-span-2 bg-gray-800/40 p-3 rounded-xl border border-gray-700/60 mt-1">
+                                  <div className="flex items-center justify-between cursor-pointer py-1" onClick={() => setEditFormData({...editFormData, trackCycle: !editFormData.trackCycle})}>
+                                    <div className="flex items-center gap-2">
+                                      <RotateCw className={`w-4 h-4 ${editFormData.trackCycle ? 'text-emerald-400' : 'text-gray-400'}`} />
+                                      <div>
+                                        <span className="text-xs font-bold text-gray-200">Track Renewal / Cycle</span>
+                                        <p className="text-[10px] text-gray-500">Show progress bar in Add Expense templates</p>
+                                      </div>
+                                    </div>
+                                    <div className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-200 ease-in-out shadow-inner ${editFormData.trackCycle ? 'bg-emerald-500' : 'bg-gray-700'}`}>
+                                      <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${editFormData.trackCycle ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                                    </div>
+                                  </div>
+
+                                  {editFormData.trackCycle && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 mt-2 border-t border-gray-700/50 animate-in fade-in duration-200">
+                                      <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                          <label className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Cycle Period (Days)</label>
+                                          <div className="flex gap-1">
+                                            {['7', '14', '30', '60'].map((d) => (
+                                              <button
+                                                key={d}
+                                                type="button"
+                                                onClick={() => setEditFormData({...editFormData, cycleDays: d})}
+                                                className={`text-[9px] font-bold px-1.5 py-0.5 rounded transition-all ${editFormData.cycleDays === d ? 'bg-emerald-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+                                              >
+                                                {d}d
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </div>
+                                        <input 
+                                          type="number" 
+                                          min="1" 
+                                          max="365" 
+                                          value={editFormData.cycleDays} 
+                                          onChange={e => setEditFormData({...editFormData, cycleDays: e.target.value})} 
+                                          className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 font-bold focus:outline-none focus:border-emerald-500" 
+                                          placeholder="30" 
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="text-[10px] uppercase tracking-widest text-gray-400 font-bold mb-1 block">Last Paid Date</label>
+                                        <DateTimePicker 
+                                          date={editFormData.lastPaidDate || new Date().toLocaleDateString('en-CA')} 
+                                          setDate={(newDate) => setEditFormData({...editFormData, lastPaidDate: newDate})} 
+                                          hideTime={true} 
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                               <div className="flex justify-end gap-3 pt-4 border-t border-gray-800">
                                 <button onClick={() => setEditingTemplateId(null)} className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-colors">Cancel</button>
@@ -392,6 +470,16 @@ const SettingsTab = ({
                             <span className="text-gray-200 font-mono text-sm bg-gray-900/50 px-2 py-1 rounded border border-gray-800">{tpl.amount}</span>
                           ) : (
                             <span className="text-gray-600 text-xs italic">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 align-middle">
+                          {tpl.trackCycle ? (
+                            <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg text-xs text-emerald-400 font-semibold">
+                              <RotateCw className="w-3 h-3 shrink-0" />
+                              <span>{tpl.cycleDays || 30} days</span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-500 text-xs">Off</span>
                           )}
                         </td>
                         <td className="px-6 py-4 align-middle">

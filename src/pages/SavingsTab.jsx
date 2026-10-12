@@ -51,7 +51,7 @@ const SavingsTab = ({
           <div className="flex flex-col">
 
             {/* MAIN SECTION: Savings History & Add Record */}
-            <div className="bg-gray-900/60 backdrop-blur-xl p-2 sm:p-2.5 rounded-[1.25rem] border border-gray-800/80 shadow-2xl flex flex-col relative z-20 mb-6">
+            <div className="bg-gray-900/60 backdrop-blur-xl p-2 sm:p-2.5 rounded-[1.25rem] border border-gray-800/80 shadow-2xl flex flex-col relative z-30 mb-6">
               {/* Header Row */}
               <div 
                 className="flex items-center justify-between cursor-pointer group px-2 py-1"
@@ -103,7 +103,7 @@ const SavingsTab = ({
                       <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} required className="w-full h-full bg-transparent px-4 text-sm font-medium text-white focus:outline-none placeholder-gray-500" placeholder="Description" />
                     </div>
                     {/* Date */}
-                    <div className="w-full lg:w-[140px] shrink-0">
+                    <div className="w-full lg:w-[150px] shrink-0">
                       <DateTimePicker date={date} setDate={setDate} time={time} setTime={setTime} hideTime={true} />
                     </div>
                     {/* Submit */}
@@ -116,7 +116,7 @@ const SavingsTab = ({
             </div>
 
             {/* Savings Table */}
-            <div className="bg-gray-900/60 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800/80 shadow-2xl flex flex-col relative z-20 mb-6">
+            <div className="bg-gray-900/60 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800/80 shadow-2xl flex flex-col relative z-10 mb-6">
               <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2 mb-6">
                 <List className="w-4 h-4 text-gray-600" /> Transaction History
               </h3>
