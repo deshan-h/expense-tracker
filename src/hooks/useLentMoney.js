@@ -34,15 +34,22 @@ export const useLentMoney = (user) => {
       const amount = parseFloat(data.amount);
       if (isNaN(amount) || amount <= 0) return false;
 
-      // Find an active ledger for this person
-      const existingDoc = lentMoney.find(r => r.name === data.name && r.status !== 'settled');
+      const debtType = data.debtType || 'lent'; // 'lent' (I gave money to them) | 'borrowed' (I took money from them)
+      const trimmedName = data.name.trim();
+
+      // Find an active ledger for this person with matching debtType
+      const existingDoc = lentMoney.find(r => 
+        r.name?.toLowerCase().trim() === trimmedName.toLowerCase() && 
+        (r.debtType || 'lent') === debtType && 
+        r.status !== 'settled'
+      );
 
       const newItem = {
         id: generateId(),
         entryType: 'borrow',
         amount: amount,
         date: new Date(data.date).toISOString(),
-        description: data.description || 'Borrowed money',
+        description: data.description || (debtType === 'borrowed' ? 'Borrowed money' : 'Lent money'),
         dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : null
       };
 
@@ -57,8 +64,9 @@ export const useLentMoney = (user) => {
       } else {
         // Create new document
         await addDoc(collection(db, 'moneyLent'), {
-          name: data.name,
-          type: data.type,
+          name: trimmedName,
+          type: data.type || 'Other',
+          debtType: debtType,
           totalAmount: amount,
           totalPaid: 0,
           status: 'pending',
@@ -67,34 +75,39 @@ export const useLentMoney = (user) => {
         });
       }
 
-      toast.success("Record added!");
+      toast.success(debtType === 'borrowed' ? "Borrowed record added!" : "Lent record added!");
       playSuccessSound();
       return true;
     } catch (error) {
-      console.error("Error adding lent money: ", error);
+      console.error("Error adding lent/borrowed money: ", error);
       toast.error("Failed to add record.");
       playErrorSound();
       return false;
     }
   }, [lentMoney]);
 
-  const receiveLentPayment = useCallback(async (name, paymentAmount, dateStr, description = '') => {
+  const receiveLentPayment = useCallback(async (name, paymentAmount, dateStr, description = '', debtType = 'lent', docId = null) => {
     try {
       const amount = parseFloat(paymentAmount);
       if (isNaN(amount) || amount <= 0) return false;
 
-      const existingDoc = lentMoney.find(r => r.name === name && r.status !== 'settled');
+      const existingDoc = docId 
+        ? lentMoney.find(r => r.id === docId)
+        : lentMoney.find(r => r.name?.toLowerCase().trim() === name?.toLowerCase().trim() && (r.debtType || 'lent') === debtType && r.status !== 'settled');
+      
       if (!existingDoc) {
          toast.error("No active record found for this person.");
          return false;
       }
+
+      const isBorrowed = (existingDoc.debtType || 'lent') === 'borrowed';
 
       const newItem = {
         id: generateId(),
         entryType: 'payment',
         amount: amount,
         date: dateStr || new Date().toISOString(),
-        description: description || 'Payment received'
+        description: description || (isBorrowed ? `Repaid to ${existingDoc.name}` : `Payment received from ${existingDoc.name}`)
       };
 
       const newTotalPaid = (existingDoc.totalPaid || 0) + amount;
@@ -105,7 +118,11 @@ export const useLentMoney = (user) => {
         history: [...(existingDoc.history || []), newItem]
       });
 
-      toast.success(`Payment of Rs. ${amount} received from ${name}!`);
+      if (isBorrowed) {
+        toast.success(`Payment of Rs. ${amount} made to ${existingDoc.name}!`);
+      } else {
+        toast.success(`Payment of Rs. ${amount} received from ${existingDoc.name}!`);
+      }
       playSuccessSound();
       return true;
     } catch (error) {
@@ -159,9 +176,13 @@ export const useLentMoney = (user) => {
     }
   }, [lentMoney]);
 
-  const clearSettledAccounts = useCallback(async () => {
+  const clearSettledAccounts = useCallback(async (filterDebtType = null) => {
     try {
-      const settled = lentMoney.filter(r => r.status === 'settled');
+      const settled = lentMoney.filter(r => {
+        if (r.status !== 'settled') return false;
+        if (filterDebtType && (r.debtType || 'lent') !== filterDebtType) return false;
+        return true;
+      });
       for (const item of settled) {
         await deleteDoc(doc(db, 'moneyLent', item.id));
       }

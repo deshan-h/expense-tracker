@@ -210,34 +210,35 @@ const HistoryTab = ({
       })));
     }
 
-    // Lent Money
+    // Lent & Borrowed Money
     if (lentMoney) {
       lentMoney.forEach(person => {
+        const isBorrowed = person.debtType === 'borrowed';
         if (person.history && person.history.length > 0) {
           person.history.forEach(h => {
             if (h.entryType === 'borrow') {
               combined.push({
                 id: h.id,
-                source: 'lent',
-                type: 'Lent (Borrow)',
+                source: isBorrowed ? 'debt_borrow' : 'lent',
+                type: isBorrowed ? 'Debt (Borrowed)' : 'Lent (Borrow)',
                 amount: h.amount,
-                title: h.description || `Lent to ${person.name}`,
-                category: 'Money Lent',
+                title: h.description || (isBorrowed ? `Borrowed from ${person.name}` : `Lent to ${person.name}`),
+                category: isBorrowed ? 'Money Borrowed' : 'Money Lent',
                 subcategory: person.type,
                 date: h.date,
-                originalRecord: { ...h, parentLentId: person.id, personName: person.name }
+                originalRecord: { ...h, parentLentId: person.id, personName: person.name, debtType: person.debtType || 'lent' }
               });
             } else if (h.entryType === 'payment') {
               combined.push({
                 id: h.id,
-                source: 'lent_payment',
-                type: 'Lent (Payment)',
+                source: isBorrowed ? 'debt_repayment' : 'lent_payment',
+                type: isBorrowed ? 'Debt (Repaid)' : 'Lent (Payment)',
                 amount: h.amount,
-                title: `Payment from ${person.name}`,
-                category: 'Lent Repayment',
+                title: isBorrowed ? `Repaid to ${person.name}` : `Payment from ${person.name}`,
+                category: isBorrowed ? 'Debt Repayment' : 'Lent Repayment',
                 subcategory: person.type,
                 date: h.date,
-                originalRecord: { ...h, parentLentId: person.id, personName: person.name }
+                originalRecord: { ...h, parentLentId: person.id, personName: person.name, debtType: person.debtType || 'lent' }
               });
             }
           });
@@ -273,8 +274,10 @@ const HistoryTab = ({
         }
 
         // Account (source) filter
-        if (filterSource !== 'All' && record.source !== filterSource) {
-          return false;
+        if (filterSource !== 'All') {
+          if (filterSource === 'lent' && (record.source !== 'lent' && record.source !== 'lent_payment')) return false;
+          if (filterSource === 'borrowed' && (record.source !== 'debt_borrow' && record.source !== 'debt_repayment')) return false;
+          if (filterSource !== 'lent' && filterSource !== 'borrowed' && record.source !== filterSource) return false;
         }
 
         // Record type filter
@@ -285,6 +288,8 @@ const HistoryTab = ({
           if (recordType === 'Withdrawal' && (record.source !== 'saving' || record.type !== 'Withdrawal')) return false;
           if (recordType === 'Lent (Borrow)' && record.source !== 'lent') return false;
           if (recordType === 'Lent (Payment)' && record.source !== 'lent_payment') return false;
+          if (recordType === 'Debt (Borrowed)' && record.source !== 'debt_borrow') return false;
+          if (recordType === 'Debt (Repaid)' && record.source !== 'debt_repayment') return false;
         }
 
         // Category filter
@@ -347,6 +352,12 @@ const HistoryTab = ({
     if (source === 'lent_payment') {
       return <ArrowUpCircle className="w-4 h-4 text-emerald-500" />;
     }
+    if (source === 'debt_borrow') {
+      return <Handshake className="w-4 h-4 text-rose-500" />;
+    }
+    if (source === 'debt_repayment') {
+      return <ArrowDownCircle className="w-4 h-4 text-emerald-500" />;
+    }
     return <History className="w-4 h-4 text-gray-500" />;
   };
 
@@ -361,6 +372,8 @@ const HistoryTab = ({
     }
     if (source === 'lent') return 'text-rose-400';
     if (source === 'lent_payment') return 'text-emerald-400';
+    if (source === 'debt_borrow') return 'text-rose-400';
+    if (source === 'debt_repayment') return 'text-emerald-400';
     return 'text-gray-400';
   };
 
@@ -375,6 +388,8 @@ const HistoryTab = ({
     }
     if (source === 'lent') return '-';
     if (source === 'lent_payment') return '+';
+    if (source === 'debt_borrow') return '+';
+    if (source === 'debt_repayment') return '-';
     return '';
   };
 
@@ -383,7 +398,7 @@ const HistoryTab = ({
       handleDeleteTransaction(record.id);
     } else if (record.source === 'saving') {
       deleteSaving(record.id);
-    } else if (record.source === 'lent' || record.source === 'lent_payment') {
+    } else if (record.source === 'lent' || record.source === 'lent_payment' || record.source === 'debt_borrow' || record.source === 'debt_repayment') {
       if (handleDeleteLentHistoryEntry) {
         handleDeleteLentHistoryEntry(record.originalRecord.parentLentId, record.id);
       }
@@ -586,7 +601,8 @@ const HistoryTab = ({
                     <option value="All">All accounts</option>
                     <option value="transaction">Regular Transactions</option>
                     <option value="saving">Savings</option>
-                    <option value="lent">Money Lent</option>
+                    <option value="lent">Money Lent (Receivables)</option>
+                    <option value="borrowed">Money Borrowed (Debts)</option>
                   </select>
                   <ChevronsUpDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
                 </div>
@@ -650,6 +666,8 @@ const HistoryTab = ({
                     <option value="Withdrawal">Withdrawal (Savings)</option>
                     <option value="Lent (Borrow)">Lent (Borrow)</option>
                     <option value="Lent (Payment)">Lent (Payment)</option>
+                    <option value="Debt (Borrowed)">Debt (Borrowed)</option>
+                    <option value="Debt (Repaid)">Debt Repayment (Paid)</option>
                   </select>
                   <ChevronsUpDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
                 </div>

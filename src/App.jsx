@@ -120,7 +120,8 @@ function App() {
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newSubcategoryNames, setNewSubcategoryNames] = useState({});
 
-  // Money Lent Form & UI State
+  // Money Lent & Borrowed Form & UI State
+  const [lentDebtType, setLentDebtType] = useState('lent'); // 'lent' | 'borrowed'
   const [lentType, setLentType] = useState('Family');
   const [lentName, setLentName] = useState('');
   const [lentAmount, setLentAmount] = useState('');
@@ -206,11 +207,20 @@ function App() {
     }
   }, [amount, calcHistory, description, date, time, addIncome]);
 
-  const handleAddLentMoneyLocal = useCallback(async (e) => {
-    e.preventDefault();
+  const handleAddLentMoneyLocal = useCallback(async (e, customDebtType) => {
+    if (e && e.preventDefault) e.preventDefault();
     if (!lentAmount || !lentName) return;
     const fullDate = `${lentDate}T00:00:00.000Z`; // Force time to be midnight for lent money
-    const success = await addLent({ type: lentType, name: lentName, amount: parseFloat(lentAmount), description: lentDescription, date: fullDate, dueDate: lentDueDate });
+    const debtType = customDebtType || lentDebtType || 'lent';
+    const success = await addLent({ 
+      type: lentType, 
+      name: lentName, 
+      amount: parseFloat(lentAmount), 
+      description: lentDescription, 
+      date: fullDate, 
+      dueDate: lentDueDate,
+      debtType: debtType
+    });
     if (success) {
       setLentAmount('');
       setLentName('');
@@ -221,7 +231,7 @@ function App() {
       setLentDate(new Date().toLocaleDateString('en-CA'));
       setActiveLentTab(lentType);
     }
-  }, [lentAmount, lentName, lentType, lentDescription, lentDate, lentDueDate, addLent]);
+  }, [lentAmount, lentName, lentType, lentDescription, lentDate, lentDueDate, lentDebtType, addLent]);
 
   const handleAddCategoryLocal = useCallback(async (e) => {
     e.preventDefault();
@@ -266,7 +276,17 @@ function App() {
 
   const selectedCatObj = useMemo(() => categories.find(c => c.name === category), [categories, category]);
 
-  const totalPendingLent = useMemo(() => lentMoney.reduce((acc, curr) => acc + ((curr.totalAmount || 0) - (curr.totalPaid || 0)), 0), [lentMoney]);
+  const totalPendingLent = useMemo(() => 
+    lentMoney.filter(curr => (curr.debtType || 'lent') === 'lent' && curr.status !== 'settled')
+      .reduce((acc, curr) => acc + ((curr.totalAmount || 0) - (curr.totalPaid || 0)), 0), 
+    [lentMoney]
+  );
+
+  const totalPendingBorrowed = useMemo(() => 
+    lentMoney.filter(curr => curr.debtType === 'borrowed' && curr.status !== 'settled')
+      .reduce((acc, curr) => acc + ((curr.totalAmount || 0) - (curr.totalPaid || 0)), 0), 
+    [lentMoney]
+  );
 
   const totalSavings = useMemo(() => savings.reduce((acc, curr) => {
     if (curr.type === 'Deposit' || curr.type === 'Initial') return acc + curr.amount;
@@ -354,7 +374,7 @@ function App() {
     formatLKR, COLORS,
     totalIncome, totalExpense, netBalance,
     expensesByCategory, chartData,
-    totalPendingLent, totalSavings,
+    totalPendingLent, totalPendingBorrowed, totalSavings,
     thisMonthPlanned, thisMonthWithdrawals
   };
 
@@ -378,7 +398,7 @@ function App() {
                     <PlusCircle className="w-5 h-5 sm:w-4 sm:h-4 text-emerald-400" /> <span className="hidden sm:inline text-sm">Add New</span>
                   </TabsTrigger>
                   <TabsTrigger value="lent" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
-                    <Handshake className="w-5 h-5 sm:w-4 sm:h-4 text-orange-400" /> <span className="hidden sm:inline text-sm">Lent</span>
+                    <Handshake className="w-5 h-5 sm:w-4 sm:h-4 text-orange-400" /> <span className="hidden sm:inline text-sm">Lent & Borrowed</span>
                   </TabsTrigger>
                   <TabsTrigger value="savings" className="gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-md">
                     <PiggyBank className="w-5 h-5 sm:w-4 sm:h-4 text-pink-400" /> <span className="hidden sm:inline text-sm">Savings</span>
@@ -559,10 +579,12 @@ function App() {
             </Suspense>
           </TabsContent>
 
-        {/* TAB 5: LENT MONEY */}
+        {/* TAB 5: LENT & BORROWED MONEY */}
           <TabsContent value="lent">
             <Suspense fallback={<TabFallback />}>
               <MoneyLentTab 
+                lentDebtType={lentDebtType}
+                setLentDebtType={setLentDebtType}
                 lentType={lentType}
                 setLentType={setLentType}
                 lentName={lentName}
@@ -573,6 +595,8 @@ function App() {
                 setLentDescription={setLentDescription}
                 lentDate={lentDate}
                 setLentDate={setLentDate}
+                lentDueDate={lentDueDate}
+                setLentDueDate={setLentDueDate}
                 handleAddLentMoney={handleAddLentMoneyLocal}
                 handleAddLentInline={addLent}
                 handleReceiveLentPayment={recLent}
@@ -581,6 +605,8 @@ function App() {
                 activeLentTab={activeLentTab}
                 setActiveLentTab={setActiveLentTab}
                 lentMoney={lentMoney}
+                totalPendingLent={totalPendingLent}
+                totalPendingBorrowed={totalPendingBorrowed}
                 handleDeleteLentHistoryEntry={deleteLentHistoryEntry}
                 handleClearSettledAccounts={clearSettledAccounts}
               />
@@ -650,6 +676,7 @@ function App() {
                 deleteWishlistItem={deleteWishlistItem}
                 addSubItemToWishlist={addSubItemToWishlist}
                 categories={categories}
+                formatLKR={formatLKR}
               />
             </Suspense>
           </TabsContent>

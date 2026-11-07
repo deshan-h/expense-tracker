@@ -408,36 +408,59 @@ export default function CashFlowChart({ formatCompact, formatLKR }) {
   const chartTotalSavings = cashFlowArray.reduce((acc, curr) => acc + (curr.Savings || 0), 0);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.1 }} className="lg:col-span-8 bg-[#0b1120] p-6 rounded-[1.5rem] border border-gray-800/80 shadow-xl relative overflow-hidden group">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Cash Flow</h3>
-        <div className="flex bg-gray-800/50 rounded-lg p-1">
-          <button onClick={() => setCashFlowFilter('month')} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-colors ${cashFlowFilter === 'month' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500 hover:text-gray-300'}`}>This Month</button>
-          <button onClick={() => setCashFlowFilter('lastMonth')} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-colors ${cashFlowFilter === 'lastMonth' ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500 hover:text-gray-300'}`}>Last Month</button>
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }} 
+      whileInView={{ opacity: 1, y: 0 }} 
+      viewport={{ once: true, amount: 0.1 }} 
+      transition={{ duration: 0.5, delay: 0.1 }} 
+      className="lg:col-span-8 bg-gradient-to-br from-[#0c1222] via-[#090d1a] to-[#030611] p-5 sm:p-7 rounded-[2rem] border border-gray-800/80 shadow-2xl relative overflow-hidden group"
+    >
+      {/* Ambient Glows */}
+      <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none"></div>
+
+      <div className="flex justify-between items-center mb-6 relative z-10">
+        <div>
+          <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest block mb-0.5">Cash Flow Analytics</span>
+          <h3 className="text-base sm:text-lg font-black text-white tracking-tight">Income & Spending Flow</h3>
+        </div>
+        <div className="flex bg-gray-950/80 border border-gray-800/80 rounded-xl p-1 shadow-inner">
+          <button 
+            onClick={() => setCashFlowFilter('month')} 
+            className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all ${cashFlowFilter === 'month' ? 'bg-blue-600 text-white shadow-md shadow-blue-900/30' : 'text-gray-400 hover:text-white'}`}
+          >
+            This Month
+          </button>
+          <button 
+            onClick={() => setCashFlowFilter('lastMonth')} 
+            className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all ${cashFlowFilter === 'lastMonth' ? 'bg-blue-600 text-white shadow-md shadow-blue-900/30' : 'text-gray-400 hover:text-white'}`}
+          >
+            Last Month
+          </button>
         </div>
       </div>
       
       {/* Chart Totals Summary */}
-      <div className="flex items-center gap-6 mb-6">
-        <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Income</span>
-          <span className="text-sm font-black text-emerald-400">Rs. {formatCompact(chartTotalIncome)}</span>
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 mb-6 relative z-10">
+        <div className="bg-gray-900/40 border border-gray-800/60 rounded-xl p-2.5 backdrop-blur-sm">
+          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Income</span>
+          <span className="text-sm font-black font-mono text-emerald-400">Rs. {formatCompact(chartTotalIncome)}</span>
         </div>
-        <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Expense</span>
-          <span className="text-sm font-black text-rose-400">Rs. {formatCompact(chartTotalExpense)}</span>
+        <div className="bg-gray-900/40 border border-gray-800/60 rounded-xl p-2.5 backdrop-blur-sm">
+          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Expense</span>
+          <span className="text-sm font-black font-mono text-rose-400">Rs. {formatCompact(chartTotalExpense)}</span>
         </div>
-        <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Lent</span>
-          <span className="text-sm font-black text-yellow-500">Rs. {formatCompact(chartTotalLent)}</span>
+        <div className="bg-gray-900/40 border border-gray-800/60 rounded-xl p-2.5 backdrop-blur-sm">
+          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Lent</span>
+          <span className="text-sm font-black font-mono text-yellow-500">Rs. {formatCompact(chartTotalLent)}</span>
         </div>
-        <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Savings</span>
-          <span className="text-sm font-black text-purple-400">Rs. {formatCompact(chartTotalSavings)}</span>
+        <div className="bg-gray-900/40 border border-gray-800/60 rounded-xl p-2.5 backdrop-blur-sm">
+          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Savings</span>
+          <span className="text-sm font-black font-mono text-purple-400">Rs. {formatCompact(chartTotalSavings)}</span>
         </div>
-        <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-sky-500 uppercase tracking-wider">Scheduled</span>
-          <span className="text-sm font-black text-sky-400">Rs. {formatCompact(displayedPlanned)}</span>
+        <div className="bg-gray-900/40 border border-gray-800/60 rounded-xl p-2.5 backdrop-blur-sm col-span-2 sm:col-span-1">
+          <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider block">Scheduled</span>
+          <span className="text-sm font-black font-mono text-sky-300">Rs. {formatCompact(displayedPlanned)}</span>
         </div>
       </div>
 

@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { PlusCircle, TrendingUp, TrendingDown, Plus, Bookmark, Clock, ChevronLeft, Trash2, ChevronDown, RotateCw, Calendar, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { PlusCircle, TrendingUp, TrendingDown, Plus, Bookmark, Clock, ChevronLeft, Trash2, ChevronDown, RotateCw, Calendar, AlertCircle, CheckCircle2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { getIconComponent, getIconColor } from '../utils/icons';
 import DateTimePicker from '../components/ui/DateTimePicker';
 
@@ -47,6 +49,7 @@ const AddExpenseTab = ({
   const [forceCatClosed, setForceCatClosed] = useState(false);
   const [isTemplateSelected, setIsTemplateSelected] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState(null);
+  const [isTemplatesExpanded, setIsTemplatesExpanded] = useState(false);
 
   useEffect(() => {
     setCategory('');
@@ -71,7 +74,8 @@ const AddExpenseTab = ({
         description: templateDesc || description || '',
         trackCycle: templateTrackCycle,
         cycleDays: templateTrackCycle ? (Number(templateCycleDays) || 30) : null,
-        lastPaidDate: templateTrackCycle ? (date || new Date().toLocaleDateString('en-CA')) : null
+        lastPaidDate: templateTrackCycle ? (date || new Date().toLocaleDateString('en-CA')) : null,
+        cycleBreakCount: 0
       });
       if (!description && templateDesc) {
         overrideDesc = templateDesc;
@@ -83,14 +87,46 @@ const AddExpenseTab = ({
       setTemplateCycleDays('30');
     }
     
-    // If expense was logged using a tracked template, update that template's lastPaidDate
+    // If expense was logged using a tracked template, update that template's lastPaidDate & check for cycle break
     if (selectedTemplateId && updateTemplate) {
       const activeTpl = templates?.find(t => t.id === selectedTemplateId);
       if (activeTpl?.trackCycle) {
+        const cycle = Number(activeTpl.cycleDays) || 30;
+        let isEarlyBreak = false;
+        let daysLeftWhenPaid = 0;
+
+        if (activeTpl.lastPaidDate) {
+          const lastPaid = new Date(activeTpl.lastPaidDate);
+          const paymentDate = date ? new Date(date) : new Date();
+          lastPaid.setHours(0, 0, 0, 0);
+          paymentDate.setHours(0, 0, 0, 0);
+          const diffTime = paymentDate.getTime() - lastPaid.getTime();
+          const daysPassed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          daysLeftWhenPaid = cycle - daysPassed;
+
+          // If paid before due date (daysLeftWhenPaid > 0)
+          if (daysLeftWhenPaid > 0) {
+            isEarlyBreak = true;
+          }
+        }
+
+        const currentBreaks = Number(activeTpl.cycleBreakCount) || 0;
+        const newBreakCount = isEarlyBreak ? currentBreaks + 1 : currentBreaks;
+
         await updateTemplate(selectedTemplateId, {
-          lastPaidDate: date || new Date().toLocaleDateString('en-CA')
+          lastPaidDate: date || new Date().toLocaleDateString('en-CA'),
+          cycleBreakCount: newBreakCount
         });
+
+        if (isEarlyBreak) {
+          toast.error(
+            `Cycle broken for "${activeTpl.name}"! Paid ${daysLeftWhenPaid} day(s) before due. (Total breaks: ${newBreakCount})`,
+            { duration: 4000, icon: '💔' }
+          );
+        }
       }
+      setSelectedTemplateId(null);
+      setIsTemplateSelected(false);
     }
 
     if (type === 'Income') {
@@ -221,6 +257,157 @@ const AddExpenseTab = ({
   const all3DaysTxs = [...todayTxs, ...yesterdayTxs, ...dayBeforeTxs];
   const isIncome = type === 'Income';
 
+  // Sort templates: tracking cycle templates first, ordered by closest due date (lowest daysLeft)
+  const sortedTemplates = useMemo(() => {
+    if (!templates || templates.length === 0) return [];
+
+    const getCycleStats = (tpl) => {
+      if (!tpl.trackCycle) return null;
+      const cycle = Number(tpl.cycleDays) || 30;
+      const lastPaidStr = tpl.lastPaidDate || new Date().toLocaleDateString('en-CA');
+      const lastPaid = new Date(lastPaidStr);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      lastPaid.setHours(0, 0, 0, 0);
+      const diffTime = today.getTime() - lastPaid.getTime();
+      const daysPassed = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+      const daysLeft = cycle - daysPassed;
+      const isGoalReached = daysPassed >= cycle;
+      const progressPct = isGoalReached ? 100 : Math.min(100, Math.max(0, Math.round((daysPassed / cycle) * 100)));
+
+      // Concept: "Stayed X days without breaking this expense!"
+      let streakBadge = daysPassed === 0 ? '🌱 Day 0' : `🔥 ${daysPassed}d Unbroken`;
+      let badgeColor = 'bg-amber-500/15 text-amber-300 border-amber-500/30';
+      let statusColor = 'bg-gradient-to-r from-amber-500 to-orange-500';
+      let textColor = 'text-amber-300';
+      let subGoalText = `${daysLeft}d to ${cycle}d goal`;
+
+      if (isGoalReached) {
+        streakBadge = `🏆 ${daysPassed}d Unbroken!`;
+        badgeColor = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm shadow-emerald-500/20 font-black';
+        statusColor = 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_10px_rgba(16,185,129,0.5)]';
+        textColor = 'text-emerald-400 font-extrabold';
+        subGoalText = `✓ ${cycle}d Goal Hit! (+${daysPassed - cycle}d)`;
+      } else if (daysPassed === 0) {
+        badgeColor = 'bg-gray-800 text-gray-400 border-gray-700/60';
+        statusColor = 'bg-gray-700';
+        textColor = 'text-gray-400';
+      }
+
+      return {
+        daysPassed,
+        cycle,
+        daysLeft,
+        isGoalReached,
+        progressPct,
+        streakBadge,
+        subGoalText,
+        statusColor,
+        textColor,
+        badgeColor
+      };
+    };
+
+    return [...templates].map(tpl => ({
+      ...tpl,
+      _cycleInfo: getCycleStats(tpl)
+    })).sort((a, b) => {
+      const aTracked = !!a._cycleInfo;
+      const bTracked = !!b._cycleInfo;
+
+      // 1. Templates with tracking cycle come first ("tracking cycle udatama daanna")
+      if (aTracked && !bTracked) return -1;
+      if (!aTracked && bTracked) return 1;
+
+      // 2. Both tracked: sort by closest due date (lowest daysLeft first: e.g. Overdue, Today, 1d, 2d...)
+      if (aTracked && bTracked) {
+        return a._cycleInfo.daysLeft - b._cycleInfo.daysLeft;
+      }
+
+      // 3. Both untracked: alphabetical by name
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  }, [templates]);
+
+  const renderTemplateCard = (tpl, isExpanded) => {
+    const isSelected = selectedTemplateId === tpl.id;
+    const cycleInfo = tpl._cycleInfo;
+
+    return (
+      <button
+        key={tpl.id}
+        type="button"
+        onClick={() => {
+          if (tpl.amount) setAmount(tpl.amount);
+          if (tpl.category) setCategory(tpl.category);
+          if (tpl.subcategory) setSubcategory(tpl.subcategory);
+          if (tpl.description || tpl.desc) {
+            setDescription(tpl.description || tpl.desc);
+          }
+          setForceCatClosed(true);
+          setIsTemplateSelected(true);
+          setSelectedTemplateId(tpl.id);
+        }}
+        className={`bg-gradient-to-br from-[#101726]/90 via-[#0d1320]/90 to-[#080d17]/90 hover:from-[#151f33] hover:to-[#0e1626] border rounded-2xl p-3 flex flex-col justify-between transition-all text-left group/btn shadow-xl active:scale-95 cursor-pointer relative overflow-hidden backdrop-blur-sm ${
+          isExpanded ? 'w-full' : 'w-[205px] sm:w-[230px] shrink-0'
+        } ${isSelected ? 'border-purple-500 ring-2 ring-purple-500/30 bg-purple-950/30 shadow-purple-900/30' : 'border-gray-800/80 hover:border-purple-500/30'}`}
+      >
+        <div className="flex items-start justify-between gap-1.5 w-full">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className={`p-2 rounded-xl border shrink-0 transition-colors ${isSelected ? 'bg-purple-600 text-white border-purple-400 shadow-md shadow-purple-900/40' : 'bg-purple-500/10 border-purple-500/20 text-purple-400 group-hover/btn:bg-purple-500/20'}`}>
+              <Bookmark className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-gray-200 truncate group-hover/btn:text-white transition-colors">{tpl.name}</p>
+              {tpl.amount && (
+                <p className="text-[10px] font-black font-mono text-purple-300 mt-0.5">Rs. {formatLKR(tpl.amount)}</p>
+              )}
+            </div>
+          </div>
+          {cycleInfo && (
+            <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold shrink-0 flex items-center gap-1 ${cycleInfo.badgeColor}`} title={`You stayed ${cycleInfo.daysPassed} days without breaking this expense!`}>
+              {cycleInfo.streakBadge}
+            </span>
+          )}
+        </div>
+
+        {/* Cycle Progress Bar */}
+        {cycleInfo && (
+          <div className="w-full mt-2.5 pt-2 border-t border-gray-800/60">
+            <div className="flex items-center justify-between text-[9px] mb-1.5">
+              <span className="text-gray-300 font-medium flex items-center gap-1">
+                <span className="text-gray-500 uppercase text-[8px] font-bold">Streak:</span>
+                <span className="text-amber-300 font-bold">{cycleInfo.daysPassed}d</span>
+                <span className="text-gray-600">/ {cycleInfo.cycle}d</span>
+              </span>
+              <span className={`text-[9px] font-bold ${cycleInfo.textColor}`}>
+                {cycleInfo.subGoalText}
+              </span>
+            </div>
+            <div className="w-full h-1.5 bg-gray-950 rounded-full overflow-hidden shadow-inner mb-2 border border-gray-800/60">
+              <div 
+                className={`h-full rounded-full transition-all duration-500 ${cycleInfo.statusColor}`}
+                style={{ width: `${cycleInfo.progressPct}%` }}
+              />
+            </div>
+            {/* Cycle Breaks Row on Card */}
+            <div className="flex items-center justify-between text-[9px] pt-0.5">
+              <span className="text-gray-500 text-[8.5px] uppercase font-bold tracking-wider">Breaks Count:</span>
+              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 ${
+                (tpl.cycleBreakCount || 0) > 0 
+                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' 
+                  : 'bg-gray-900 text-gray-500 border border-gray-800'
+              }`}>
+                <span>💔</span>
+                <span>{tpl.cycleBreakCount || 0}</span>
+              </span>
+            </div>
+          </div>
+        )}
+      </button>
+    );
+  };
+
   return (
     <div className="w-[100vw] relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
       <div className="px-4 md:px-12 py-4 w-full max-w-full">
@@ -230,118 +417,68 @@ const AddExpenseTab = ({
 
       <div className="w-full relative z-10 mt-2">
         {/* Templates Section (Top full-width row) */}
-        {!isIncome && templates && templates.length > 0 && (
-          <div className="mb-6 bg-gray-900/60 backdrop-blur-md p-4 md:p-5 rounded-3xl border border-gray-700/50 shadow-inner relative overflow-hidden group">
-            <div className="flex items-center justify-between mb-3">
+        {!isIncome && sortedTemplates && sortedTemplates.length > 0 && (
+          <motion.div 
+            layout
+            transition={{ layout: { duration: 0.35, ease: [0.4, 0, 0.2, 1] } }}
+            className="mb-6 bg-gradient-to-br from-[#0c1222] via-[#090d1a] to-[#030611] p-4 md:p-6 rounded-[2rem] border border-gray-800/80 shadow-2xl relative overflow-hidden group"
+          >
+            <div className="absolute top-0 right-0 w-80 h-80 bg-purple-500/5 rounded-full blur-[100px] pointer-events-none"></div>
+
+            <div className="flex items-center justify-between mb-4 relative z-10">
               <div className="flex items-center gap-2.5">
-                <div className="p-1.5 bg-purple-500/10 rounded-xl border border-purple-500/20">
+                <div className="p-2 bg-purple-500/10 rounded-xl border border-purple-500/20 shadow-inner">
                   <Bookmark className="w-4 h-4 text-purple-400" />
                 </div>
-                <h3 className="text-xs font-bold text-gray-200 tracking-wider uppercase">Templates</h3>
-                <span className="text-[10px] font-semibold text-gray-400 bg-gray-800/80 px-2 py-0.5 rounded-full border border-gray-700/50">
-                  {templates.length}
+                <div>
+                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block">Quick Select</span>
+                  <h3 className="text-sm font-black text-white tracking-wide">Expense Templates</h3>
+                </div>
+                <span className="text-[10px] font-black font-mono text-purple-300 bg-purple-500/10 px-2.5 py-0.5 rounded-full border border-purple-500/20 ml-1">
+                  {sortedTemplates.length}
                 </span>
               </div>
             </div>
             
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 max-h-[160px] overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-gray-700/50 [&::-webkit-scrollbar-thumb]:rounded-full">
-              {templates.map(tpl => {
-                const isSelected = selectedTemplateId === tpl.id;
-                
-                // Calculate cycle stats if trackCycle is enabled
-                let cycleInfo = null;
-                if (tpl.trackCycle && tpl.cycleDays && tpl.lastPaidDate) {
-                  const lastPaid = new Date(tpl.lastPaidDate);
-                  const today = new Date();
-                  const diffTime = today.setHours(0,0,0,0) - lastPaid.setHours(0,0,0,0);
-                  const daysPassed = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
-                  const cycle = Number(tpl.cycleDays);
-                  const daysLeft = cycle - daysPassed;
-                  const progressPct = Math.min(100, Math.max(0, Math.round((daysPassed / cycle) * 100)));
+            <AnimatePresence mode="wait" initial={false}>
+              {isTemplatesExpanded ? (
+                <motion.div
+                  key="grid-view"
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.25, ease: "easeInOut" }}
+                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar relative z-10"
+                >
+                  {sortedTemplates.map(tpl => renderTemplateCard(tpl, true))}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="row-view"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 4 }}
+                  transition={{ duration: 0.2, ease: "easeInOut" }}
+                  className="flex items-stretch gap-3 overflow-x-auto pb-2 pt-0.5 scroll-smooth custom-scrollbar [&::-webkit-scrollbar]:h-1.5 relative z-10"
+                >
+                  {sortedTemplates.map(tpl => renderTemplateCard(tpl, false))}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-                  let statusColor = 'bg-emerald-500';
-                  let textColor = 'text-emerald-400';
-                  let statusText = `${daysLeft}d left`;
-
-                  if (daysLeft < 0) {
-                    statusColor = 'bg-rose-500 animate-pulse';
-                    textColor = 'text-rose-400 font-extrabold';
-                    statusText = `Overdue ${Math.abs(daysLeft)}d`;
-                  } else if (daysLeft === 0) {
-                    statusColor = 'bg-rose-500 animate-pulse';
-                    textColor = 'text-rose-400 font-extrabold';
-                    statusText = 'Due Today';
-                  } else if (daysLeft <= 3) {
-                    statusColor = 'bg-amber-500';
-                    textColor = 'text-amber-400 font-bold';
-                    statusText = `${daysLeft}d left`;
-                  }
-
-                  cycleInfo = {
-                    daysPassed,
-                    cycle,
-                    daysLeft,
-                    progressPct,
-                    statusColor,
-                    textColor,
-                    statusText
-                  };
-                }
-
-                return (
-                  <button
-                    key={tpl.id}
-                    type="button"
-                    onClick={() => {
-                      if (tpl.amount) setAmount(tpl.amount);
-                      if (tpl.category) setCategory(tpl.category);
-                      if (tpl.subcategory) setSubcategory(tpl.subcategory);
-                      if (tpl.description || tpl.desc) {
-                        setDescription(tpl.description || tpl.desc);
-                      }
-                      setForceCatClosed(true);
-                      setIsTemplateSelected(true);
-                      setSelectedTemplateId(tpl.id);
-                    }}
-                    className={`bg-gray-800/60 hover:bg-gray-700/80 border rounded-2xl p-2.5 flex flex-col justify-between transition-all text-left group/btn shadow-inner active:scale-95 cursor-pointer relative overflow-hidden ${isSelected ? 'border-purple-500 bg-purple-500/10 shadow-purple-500/20' : 'border-gray-700/50 hover:border-gray-600'}`}
-                  >
-                    <div className="flex items-center gap-2.5 w-full">
-                      <div className={`p-2 rounded-xl border shrink-0 transition-colors ${isSelected ? 'bg-purple-500 text-white border-purple-400' : 'bg-purple-500/10 border-purple-500/20 text-purple-400 group-hover/btn:bg-purple-500/20'}`}>
-                        <Bookmark className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-gray-200 truncate group-hover/btn:text-white transition-colors">{tpl.name}</p>
-                        {tpl.amount && (
-                          <p className="text-[10px] font-bold text-purple-300/90 mt-0.5">Rs. {formatLKR(tpl.amount)}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Cycle Progress Bar */}
-                    {cycleInfo && (
-                      <div className="w-full mt-2 pt-1.5 border-t border-gray-700/40">
-                        <div className="flex items-center justify-between text-[9px] mb-1">
-                          <span className="text-gray-400 flex items-center gap-1">
-                            <RotateCw className="w-2.5 h-2.5 text-gray-500" />
-                            {cycleInfo.cycle}d cycle
-                          </span>
-                          <span className={`text-[9px] ${cycleInfo.textColor}`}>
-                            {cycleInfo.statusText}
-                          </span>
-                        </div>
-                        <div className="w-full h-1.5 bg-gray-700/60 rounded-full overflow-hidden shadow-inner">
-                          <div 
-                            className={`h-full rounded-full transition-all duration-500 ${cycleInfo.statusColor}`}
-                            style={{ width: `${cycleInfo.progressPct}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
+            {/* Center Arrow to Expand / Collapse */}
+            <div className="flex justify-center mt-3 pt-2 border-t border-gray-800/80 relative z-10">
+              <button
+                type="button"
+                onClick={() => setIsTemplatesExpanded(prev => !prev)}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gray-950/80 hover:bg-gray-900 border border-gray-800/80 text-gray-400 hover:text-white text-[10px] font-bold tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-lg active:scale-95 group/arrow"
+                title={isTemplatesExpanded ? "Collapse templates to 1 row" : "Expand all templates"}
+              >
+                <span>{isTemplatesExpanded ? 'Collapse' : 'Show All'}</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-purple-400 transition-transform duration-300 ${isTemplatesExpanded ? 'rotate-180' : ''}`} />
+              </button>
             </div>
-          </div>
+          </motion.div>
         )}
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 xl:gap-8 relative z-10">
@@ -352,26 +489,53 @@ const AddExpenseTab = ({
             <div className="space-y-6 flex flex-col h-full justify-start">
               
               {/* Type Toggle */}
-              <div className="flex bg-gray-900/60 backdrop-blur-md rounded-full p-1 border border-gray-700/50 shadow-inner w-full">
-                <button type="button" onClick={() => setType('Expense')} className={`flex-1 py-3 rounded-full text-xs font-black tracking-widest uppercase transition-all ${!isIncome ? 'bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.5)]' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>Expense</button>
-                <button type="button" onClick={() => setType('Income')} className={`flex-1 py-3 rounded-full text-xs font-black tracking-widest uppercase transition-all ${isIncome ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'text-gray-400 hover:text-gray-200 cursor-pointer'}`}>Income</button>
+              <div className="flex bg-gray-950/90 backdrop-blur-xl rounded-2xl p-1.5 border border-gray-800/80 shadow-2xl w-full">
+                <button 
+                  type="button" 
+                  onClick={() => setType('Expense')} 
+                  className={`flex-1 py-3 rounded-xl text-xs font-black tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-2 ${
+                    !isIncome 
+                      ? 'bg-gradient-to-r from-rose-600 to-rose-500 text-white shadow-lg shadow-rose-900/40 ring-1 ring-rose-400/30' 
+                      : 'text-gray-400 hover:text-white cursor-pointer hover:bg-gray-900/50'
+                  }`}
+                >
+                  <TrendingDown className="w-3.5 h-3.5" />
+                  Expense
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setType('Income')} 
+                  className={`flex-1 py-3 rounded-xl text-xs font-black tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-2 ${
+                    isIncome 
+                      ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-900/40 ring-1 ring-emerald-400/30' 
+                      : 'text-gray-400 hover:text-white cursor-pointer hover:bg-gray-900/50'
+                  }`}
+                >
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  Income
+                </button>
               </div>
 
               {/* POS Sync (Only for Income) */}
               {isIncome && (
-                <div className="bg-gray-900/60 backdrop-blur-md p-5 rounded-3xl border border-gray-700/50 shadow-inner flex flex-col gap-4">
-                  <div className="flex items-center gap-4">
+                <div className="bg-gradient-to-br from-[#0c1222] via-[#090d1a] to-[#030611] p-5 rounded-[2rem] border border-gray-800/80 shadow-2xl flex flex-col gap-4 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/10 rounded-full blur-[80px] pointer-events-none"></div>
+                  <div className="flex items-center gap-4 relative z-10">
                     <div className="bg-blue-500/10 p-3 rounded-2xl border border-blue-500/20 shadow-inner">
-                      <TrendingUp className="w-6 h-6 text-blue-400 drop-shadow-md" />
+                      <TrendingUp className="w-5 h-5 text-blue-400 drop-shadow-md" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-gray-100 flex items-center gap-2 tracking-wide uppercase">
-                        Business POS Sync
-                      </h3>
-                      <p className="text-gray-400 text-[10px] mt-0.5">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest block">Integration</span>
+                        <span className="text-[9px] font-bold text-cyan-400 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                          <Clock className="w-2.5 h-2.5 text-cyan-400" /> 8:00 PM Auto
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-black text-white tracking-tight">Business POS Sync</h3>
+                      <p className="text-gray-500 text-[10px] mt-0.5 font-medium">
                         {lastSyncTimeStr 
-                          ? <span className="text-emerald-400 font-medium">Last: {new Date(lastSyncTimeStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                          : 'Pull latest POS data'}
+                          ? <span className="text-emerald-400 font-bold">Last: {new Date(lastSyncTimeStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                          : 'Pull latest POS transactions'}
                       </p>
                     </div>
                   </div>
@@ -380,7 +544,11 @@ const AddExpenseTab = ({
                     type="button"
                     onClick={handleSyncPOS}
                     disabled={isSyncing}
-                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black tracking-widest text-xs uppercase text-white transition-all shadow-[0_0_15px_-5px_rgba(37,99,235,0.4)] ${isSyncing ? 'bg-gray-800/80 cursor-not-allowed text-gray-500 border border-gray-700' : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-[length:200%_auto] hover:bg-right active:scale-95'}`}
+                    className={`relative z-10 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black tracking-widest text-xs uppercase text-white transition-all shadow-lg ${
+                      isSyncing 
+                        ? 'bg-gray-800 cursor-not-allowed text-gray-500 border border-gray-700' 
+                        : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:scale-[1.02] active:scale-[0.98] shadow-blue-900/30'
+                    }`}
                   >
                     {isSyncing ? (
                       <>
@@ -404,7 +572,8 @@ const AddExpenseTab = ({
                 // If a category is selected (and not from a template), show subcategories view
                 if (category && !forceCatClosed && !isTemplateSelected && !isIncome) {
                     return (
-                      <div className="bg-gray-900/60 backdrop-blur-md p-5 rounded-3xl border border-gray-700/50 shadow-inner flex flex-col transition-all duration-300 flex-1 animate-in slide-in-from-right-4">
+                      <div className="bg-gradient-to-br from-[#0c1222] via-[#090d1a] to-[#030611] p-5 sm:p-6 rounded-[2rem] border border-gray-800/80 shadow-2xl flex flex-col transition-all duration-300 flex-1 animate-in slide-in-from-right-4 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-[80px] pointer-events-none"></div>
                         {/* Selected Category Header */}
                         <div 
                           className="flex items-center justify-between mb-5 border-b border-gray-700/50 pb-4 cursor-pointer group"
@@ -502,19 +671,22 @@ const AddExpenseTab = ({
 
                 // Standalone Categories Grid View
                 return (
-                  <div className="bg-gray-900/60 backdrop-blur-md p-5 rounded-3xl border border-gray-700/50 shadow-inner flex flex-col transition-all duration-300 flex-1">
-                    <div className="flex items-center justify-between mb-4">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">
-                        Categories
-                      </p>
-                      <span className="text-[10px] font-semibold text-gray-500 bg-gray-800/80 px-2 py-0.5 rounded-full border border-gray-700/50">
+                  <div className="bg-gradient-to-br from-[#0c1222] via-[#090d1a] to-[#030611] p-5 sm:p-6 rounded-[2rem] border border-gray-800/80 shadow-2xl flex flex-col transition-all duration-300 flex-1 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-[80px] pointer-events-none"></div>
+
+                    <div className="flex items-center justify-between mb-4 relative z-10">
+                      <div>
+                        <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest block">Select One</span>
+                        <h3 className="text-sm font-black text-white tracking-wide">Categories</h3>
+                      </div>
+                      <span className="text-[10px] font-black font-mono text-gray-400 bg-gray-950 px-2.5 py-0.5 rounded-full border border-gray-800">
                         {currentCategories.length}
                       </span>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto content-start pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-gray-700/50 [&::-webkit-scrollbar-thumb]:rounded-full">
-                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 animate-in fade-in duration-300">
-                        {currentCategories.length === 0 && <p className="text-[9px] font-bold text-rose-400 col-span-full">Empty</p>}
+                    <div className="flex-1 overflow-y-auto content-start pr-1 custom-scrollbar relative z-10 max-h-[380px]">
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 animate-in fade-in duration-300">
+                        {currentCategories.length === 0 && <p className="text-xs font-bold text-rose-400 col-span-full">No categories found</p>}
                         {currentCategories.map((c) => {
                           const CatIcon = getIconComponent(c.icon);
                           const iconColors = getIconColor(c.icon);
@@ -524,12 +696,18 @@ const AddExpenseTab = ({
                               key={c.id} 
                               type="button" 
                               onClick={() => { setCategory(c.name); setSubcategory(''); setIsTemplateSelected(false); setForceCatClosed(false); }} 
-                              className={`py-2 px-1 md:py-2.5 md:px-2 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all text-center border shadow-inner group/btn overflow-hidden cursor-pointer ${isSelected ? 'bg-blue-600/30 border-blue-500 shadow-blue-500/20' : 'bg-gray-800/40 border-gray-700/50 hover:bg-gray-700/50'}`}
+                              className={`py-3 px-2 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all text-center border shadow-lg group/btn overflow-hidden cursor-pointer ${
+                                isSelected 
+                                  ? 'bg-blue-600/20 border-blue-500 shadow-blue-500/20 ring-2 ring-blue-500/30' 
+                                  : 'bg-gradient-to-br from-[#101726]/80 to-[#0b101c]/80 border-gray-800/80 hover:border-gray-700 hover:from-[#141d30]'
+                              }`}
                             >
-                              <div className={`p-1.5 transition-all rounded-lg ${iconColors.bg}`}>
+                              <div className={`p-2 transition-all rounded-xl ${iconColors.bg} border border-gray-700/30 shadow-inner`}>
                                 <CatIcon className={`w-4 h-4 md:w-5 md:h-5 transition-all ${iconColors.color}`} />
                               </div>
-                              <span className={`text-[9px] leading-tight md:text-[10px] font-bold w-full break-words whitespace-normal ${isSelected ? 'text-blue-300 font-extrabold' : 'text-gray-300 group-hover/btn:text-gray-200'}`}>{c.name}</span>
+                              <span className={`text-[10px] font-bold w-full break-words whitespace-normal leading-tight ${isSelected ? 'text-white font-black' : 'text-gray-300 group-hover/btn:text-white'}`}>
+                                {c.name}
+                              </span>
                             </button>
                           );
                         })}
@@ -540,12 +718,14 @@ const AddExpenseTab = ({
                 );
               })()}
             </div>
-    {/* COLUMN 2 */}
-            <div className="flex flex-col justify-start bg-gray-900/60 backdrop-blur-md p-6 rounded-3xl border border-gray-700/50 shadow-inner h-full">
-              <div className="flex flex-col h-full gap-4">
+            {/* COLUMN 2 */}
+            <div className="flex flex-col justify-start bg-gradient-to-br from-[#0c1222] via-[#090d1a] to-[#030611] p-5 sm:p-7 rounded-[2rem] border border-gray-800/80 shadow-2xl h-full relative overflow-hidden group">
+              <div className={`absolute top-0 right-0 w-80 h-80 ${isIncome ? 'bg-emerald-500/10' : 'bg-rose-500/10'} rounded-full blur-[120px] pointer-events-none transition-colors duration-500`}></div>
+
+              <div className="flex flex-col h-full gap-4 relative z-10">
                 
                 {/* Selected Category Box (above Amount) */}
-                <div className="bg-gray-800/80 backdrop-blur-md rounded-2xl p-3 border border-gray-700 flex items-center justify-between shadow-inner min-h-[52px]">
+                <div className="bg-gray-950/80 backdrop-blur-xl rounded-2xl p-3 border border-gray-800/80 flex items-center justify-between shadow-inner min-h-[52px]">
                   <div className="flex items-center gap-3">
                     {(() => {
                       if (!category) {
@@ -581,14 +761,18 @@ const AddExpenseTab = ({
                 </div>
 
                 {/* Amount Field (Smaller & Colored) */}
-                <div className={`bg-gray-900/80 backdrop-blur-md px-5 py-4 rounded-3xl border shadow-inner transition-all ${isIncome ? 'border-emerald-500/30' : 'border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.1)]'}`}>
+                <div className={`bg-[#080d19]/90 backdrop-blur-xl px-5 py-4 rounded-2xl border transition-all ${
+                  isIncome 
+                    ? 'border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/20' 
+                    : 'border-rose-500/40 shadow-[0_0_25px_rgba(244,63,94,0.15)] ring-1 ring-rose-500/20'
+                }`}>
                   {calcHistory && (
-                    <p className="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-[0.2em] ml-1">
+                    <p className="text-[10px] font-bold text-gray-400 mb-1.5 uppercase tracking-[0.2em] ml-1">
                       <span className="text-blue-400 font-black tracking-widest drop-shadow-md">{calcHistory}</span>
                     </p>
                   )}
-                  <div className={`flex items-center text-3xl md:text-4xl font-black ${isIncome ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    <span className="text-gray-500 mr-3 text-2xl font-bold">Rs.</span>
+                  <div className={`flex items-center text-3xl md:text-4xl font-black font-mono tracking-tight ${isIncome ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    <span className="text-gray-500 mr-3 text-2xl font-bold font-sans">Rs.</span>
                     <input 
                       type="text" 
                       inputMode="decimal"
@@ -614,14 +798,14 @@ const AddExpenseTab = ({
                 />
 
                 {/* Details */}
-                <div className={`relative bg-gray-900/80 rounded-2xl border border-gray-700/80 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all overflow-hidden shadow-inner h-[48px] flex items-center`}>
+                <div className="relative bg-[#080d19]/90 rounded-2xl border border-gray-800/80 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all overflow-hidden shadow-inner h-[48px] flex items-center">
                   <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full bg-transparent px-4 py-2 text-sm font-medium text-gray-100 placeholder-gray-600 focus:outline-none" placeholder={`What was this ${type.toLowerCase()} for?`} />
                 </div>
                 
 
 
                 {/* SAVE AS TEMPLATE */}
-                <div className="bg-gray-900/40 rounded-2xl border border-gray-700/50 transition-all h-[48px] flex items-center px-4">
+                <div className="bg-[#080d19]/60 rounded-2xl border border-gray-800/80 transition-all h-[48px] flex items-center px-4">
                   <div className="flex items-center justify-between cursor-pointer w-full" onClick={() => {
                       setIsSavingTemplate(!isSavingTemplate);
                       if (!isSavingTemplate && !templateName.trim()) {
@@ -637,7 +821,7 @@ const AddExpenseTab = ({
                   </div>
                 </div>
                 {isSavingTemplate && (
-                    <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200 bg-gray-900/40 p-3.5 rounded-2xl border border-gray-700/50">
+                    <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200 bg-[#080d19]/80 p-4 rounded-2xl border border-gray-800/80">
                       <input 
                         type="text" 
                         value={templateName} 
@@ -708,7 +892,7 @@ const AddExpenseTab = ({
                   )}
 
                 {/* Actions */}
-                <div className="mt-auto flex gap-3">
+                <div className="mt-auto flex gap-3 pt-2">
                   <button 
                     type="button" 
                     onClick={() => { 
@@ -726,13 +910,21 @@ const AddExpenseTab = ({
                       setIsTemplateSelected(false);
                       setSelectedTemplateId(null);
                     }} 
-                    className="bg-gray-800/80 hover:bg-gray-700 text-gray-400 hover:text-rose-400 border border-gray-700 font-black tracking-widest uppercase py-5 px-6 rounded-2xl transition-all shadow-md active:scale-[0.98] flex items-center justify-center shrink-0"
+                    className="bg-gray-900/90 hover:bg-gray-800 text-gray-400 hover:text-rose-400 border border-gray-800 font-black tracking-widest uppercase py-4 px-6 rounded-2xl transition-all shadow-md active:scale-[0.98] flex items-center justify-center shrink-0 cursor-pointer text-xs"
                     title="Clear Fields"
                   >
                     CLEAR
                   </button>
-                  <button type="submit" disabled={!isIncome && categories.length === 0} className={`flex-1 bg-gradient-to-r ${isIncome ? 'from-emerald-500 via-teal-500 to-emerald-600' : 'from-blue-600 via-indigo-600 to-purple-600'} hover:bg-right bg-[length:200%_auto] text-white font-black tracking-widest uppercase py-5 rounded-2xl transition-all shadow-[0_0_20px_-5px_rgba(0,0,0,0.5)] active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 text-lg`}>
-                    <PlusCircle className="w-6 h-6" /> SAVE {type.toUpperCase()}
+                  <button 
+                    type="submit" 
+                    disabled={!isIncome && categories.length === 0} 
+                    className={`flex-1 bg-gradient-to-r ${
+                      isIncome 
+                        ? 'from-emerald-600 via-teal-600 to-emerald-500 shadow-emerald-900/40 hover:from-emerald-500' 
+                        : 'from-rose-600 via-rose-500 to-orange-500 shadow-rose-900/40 hover:from-rose-500'
+                    } text-white font-black tracking-widest uppercase py-4 rounded-2xl transition-all shadow-xl active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 text-base`}
+                  >
+                    <PlusCircle className="w-5 h-5" /> SAVE {type.toUpperCase()}
                   </button>
                 </div>
               </div>
@@ -741,16 +933,19 @@ const AddExpenseTab = ({
           </form>
 
           {/* COLUMN 3: Recent Activity (Past 3 Days) */}
-          <div className="bg-gray-900/40 backdrop-blur-xl p-4 md:p-6 rounded-[1.5rem] border border-gray-800 hover:border-gray-700/80 shadow-xl flex flex-col h-full relative overflow-hidden group transition-all duration-500">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/10 rounded-full blur-[60px] group-hover:bg-purple-500/20 transition-all duration-700"></div>
+          <div className="bg-gradient-to-br from-[#0c1222] via-[#090d1a] to-[#030611] p-5 sm:p-6 rounded-[2rem] border border-gray-800/80 shadow-2xl flex flex-col h-full relative overflow-hidden group transition-all duration-500">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[100px] pointer-events-none group-hover:bg-purple-500/20 transition-all duration-700"></div>
 
             <div className="flex items-center justify-between mb-5 flex-shrink-0 relative z-10">
-              <h3 className="text-xs font-bold tracking-[0.2em] uppercase flex items-center gap-2 text-gray-300">
-                <div className="p-1.5 bg-purple-500/10 rounded-lg">
-                  <Clock className="w-3.5 h-3.5 text-purple-400" />
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-purple-500/10 rounded-xl border border-purple-500/20 shadow-inner">
+                  <Clock className="w-4 h-4 text-purple-400" />
                 </div>
-                Recent Activity
-              </h3>
+                <div>
+                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block">Audit Trail</span>
+                  <h3 className="text-sm font-black text-white tracking-wide">Recent Activity</h3>
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 {(() => {
                   const totalExpense = all3DaysTxs

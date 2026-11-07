@@ -8,6 +8,7 @@ export default function SummaryCards({ formatCompact, timeAgo }) {
     transactions = [],
     totalSavings = 0,
     totalPendingLent = 0,
+    totalPendingBorrowed = 0,
     lentMoney = [],
     wishlistItems = [],
     isSyncing,
@@ -62,7 +63,7 @@ export default function SummaryCards({ formatCompact, timeAgo }) {
     }
   });
 
-  const uniqueLentPeopleCount = new Set(lentMoney.map(l => l.name)).size;
+  const uniqueLentPeopleCount = new Set(lentMoney.filter(l => (l.debtType || 'lent') === 'lent').map(l => l.name)).size;
   
   const totalWishlistEstCost = wishlistItems.reduce((acc, item) => {
     if (item.status === 'completed') return acc;
@@ -75,90 +76,162 @@ export default function SummaryCards({ formatCompact, timeAgo }) {
   const wishlistPendingCount = wishlistItems.filter(i => i.status !== 'completed').length;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6 mb-6">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4 md:gap-5 mb-6">
       
-      {/* Today Expenses */}
-      <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.1 }} className="bg-gradient-to-br from-[#0f172a] to-[#020617] p-4 rounded-2xl border border-gray-800/80 shadow-xl relative overflow-hidden h-28 flex flex-col justify-center hover:-translate-y-1 hover:shadow-2xl hover:border-gray-700/50 transition-all duration-300">
-        <div className="absolute top-0 right-0 w-[100px] h-[100px] bg-rose-600/10 rounded-full blur-[40px] mix-blend-screen pointer-events-none"></div>
-        <div className="flex justify-between items-start mb-1.5 relative z-10">
-          <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 mt-1">
-            <TrendingDown className="w-3.5 h-3.5 text-rose-400" /> Today Expenses
+      {/* 1. Today Expenses */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }} 
+        whileInView={{ opacity: 1, y: 0 }} 
+        viewport={{ once: true, amount: 0.1 }} 
+        transition={{ duration: 0.4, delay: 0.05 }} 
+        className="bg-gradient-to-br from-[#0c1222] via-[#090d1a] to-[#030611] p-4 sm:p-5 rounded-[1.5rem] border border-gray-800/80 hover:border-rose-500/30 shadow-xl relative overflow-hidden h-[124px] flex flex-col justify-between hover:-translate-y-1 hover:shadow-2xl hover:shadow-rose-950/20 transition-all duration-300 group"
+      >
+        <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/10 rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform"></div>
+        <div className="flex justify-between items-center relative z-10">
+          <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
+            <span className="p-1 rounded-lg bg-rose-500/15 border border-rose-500/25 text-rose-400">
+              <TrendingDown className="w-3 h-3" />
+            </span>
+            Today Expenses
           </p>
         </div>
-        <h2 className="text-2xl font-black text-white relative z-10">
-          <span className="text-sm text-gray-500">Rs.</span> {formatCompact(todayExpenses)}
+        <h2 className="text-xl sm:text-2xl font-black text-white font-mono relative z-10 tracking-tight">
+          <span className="text-xs text-gray-500 font-sans mr-1">Rs.</span>{formatCompact(todayExpenses)}
         </h2>
-        <div className="flex items-center gap-1 text-[9px] text-gray-500 font-bold uppercase relative z-10 tracking-widest mt-1 pt-1 border-t border-gray-800/50">
-           <span>Yesterday: Rs. {formatCompact(yesterdayExpenses)}</span>
+        <div className="flex items-center justify-between text-[10px] text-gray-500 relative z-10 pt-1.5 border-t border-gray-800/60 font-medium">
+          <span>Yest: Rs. {formatCompact(yesterdayExpenses)}</span>
+          <span className={todayExpenses > yesterdayExpenses ? "text-rose-400 font-bold" : "text-emerald-400 font-bold"}>
+            {todayExpenses > yesterdayExpenses ? "▲ Up" : "▼ Down"}
+          </span>
         </div>
       </motion.div>
-      {/* Today's Income */}
-      <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.2 }} className="bg-gradient-to-br from-[#0f172a] to-[#020617] p-4 rounded-2xl border border-gray-800/80 shadow-xl relative overflow-hidden h-28 flex flex-col justify-center hover:-translate-y-1 hover:shadow-2xl hover:border-gray-700/50 transition-all duration-300">
-        <div className="absolute top-0 right-0 w-[100px] h-[100px] bg-emerald-600/10 rounded-full blur-[40px] mix-blend-screen pointer-events-none"></div>
-        <div className="flex justify-between items-start mb-1.5 relative z-10">
-          <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 mt-1">
-            <DollarSign className="w-3.5 h-3.5 text-emerald-400" /> Today's Income
+
+      {/* 2. Today's Income */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }} 
+        whileInView={{ opacity: 1, y: 0 }} 
+        viewport={{ once: true, amount: 0.1 }} 
+        transition={{ duration: 0.4, delay: 0.1 }} 
+        className="bg-gradient-to-br from-[#0c1222] via-[#090d1a] to-[#030611] p-4 sm:p-5 rounded-[1.5rem] border border-gray-800/80 hover:border-emerald-500/30 shadow-xl relative overflow-hidden h-[124px] flex flex-col justify-between hover:-translate-y-1 hover:shadow-2xl hover:shadow-emerald-950/20 transition-all duration-300 group"
+      >
+        <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform"></div>
+        <div className="flex justify-between items-center relative z-10">
+          <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
+            <span className="p-1 rounded-lg bg-emerald-500/15 border border-emerald-500/25 text-emerald-400">
+              <DollarSign className="w-3 h-3" />
+            </span>
+            Today Income
           </p>
-          <button onClick={handleRefresh} disabled={isSyncing} className="p-1 bg-gray-800/80 rounded-md hover:bg-gray-700 transition-colors group">
-            <RefreshCw className={`w-3.5 h-3.5 text-gray-400 group-hover:text-white ${isSyncing ? 'animate-spin' : ''}`} />
+          <button 
+            onClick={handleRefresh} 
+            disabled={isSyncing} 
+            className="p-1 bg-gray-900/80 border border-gray-800 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white transition-all shadow-inner"
+            title="Sync POS / Transactions"
+          >
+            <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-emerald-400' : ''}`} />
           </button>
         </div>
-        <h2 className="text-2xl font-black text-white relative z-10">
-          <span className="text-sm text-gray-500">Rs.</span> {formatCompact(todayIncome)}
+        <h2 className="text-xl sm:text-2xl font-black text-emerald-400 font-mono relative z-10 tracking-tight">
+          <span className="text-xs text-gray-500 font-sans mr-1">Rs.</span>{formatCompact(todayIncome)}
         </h2>
-        <div className="flex items-center gap-1 text-[9px] text-gray-500 font-bold uppercase relative z-10 tracking-widest mt-1 pt-1 border-t border-gray-800/50">
-           <span>Yesterday: Rs. {formatCompact(yesterdayIncome)}</span>
+        <div className="flex items-center justify-between text-[10px] text-gray-500 relative z-10 pt-1.5 border-t border-gray-800/60 font-medium">
+          <span>Yest: Rs. {formatCompact(yesterdayIncome)}</span>
+          <span className="text-emerald-400/90 font-bold">Revenue</span>
         </div>
       </motion.div>
 
-      {/* Savings Balance */}
-      <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.3 }} className="bg-gradient-to-br from-[#0f172a] to-[#020617] p-4 rounded-2xl border border-gray-800/80 shadow-xl relative overflow-hidden h-28 flex flex-col justify-center hover:-translate-y-1 hover:shadow-2xl hover:border-gray-700/50 transition-all duration-300">
-        <div className="absolute top-0 right-0 w-[100px] h-[100px] bg-pink-600/10 rounded-full blur-[40px] mix-blend-screen pointer-events-none"></div>
-        <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5 relative z-10">
-          <PiggyBank className="w-3.5 h-3.5 text-pink-400" /> Savings Balance
-        </p>
-        <h2 className="text-2xl font-black text-white relative z-10 mb-1.5">
-          <span className="text-sm text-gray-500">Rs.</span> {formatCompact(totalSavings)}
+      {/* 3. Savings Balance */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }} 
+        whileInView={{ opacity: 1, y: 0 }} 
+        viewport={{ once: true, amount: 0.1 }} 
+        transition={{ duration: 0.4, delay: 0.15 }} 
+        className="bg-gradient-to-br from-[#0c1222] via-[#090d1a] to-[#030611] p-4 sm:p-5 rounded-[1.5rem] border border-gray-800/80 hover:border-pink-500/30 shadow-xl relative overflow-hidden h-[124px] flex flex-col justify-between hover:-translate-y-1 hover:shadow-2xl hover:shadow-pink-950/20 transition-all duration-300 group"
+      >
+        <div className="absolute top-0 right-0 w-24 h-24 bg-pink-500/10 rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform"></div>
+        <div className="flex justify-between items-center relative z-10">
+          <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
+            <span className="p-1 rounded-lg bg-pink-500/15 border border-pink-500/25 text-pink-400">
+              <PiggyBank className="w-3 h-3" />
+            </span>
+            Savings Balance
+          </p>
+        </div>
+        <h2 className="text-xl sm:text-2xl font-black text-white font-mono relative z-10 tracking-tight">
+          <span className="text-xs text-gray-500 font-sans mr-1">Rs.</span>{formatCompact(totalSavings)}
         </h2>
-        <div className="flex gap-3 text-[9px] text-gray-500 font-bold uppercase relative z-10 tracking-widest border-t border-gray-800 pt-1.5 mt-auto">
-           <span className="flex items-center gap-1" title="This Month Deposits"><TrendingUp className="w-2.5 h-2.5 text-emerald-400"/> {formatCompact(thisMonthSavingsDeposits)}</span>
-           <span className="flex items-center gap-1" title="This Month Withdrawals"><TrendingDown className="w-2.5 h-2.5 text-rose-400"/> {formatCompact(thisMonthSavingsWithdrawals)}</span>
+        <div className="flex items-center justify-between text-[10px] text-gray-500 relative z-10 pt-1.5 border-t border-gray-800/60 font-medium">
+          <span className="flex items-center gap-1 text-emerald-400 font-bold">
+            <TrendingUp className="w-2.5 h-2.5" /> +{formatCompact(thisMonthSavingsDeposits)}
+          </span>
+          <span className="flex items-center gap-1 text-rose-400 font-bold">
+            <TrendingDown className="w-2.5 h-2.5" /> -{formatCompact(thisMonthSavingsWithdrawals)}
+          </span>
         </div>
       </motion.div>
 
-      {/* Total Lent */}
-      <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.4 }} className="bg-gradient-to-br from-[#0f172a] to-[#020617] p-4 rounded-2xl border border-gray-800/80 shadow-xl relative overflow-hidden h-28 flex flex-col justify-center hover:-translate-y-1 hover:shadow-2xl hover:border-gray-700/50 transition-all duration-300">
-        <div className="absolute top-0 right-0 w-[100px] h-[100px] bg-blue-600/10 rounded-full blur-[40px] mix-blend-screen pointer-events-none"></div>
-        <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5 relative z-10">
-          <Handshake className="w-3.5 h-3.5 text-blue-400" /> Total Lent
-        </p>
-        <div className="flex items-end justify-between relative z-10 mt-0.5">
-          <h2 className="text-2xl font-black text-white">
-            <span className="text-sm text-gray-500">Rs.</span> {formatCompact(totalPendingLent)}
-          </h2>
-          <div className="flex flex-col items-center justify-center px-2 py-0.5 bg-gray-800/50 rounded-md border border-gray-700/50">
-            <Users className="w-3 h-3 text-blue-400 mb-0.5" />
-            <span className="text-[8px] text-gray-400 font-bold uppercase tracking-widest">{uniqueLentPeopleCount} Ppl</span>
-          </div>
+      {/* 4. Total Lent & Debts */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }} 
+        whileInView={{ opacity: 1, y: 0 }} 
+        viewport={{ once: true, amount: 0.1 }} 
+        transition={{ duration: 0.4, delay: 0.2 }} 
+        className="bg-gradient-to-br from-[#0c1222] via-[#090d1a] to-[#030611] p-4 sm:p-5 rounded-[1.5rem] border border-gray-800/80 hover:border-blue-500/30 shadow-xl relative overflow-hidden h-[124px] flex flex-col justify-between hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-950/20 transition-all duration-300 group"
+      >
+        <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform"></div>
+        <div className="flex items-center justify-between relative z-10">
+          <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
+            <span className="p-1 rounded-lg bg-blue-500/15 border border-blue-500/25 text-blue-400">
+              <Handshake className="w-3 h-3" />
+            </span>
+            Total Lent
+          </p>
+          {totalPendingBorrowed > 0 && (
+            <span className="text-[9px] text-rose-400 font-black bg-rose-500/15 border border-rose-500/25 px-1.5 py-0.5 rounded-full">
+              Owe: {formatCompact(totalPendingBorrowed)}
+            </span>
+          )}
+        </div>
+        <h2 className="text-xl sm:text-2xl font-black text-white font-mono relative z-10 tracking-tight">
+          <span className="text-xs text-gray-500 font-sans mr-1">Rs.</span>{formatCompact(totalPendingLent)}
+        </h2>
+        <div className="flex items-center justify-between text-[10px] text-gray-500 relative z-10 pt-1.5 border-t border-gray-800/60 font-medium">
+          <span className="flex items-center gap-1">
+            <Users className="w-3 h-3 text-blue-400" /> {uniqueLentPeopleCount} Borrowers
+          </span>
+          <span className="text-blue-400 font-bold">Receivable</span>
         </div>
       </motion.div>
 
-      {/* Wishlist */}
-      <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.5 }} className="bg-gradient-to-br from-[#0f172a] to-[#020617] p-4 rounded-2xl border border-gray-800/80 shadow-xl relative overflow-hidden h-28 flex flex-col justify-center hover:-translate-y-1 hover:shadow-2xl hover:border-gray-700/50 transition-all duration-300">
-        <div className="absolute top-0 right-0 w-[100px] h-[100px] bg-purple-600/10 rounded-full blur-[40px] mix-blend-screen pointer-events-none"></div>
-        <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5 relative z-10">
-          <Target className="w-3.5 h-3.5 text-purple-400" /> Wishlist
-        </p>
-        <div className="flex items-end justify-between relative z-10 mt-0.5">
-          <h2 className="text-2xl font-black text-white">
-            <span className="text-sm text-gray-500">Rs.</span> {formatCompact(totalWishlistEstCost)}
-          </h2>
-          <div className="flex flex-col items-center justify-center px-2 py-0.5 bg-gray-800/50 rounded-md border border-gray-700/50">
-            <Target className="w-3 h-3 text-purple-400 mb-0.5" />
-            <span className="text-[8px] text-gray-400 font-bold uppercase tracking-widest">{wishlistPendingCount} Itms</span>
-          </div>
+      {/* 5. Wishlist Goals */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }} 
+        whileInView={{ opacity: 1, y: 0 }} 
+        viewport={{ once: true, amount: 0.1 }} 
+        transition={{ duration: 0.4, delay: 0.25 }} 
+        className="bg-gradient-to-br from-[#0c1222] via-[#090d1a] to-[#030611] p-4 sm:p-5 rounded-[1.5rem] border border-gray-800/80 hover:border-purple-500/30 shadow-xl relative overflow-hidden h-[124px] flex flex-col justify-between hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-950/20 transition-all duration-300 group"
+      >
+        <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform"></div>
+        <div className="flex items-center justify-between relative z-10">
+          <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
+            <span className="p-1 rounded-lg bg-purple-500/15 border border-purple-500/25 text-purple-400">
+              <Target className="w-3 h-3" />
+            </span>
+            Wishlist Goals
+          </p>
+          <span className="text-[9px] font-black text-purple-400 bg-purple-500/15 border border-purple-500/25 px-1.5 py-0.5 rounded-full">
+            {wishlistPendingCount} Active
+          </span>
+        </div>
+        <h2 className="text-xl sm:text-2xl font-black text-purple-400 font-mono relative z-10 tracking-tight">
+          <span className="text-xs text-gray-500 font-sans mr-1">Rs.</span>{formatCompact(totalWishlistEstCost)}
+        </h2>
+        <div className="flex items-center justify-between text-[10px] text-gray-500 relative z-10 pt-1.5 border-t border-gray-800/60 font-medium">
+          <span>Est. Target Budget</span>
+          <span className="text-purple-400 font-bold">Milestones</span>
         </div>
       </motion.div>
+
     </div>
   );
 }

@@ -7,6 +7,7 @@ import ExpenseBreakdownComparison from '../components/dashboard/ExpenseBreakdown
 import YearlyOverviewChart from '../components/dashboard/YearlyOverviewChart';
 import ScheduledExpensesChart from '../components/dashboard/ScheduledExpensesChart';
 import TemplateRenewalsWidget from '../components/dashboard/TemplateRenewalsWidget';
+import CycleBreaksWidget from '../components/dashboard/CycleBreaksWidget';
 
 const DashboardTab = ({ 
   transactions, 
@@ -73,6 +74,9 @@ const DashboardTab = ({
 
         {/* 2.5 RENEWAL CYCLES & RECURRING BILLS WIDGET */}
         <TemplateRenewalsWidget templates={templates} formatLKR={formatLKR} />
+
+        {/* 2.6 CYCLE BREAKS & DISCIPLINE TRACKER WIDGET */}
+        <CycleBreaksWidget templates={templates} formatLKR={formatLKR} />
 
         {/* 3. LENT & SAVINGS CHARTS */}
         <LentAndSavingsCharts formatCompact={formatCompact} formatLKR={formatLKR} />

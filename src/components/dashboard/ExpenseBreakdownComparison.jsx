@@ -91,14 +91,18 @@ export default function ExpenseBreakdownComparison({ formatCompact, formatLKR })
   });
 
   return (
-    <div className="bg-[#0b1120] p-6 rounded-[1.5rem] border border-gray-800/80 shadow-xl mt-6 flex flex-col">
-      <div className="flex justify-between items-center w-full mb-6">
-        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
-          <PieChartIcon className="w-4 h-4 text-emerald-500" /> EXPENSE BREAKDOWN COMPARISON
-        </h3>
-        <div className="flex gap-4 text-[10px] font-bold uppercase tracking-wider">
-          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500"></div>This Month</div>
-          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-slate-500"></div>Last Month</div>
+    <div className="bg-gradient-to-br from-[#0c1222] via-[#090d1a] to-[#030611] p-5 sm:p-7 rounded-[2rem] border border-gray-800/80 shadow-2xl mt-6 flex flex-col relative overflow-hidden group">
+      <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="flex justify-between items-center w-full mb-6 relative z-10">
+        <div>
+          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block mb-0.5">Category Variance</span>
+          <h3 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2">
+            <PieChartIcon className="w-4 h-4 text-emerald-400" /> Expense Breakdown Comparison
+          </h3>
+        </div>
+        <div className="flex gap-4 text-[10px] font-black uppercase tracking-wider bg-gray-950/80 px-3 py-1.5 rounded-xl border border-gray-800/80">
+          <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50"></div>This Month</div>
+          <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-slate-500"></div>Last Month</div>
         </div>
       </div>
       

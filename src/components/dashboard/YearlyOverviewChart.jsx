@@ -58,11 +58,23 @@ export default function YearlyOverviewChart({ formatCompact }) {
 
   return (
     <div className="mt-6">
-      <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.6 }} className="bg-[#0b1120] p-6 rounded-[1.5rem] border border-gray-800/80 shadow-xl flex flex-col h-80">
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-indigo-500/10 rounded-lg"><Activity className="w-4 h-4 text-indigo-400"/></div>
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Yearly Overview ({currentYear})</span>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }} 
+        whileInView={{ opacity: 1, y: 0 }} 
+        viewport={{ once: true, amount: 0.1 }} 
+        transition={{ duration: 0.5, delay: 0.6 }} 
+        className="bg-gradient-to-br from-[#0c1222] via-[#090d1a] to-[#030611] p-5 sm:p-7 rounded-[2rem] border border-gray-800/80 shadow-2xl flex flex-col h-88 relative overflow-hidden group"
+      >
+        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none"></div>
+        <div className="flex justify-between items-start mb-4 relative z-10">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2.5 bg-indigo-500/10 rounded-xl border border-indigo-500/20 shadow-inner">
+              <Activity className="w-4 h-4 text-indigo-400"/>
+            </div>
+            <div>
+              <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest block">Annual Financial Performance</span>
+              <h3 className="text-base font-black text-white tracking-tight">Yearly Overview ({currentYear})</h3>
+            </div>
           </div>
         </div>
         <div className="flex-1 w-full min-h-0">

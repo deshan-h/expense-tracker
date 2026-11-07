@@ -84,16 +84,16 @@ const ScheduledExpensesChart = ({ schedules, formatLKR, formatCompact }) => {
   }
 
   return (
-    <div className="w-full bg-gray-900/60 backdrop-blur-xl border border-gray-800/80 rounded-3xl p-6 shadow-xl relative overflow-hidden group">
-      <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-indigo-500/10 transition-colors duration-500"></div>
+    <div className="w-full bg-gradient-to-br from-[#0c1222] via-[#090d1a] to-[#030611] border border-gray-800/80 rounded-[2rem] p-5 sm:p-7 shadow-2xl relative overflow-hidden group">
+      <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none group-hover:bg-indigo-500/10 transition-colors duration-500"></div>
       
       <div className="flex items-center gap-3 mb-6 relative z-10">
-        <div className="p-3 bg-indigo-500/20 rounded-2xl shadow-inner border border-indigo-500/20">
-          <CalendarClock className="w-6 h-6 text-indigo-400" />
+        <div className="p-3 bg-indigo-500/10 rounded-2xl shadow-inner border border-indigo-500/20">
+          <CalendarClock className="w-5 h-5 text-indigo-400" />
         </div>
         <div>
-          <h2 className="text-xl font-black text-white tracking-wide">Scheduled Projections</h2>
-          <p className="text-gray-400 text-sm">Expected future recurring expenses</p>
+          <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest block">Forecast & Commitments</span>
+          <h2 className="text-base sm:text-lg font-black text-white tracking-tight">Scheduled Projections</h2>
         </div>
       </div>
 

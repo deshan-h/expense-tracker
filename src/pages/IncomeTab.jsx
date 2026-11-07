@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PlusCircle, Link, CheckCircle2, TrendingUp, ChevronDown, ChevronRight, ArrowDownCircle } from 'lucide-react';
+import { PlusCircle, Link, CheckCircle2, TrendingUp, ChevronDown, ChevronRight, ArrowDownCircle, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DateTimePicker from '../components/ui/DateTimePicker';
 
@@ -105,9 +105,14 @@ const IncomeTab = ({
                   <TrendingUp className="w-8 h-8 text-blue-400 drop-shadow-md" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-100 flex items-center gap-2 tracking-wide uppercase">
-                    Sync Sales
-                  </h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-lg font-bold text-gray-100 flex items-center gap-2 tracking-wide uppercase">
+                      Sync Sales
+                    </h3>
+                    <span className="text-[10px] font-bold text-cyan-400 bg-cyan-950/60 border border-cyan-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                      <Clock className="w-3 h-3 text-cyan-400" /> Daily 8:00 PM Auto-sync
+                    </span>
+                  </div>
                   <p className="text-gray-400 text-sm mt-1">
                     {lastSyncTimeStr 
                       ? <span className="text-emerald-400 font-medium">Last sync: {new Date(lastSyncTimeStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>

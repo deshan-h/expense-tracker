@@ -39,6 +39,7 @@ export const useTemplates = (user) => {
         trackCycle: Boolean(data.trackCycle),
         cycleDays: data.cycleDays ? Number(data.cycleDays) : null,
         lastPaidDate: data.lastPaidDate || null,
+        cycleBreakCount: Number(data.cycleBreakCount) || 0,
         createdAt: serverTimestamp()
       });
       toast.success(`Template "${data.name}" saved!`);
@@ -77,6 +78,7 @@ export const useTemplates = (user) => {
       if (data.trackCycle !== undefined) updateData.trackCycle = Boolean(data.trackCycle);
       if (data.cycleDays !== undefined) updateData.cycleDays = data.cycleDays ? Number(data.cycleDays) : null;
       if (data.lastPaidDate !== undefined) updateData.lastPaidDate = data.lastPaidDate;
+      if (data.cycleBreakCount !== undefined) updateData.cycleBreakCount = Number(data.cycleBreakCount) || 0;
 
       await updateDoc(doc(db, 'templates', id), updateData);
       return true;

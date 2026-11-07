@@ -57,7 +57,7 @@ export default function LentAndSavingsCharts({ formatCompact, formatLKR }) {
   }, {});
 
   lentMoney.forEach(person => {
-    if (person.history) {
+    if ((person.debtType || 'lent') === 'lent' && person.history) {
       person.history.forEach(item => {
         const d = new Date(item.date);
         if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
@@ -124,18 +124,30 @@ export default function LentAndSavingsCharts({ formatCompact, formatLKR }) {
       {/* Left Column: Stacked Charts */}
       <div className="flex flex-col gap-6 h-full">
         {/* Lent Money Chart */}
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.3 }} className="bg-[#0b1120] p-6 rounded-[1.5rem] border border-gray-800/80 shadow-xl flex flex-col flex-1 min-h-[250px]">
-          <div className="flex justify-between items-start mb-2">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-blue-500/10 rounded-lg"><Handshake className="w-4 h-4 text-blue-400"/></div>
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Lent Money Trend</span>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          whileInView={{ opacity: 1, y: 0 }} 
+          viewport={{ once: true, amount: 0.1 }} 
+          transition={{ duration: 0.5, delay: 0.2 }} 
+          className="bg-gradient-to-br from-[#0c1222] via-[#090d1a] to-[#030611] p-6 rounded-[2rem] border border-gray-800/80 hover:border-blue-500/30 shadow-2xl relative overflow-hidden flex flex-col flex-1 min-h-[260px] group"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
+          <div className="flex justify-between items-start mb-2 relative z-10">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-blue-500/15 border border-blue-500/30 rounded-xl text-blue-400 shadow-inner">
+                <Handshake className="w-4 h-4"/>
+              </div>
+              <div>
+                <span className="text-xs font-black text-white uppercase tracking-widest block">Lent Money Trend</span>
+                <span className="text-[10px] text-gray-500 font-medium">Lent vs Received history</span>
+              </div>
             </div>
             <div className="flex flex-col items-end">
-              <span className="text-xl font-black text-blue-400">Rs. {formatCompact(totalPendingLent)}</span>
-              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Total Pending</span>
+              <span className="text-xl font-black text-blue-400 font-mono tracking-tight">Rs. {formatCompact(totalPendingLent)}</span>
+              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20 mt-0.5">Total Pending</span>
             </div>
           </div>
-          <div className="flex-1 w-full min-h-0 mt-4">
+          <div className="flex-1 w-full min-h-0 mt-4 relative z-10">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={cashFlowArray} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
@@ -161,18 +173,30 @@ export default function LentAndSavingsCharts({ formatCompact, formatLKR }) {
         </motion.div>
 
         {/* Savings Chart */}
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, delay: 0.4 }} className="bg-[#0b1120] p-6 rounded-[1.5rem] border border-gray-800/80 shadow-xl flex flex-col flex-1 min-h-[250px]">
-          <div className="flex justify-between items-start mb-2">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-emerald-500/10 rounded-lg"><PiggyBank className="w-4 h-4 text-emerald-400"/></div>
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Savings Trend</span>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          whileInView={{ opacity: 1, y: 0 }} 
+          viewport={{ once: true, amount: 0.1 }} 
+          transition={{ duration: 0.5, delay: 0.3 }} 
+          className="bg-gradient-to-br from-[#0c1222] via-[#090d1a] to-[#030611] p-6 rounded-[2rem] border border-gray-800/80 hover:border-emerald-500/30 shadow-2xl relative overflow-hidden flex flex-col flex-1 min-h-[260px] group"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+          <div className="flex justify-between items-start mb-2 relative z-10">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-emerald-400 shadow-inner">
+                <PiggyBank className="w-4 h-4"/>
+              </div>
+              <div>
+                <span className="text-xs font-black text-white uppercase tracking-widest block">Savings Trend</span>
+                <span className="text-[10px] text-gray-500 font-medium">Deposits vs Withdrawals</span>
+              </div>
             </div>
             <div className="flex flex-col items-end">
-              <span className="text-xl font-black text-emerald-400">Rs. {formatCompact(totalSavings)}</span>
-              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Total Balance</span>
+              <span className="text-xl font-black text-emerald-400 font-mono tracking-tight">Rs. {formatCompact(totalSavings)}</span>
+              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 mt-0.5">Total Balance</span>
             </div>
           </div>
-          <div className="flex-1 w-full min-h-0 mt-4">
+          <div className="flex-1 w-full min-h-0 mt-4 relative z-10">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={cashFlowArray} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
