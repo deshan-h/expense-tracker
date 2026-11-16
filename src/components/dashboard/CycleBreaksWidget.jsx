@@ -1,17 +1,13 @@
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { 
   HeartCrack, 
   ShieldCheck, 
-  RotateCw, 
   Bookmark, 
   CheckCircle2,
   Award,
   Flame,
-  TrendingUp,
-  AlertTriangle,
-  Zap,
-  Target
+  Zap
 } from 'lucide-react';
 
 export default function CycleBreaksWidget({ templates = [], formatLKR }) {
@@ -20,10 +16,6 @@ export default function CycleBreaksWidget({ templates = [], formatLKR }) {
   const trackedTemplates = useMemo(() => {
     return (templates || []).filter(tpl => tpl.trackCycle);
   }, [templates]);
-
-  if (trackedTemplates.length === 0) {
-    return null;
-  }
 
   // Calculate stats & days unbroken for each template
   const templatesWithStreaks = useMemo(() => {
@@ -53,7 +45,6 @@ export default function CycleBreaksWidget({ templates = [], formatLKR }) {
   }, [trackedTemplates]);
 
   const totalTracked = templatesWithStreaks.length;
-  const brokenTemplates = useMemo(() => templatesWithStreaks.filter(t => t.breakCount > 0), [templatesWithStreaks]);
   const cleanTemplates = useMemo(() => templatesWithStreaks.filter(t => t.breakCount === 0), [templatesWithStreaks]);
   const totalBreaks = useMemo(() => templatesWithStreaks.reduce((sum, t) => sum + t.breakCount, 0), [templatesWithStreaks]);
   const goalsMetCount = useMemo(() => templatesWithStreaks.filter(t => t.isGoalReached).length, [templatesWithStreaks]);
@@ -84,6 +75,10 @@ export default function CycleBreaksWidget({ templates = [], formatLKR }) {
       return a.daysLeft - b.daysLeft;
     });
   }, [templatesWithStreaks, filter]);
+
+  if (trackedTemplates.length === 0) {
+    return null;
+  }
 
   return (
     <motion.div 

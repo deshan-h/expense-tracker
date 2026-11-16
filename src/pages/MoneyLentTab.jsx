@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   Handshake, Users, Plus, Minus, History, Trash2, X, UserPlus, CreditCard, 
-  Download, ChevronUp, ChevronDown, ArrowDownLeft, ArrowUpRight, Scale, 
-  Wallet, AlertCircle, Building2, User
+  Download, ChevronUp, ChevronDown, ArrowDownLeft, ArrowUpRight, Scale 
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -10,7 +9,6 @@ import DateTimePicker from '../components/ui/DateTimePicker';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MoneyLentTab = ({
-  lentDebtType = 'lent',
   setLentDebtType,
   handleAddLentMoney,
   handleAddLentInline,
@@ -22,8 +20,6 @@ const MoneyLentTab = ({
   setLentName,
   lentDescription,
   setLentDescription,
-  lentDueDate,
-  setLentDueDate,
   lentDate,
   setLentDate,
   lentMoney = [],
@@ -189,12 +185,9 @@ const MoneyLentTab = ({
     const tableData = history.map(item => {
       const isBorrow = item.entryType === 'borrow';
       const date = new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      let typeLabel = '';
-      if (isBorrowed) {
-        typeLabel = isBorrow ? 'Borrowed' : 'Repaid';
-      } else {
-        typeLabel = isBorrow ? 'Lent' : 'Payment Received';
-      }
+      const typeLabel = isBorrowed 
+        ? (isBorrow ? 'Borrowed' : 'Repaid') 
+        : (isBorrow ? 'Lent' : 'Payment Received');
       const amount = `Rs. ${formatLKR(item.amount)}`;
       const desc = item.description || (isBorrow ? (isBorrowed ? 'Borrowed' : 'Lent') : (isBorrowed ? 'Repaid' : 'Payment Received'));
       return [date, typeLabel, desc, amount];

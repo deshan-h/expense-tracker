@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronUp, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const quickActions = [
@@ -64,12 +64,14 @@ const DateTimePicker = ({
         !popupRef.current.contains(event.target)
       ) {
         setIsOpen(false);
+        setShowCalendar(false);
       }
     }
 
     function handleKeyDown(event) {
       if (event.key === 'Escape') {
         setIsOpen(false);
+        setShowCalendar(false);
       }
     }
 
@@ -84,7 +86,7 @@ const DateTimePicker = ({
   }, [isOpen]);
 
   // Position calculation for Portal
-  const updatePosition = () => {
+  const updatePosition = useCallback(() => {
     if (!wrapperRef.current) return;
     const rect = wrapperRef.current.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
@@ -139,22 +141,19 @@ const DateTimePicker = ({
         maxHeight: `${Math.min(500, availableHeight)}px`
       });
     }
-  };
+  }, [forcePlacement, showCalendar]);
 
   useEffect(() => {
-    if (isOpen) {
-      updatePosition();
-      const handleScroll = () => updatePosition();
-      window.addEventListener('scroll', handleScroll, true);
-      window.addEventListener('resize', updatePosition);
-      return () => {
-        window.removeEventListener('scroll', handleScroll, true);
-        window.removeEventListener('resize', updatePosition);
-      };
-    } else {
-      setShowCalendar(false);
-    }
-  }, [isOpen, forcePlacement, showCalendar]);
+    if (!isOpen) return;
+    updatePosition();
+    const handleScroll = () => updatePosition();
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [isOpen, updatePosition]);
 
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();

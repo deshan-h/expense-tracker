@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { supabase } from '../supabase';
 import toast from 'react-hot-toast';
 import { Lock, Mail, ArrowRight, UserPlus, LogIn } from 'lucide-react';
@@ -28,7 +28,7 @@ const Login = () => {
           setIsSignUp(false);
         }
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
@@ -6,7 +6,8 @@ import { useAppContext } from '../../context/AppContext';
 const ExpenseCalendarWidget = ({ formatCompact }) => {
   const { transactions } = useAppContext();
   
-  const today = new Date();
+  const today = useMemo(() => new Date(), []);
+  const todayDate = today.getDate();
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
   
@@ -59,12 +60,12 @@ const ExpenseCalendarWidget = ({ formatCompact }) => {
         date: i,
         expense: expenseMap[i]?.total || 0,
         categories: expenseMap[i]?.categories || {},
-        isToday: today.getDate() === i && today.getMonth() === currentMonth && today.getFullYear() === currentYear
+        isToday: todayDate === i
       });
     }
     
     return days;
-  }, [transactions, currentMonth, currentYear, today, daysInMonth, firstDayOfMonth]);
+  }, [transactions, currentMonth, currentYear, todayDate, daysInMonth, firstDayOfMonth]);
   
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 

@@ -26,7 +26,11 @@ export const useWishlist = (user, addExpense) => {
         const formatted = data.map(w => {
           let parsedNotes = {};
           try {
-            parsedNotes = typeof w.notes === 'string' ? JSON.parse(w.notes || '{}') : (w.notes || {});
+            if (typeof w.notes === 'string') {
+              parsedNotes = JSON.parse(w.notes || '{}');
+            } else if (w.notes) {
+              parsedNotes = w.notes;
+            }
           } catch {
             parsedNotes = {};
           }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar } from 'recharts';
 import { PieChart as PieChartIcon } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';

@@ -1,9 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo, createElement } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PlusCircle, TrendingUp, TrendingDown, Plus, Bookmark, Clock, ChevronLeft, Trash2, ChevronDown, RotateCw, Calendar, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { PlusCircle, TrendingUp, TrendingDown, Plus, Bookmark, Clock, ChevronLeft, Trash2, ChevronDown, RotateCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getIconComponent, getIconColor } from '../utils/icons';
 import DateTimePicker from '../components/ui/DateTimePicker';
+
+const CategoryIcon = ({ iconName, className }) => {
+  return createElement(getIconComponent(iconName), { className });
+};
 
 const AddExpenseTab = ({ 
   handleAddTransaction, 
@@ -24,8 +28,8 @@ const AddExpenseTab = ({
   setDate,
   time,
   setTime,
-  isTracked,
-  setIsTracked,
+  isTracked: _isTracked,
+  setIsTracked: _setIsTracked,
   categories, 
   category, 
   setCategory, 
@@ -51,7 +55,9 @@ const AddExpenseTab = ({
   const [selectedTemplateId, setSelectedTemplateId] = useState(null);
   const [isTemplatesExpanded, setIsTemplatesExpanded] = useState(false);
 
-  useEffect(() => {
+  const handleTypeChange = (newType) => {
+    if (newType === type) return;
+    setType(newType);
     setCategory('');
     setSubcategory('');
     setAmount('');
@@ -60,7 +66,7 @@ const AddExpenseTab = ({
     setForceCatClosed(false);
     setIsTemplateSelected(false);
     setSelectedTemplateId(null);
-  }, [type, setCategory, setSubcategory, setAmount, setDescription, setCalcHistory]);
+  };
 
   const onSubmitForm = async (e) => {
     e.preventDefault();
@@ -159,13 +165,13 @@ const AddExpenseTab = ({
           setAmount(String(result));
           setCalcHistory('');
         }
-      } catch (err) {
+      } catch {
         console.error("Invalid expression");
       }
     } else if (e.key === 'Backspace' && amount === '' && calcHistory !== '') {
       e.preventDefault();
       const parts = calcHistory.trim().split(' ');
-      const lastOp = parts.pop();
+      parts.pop();
       const lastNum = parts.pop();
       setCalcHistory(parts.length > 0 ? parts.join(' ') + ' ' : '');
       setAmount(lastNum || '');
@@ -492,7 +498,7 @@ const AddExpenseTab = ({
               <div className="flex bg-gray-950/90 backdrop-blur-xl rounded-2xl p-1.5 border border-gray-800/80 shadow-2xl w-full">
                 <button 
                   type="button" 
-                  onClick={() => setType('Expense')} 
+                  onClick={() => handleTypeChange('Expense')} 
                   className={`flex-1 py-3 rounded-xl text-xs font-black tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-2 ${
                     !isIncome 
                       ? 'bg-gradient-to-r from-rose-600 to-rose-500 text-white shadow-lg shadow-rose-900/40 ring-1 ring-rose-400/30' 
@@ -504,7 +510,7 @@ const AddExpenseTab = ({
                 </button>
                 <button 
                   type="button" 
-                  onClick={() => setType('Income')} 
+                  onClick={() => handleTypeChange('Income')} 
                   className={`flex-1 py-3 rounded-xl text-xs font-black tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-2 ${
                     isIncome 
                       ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-900/40 ring-1 ring-emerald-400/30' 
@@ -587,12 +593,11 @@ const AddExpenseTab = ({
                             {(() => {
                               const c = currentCategories.find(cat => cat.name === category);
                               if (!c) return null;
-                              const CatIcon = getIconComponent(c.icon);
                               const iconColors = getIconColor(c.icon);
                               return (
                                 <>
                                   <div className={`p-2 rounded-xl ${iconColors.bg} shrink-0`}>
-                                    <CatIcon className={`w-4 h-4 md:w-5 md:h-5 ${iconColors.color}`} />
+                                    <CategoryIcon iconName={c.icon} className={`w-4 h-4 md:w-5 md:h-5 ${iconColors.color}`} />
                                   </div>
                                   <div className="flex items-center gap-1">
                                     <span className="text-sm font-extrabold text-gray-100">{c.name}</span>
@@ -620,19 +625,17 @@ const AddExpenseTab = ({
                         </div>
 
                         {/* Subcategories List */}
-                        {selectedCatObj && (() => {
-                          const CatIcon = getIconComponent(selectedCatObj.icon);
-                          return (
+                        {selectedCatObj && (
                           <div className="flex-1 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-gray-700/50 [&::-webkit-scrollbar-thumb]:rounded-full">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 ml-1">Select Subcategory</p>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 animate-in fade-in duration-300">
                               <button type="button" onClick={() => setSubcategory('')} className={`rounded-xl py-2 px-3 flex items-center justify-start gap-2 transition-all text-left shadow-inner border group/subbtn cursor-pointer ${subcategory === '' ? 'bg-blue-600/80 text-white border-blue-500 shadow-inner' : 'bg-gray-800/60 hover:bg-gray-700 border-gray-700/50 text-gray-300 hover:text-gray-200 hover:border-gray-600'}`}>
-                                <CatIcon className={`w-3.5 h-3.5 shrink-0 transition-colors ${subcategory === '' ? 'text-white/80' : 'text-gray-500 group-hover/subbtn:text-gray-400'}`} />
+                                <CategoryIcon iconName={selectedCatObj.icon} className={`w-3.5 h-3.5 shrink-0 transition-colors ${subcategory === '' ? 'text-white/80' : 'text-gray-500 group-hover/subbtn:text-gray-400'}`} />
                                 <span className="text-[10px] font-bold line-clamp-1 w-full leading-tight">General</span>
                               </button>
                               {selectedCatObj.subcategories?.map(sub => (
                                 <button key={sub} type="button" onClick={() => setSubcategory(sub)} className={`rounded-xl py-2 px-3 flex items-center justify-start gap-2 transition-all text-left shadow-inner border group/subbtn cursor-pointer ${subcategory === sub ? 'bg-emerald-500/80 text-white border-emerald-400 shadow-inner' : 'bg-gray-800/60 hover:bg-gray-700 border-gray-700/50 text-gray-300 hover:text-gray-200 hover:border-gray-600'}`}>
-                                  <CatIcon className={`w-3.5 h-3.5 shrink-0 transition-colors ${subcategory === sub ? 'text-white/80' : 'text-gray-500 group-hover/subbtn:text-gray-400'}`} />
+                                  <CategoryIcon iconName={selectedCatObj.icon} className={`w-3.5 h-3.5 shrink-0 transition-colors ${subcategory === sub ? 'text-white/80' : 'text-gray-500 group-hover/subbtn:text-gray-400'}`} />
                                   <span className="text-[10px] font-bold line-clamp-1 w-full leading-tight">{sub}</span>
                                 </button>
                               ))}
@@ -663,8 +666,7 @@ const AddExpenseTab = ({
                               </div>
                             </div>
                           </div>
-                          );
-                        })()}
+                        )}
                       </div>
                     );
                 }
@@ -688,7 +690,6 @@ const AddExpenseTab = ({
                       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 animate-in fade-in duration-300">
                         {currentCategories.length === 0 && <p className="text-xs font-bold text-rose-400 col-span-full">No categories found</p>}
                         {currentCategories.map((c) => {
-                          const CatIcon = getIconComponent(c.icon);
                           const iconColors = getIconColor(c.icon);
                           const isSelected = c.name === category;
                           return (
@@ -703,7 +704,7 @@ const AddExpenseTab = ({
                               }`}
                             >
                               <div className={`p-2 transition-all rounded-xl ${iconColors.bg} border border-gray-700/30 shadow-inner`}>
-                                <CatIcon className={`w-4 h-4 md:w-5 md:h-5 transition-all ${iconColors.color}`} />
+                                <CategoryIcon iconName={c.icon} className={`w-4 h-4 md:w-5 md:h-5 transition-all ${iconColors.color}`} />
                               </div>
                               <span className={`text-[10px] font-bold w-full break-words whitespace-normal leading-tight ${isSelected ? 'text-white font-black' : 'text-gray-300 group-hover/btn:text-white'}`}>
                                 {c.name}
@@ -743,12 +744,11 @@ const AddExpenseTab = ({
 
                       const c = categories.find(cat => cat.name === category);
                       if (!c) return null;
-                      const CatIcon = getIconComponent(c.icon);
                       const iconColors = getIconColor(c.icon);
                       return (
                         <>
                           <div className={`p-2 rounded-xl ${iconColors.bg} shrink-0`}>
-                            <CatIcon className={`w-4 h-4 ${iconColors.color}`} />
+                            <CategoryIcon iconName={c.icon} className={`w-4 h-4 ${iconColors.color}`} />
                           </div>
                           <div className="flex items-center gap-1">
                             <span className="text-sm font-extrabold text-gray-100">{c.name}</span>
@@ -1026,7 +1026,8 @@ const AddExpenseTab = ({
                               const isTxIncome = t.type === 'Income';
                               const d = new Date(t.date);
                               
-                              let mainText = '', subText = '';
+                              let mainText;
+                              let subText;
                               if (t.time) {
                                 const [hours, minutes] = t.time.split(':');
                                 const h = parseInt(hours, 10);

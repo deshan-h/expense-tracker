@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, DollarSign, Target, Handshake, RefreshCw, PiggyBank, Users } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 
-export default function SummaryCards({ formatCompact, timeAgo }) {
+export default function SummaryCards({ formatCompact }) {
   const {
     transactions = [],
     totalSavings = 0,
@@ -43,12 +42,6 @@ export default function SummaryCards({ formatCompact, timeAgo }) {
   const yesterdayExpenses = transactions
     .filter(t => t.type === 'Expense' && new Date(t.date).toDateString() === yesterdayStr)
     .reduce((acc, curr) => acc + curr.amount, 0);
-
-  const thisMonthExpensesTransactions = transactions.filter(t => {
-    if (t.type !== 'Expense') return false;
-    const d = new Date(t.date);
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-  });
 
   // Calculate Savings Breakdown
   const { savings = [] } = useAppContext();

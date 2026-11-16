@@ -1,6 +1,5 @@
-import React from 'react';
 import { motion } from 'framer-motion';
-import { Target, CheckCircle2, AlertTriangle, AlertCircle, TrendingUp } from 'lucide-react';
+import { Target } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 
 export default function CategoryTracker({ formatLKR }) {

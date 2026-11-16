@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
 import { Handshake, PiggyBank } from 'lucide-react';
@@ -6,7 +5,7 @@ import { useAppContext } from '../../context/AppContext';
 import ExpenseCalendarWidget from './ExpenseCalendarWidget';
 
 // Custom Tooltip for AreaChart
-const CustomAreaTooltip = ({ active, payload, label, formatLKR }) => {
+const CustomAreaTooltip = ({ active, payload, formatLKR }) => {
   if (active && payload && payload.length) {
     const dateStr = payload[0].payload.date;
     return (
@@ -34,8 +33,7 @@ export default function LentAndSavingsCharts({ formatCompact, formatLKR }) {
     lentMoney = [],
     savings = [],
     totalPendingLent = 0,
-    totalSavings = 0,
-    schedules = []
+    totalSavings = 0
   } = useAppContext();
 
   const today = new Date();
