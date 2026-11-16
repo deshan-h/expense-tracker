@@ -1,3 +1,4 @@
+import { posSupabase } from "../supabase.js";
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { getFirestore, collection, getDocs, query, orderBy } from "firebase/firestore";
@@ -12,15 +13,73 @@ const posConfig = {
   measurementId: "G-9RQY57WPDC"
 };
 
-// Initialize secondary app for POS
-const posApp = getApps().find(app => app.name === 'posApp') || initializeApp(posConfig, 'posApp');
-const posDb = getFirestore(posApp);
-
 export const fetchNewSalesSum = async (lastSyncDateStr) => {
+  const lastSyncTime = lastSyncDateStr ? new Date(lastSyncDateStr).getTime() : 0;
+
+  // 1. If POS Supabase client is configured, fetch from Supabase
+  if (posSupabase) {
+    try {
+      const tableName = import.meta.env.VITE_POS_SALES_TABLE || 'daily_sales';
+      const { data, error } = await posSupabase
+        .from(tableName)
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      let sum = 0;
+      let count = 0;
+      let latestTimestamp = null;
+
+      (data || []).forEach((row) => {
+        const rawTimestamp = row.timestamp || row.created_at || row.date;
+        if (!rawTimestamp) return;
+
+        const saleTime = new Date(rawTimestamp).getTime();
+
+        if (saleTime > lastSyncTime) {
+          let income = 0;
+          const saleAmount = Number(row.amount || row.totalAmount || row.total_amount || row.total || 0);
+
+          if (row.isRepair || row.is_repair) {
+            income = saleAmount - Number(row.cost || 0);
+          } else {
+            let totalCost = 0;
+            const items = row.cartItems || row.cart_items;
+            if (items && Array.isArray(items)) {
+              items.forEach(item => {
+                totalCost += (Number(item.cost || 0) * Number(item.qty || item.quantity || 1));
+              });
+            }
+            income = saleAmount - totalCost;
+          }
+
+          sum += income;
+          count++;
+          if (!latestTimestamp || saleTime > latestTimestamp) {
+            latestTimestamp = saleTime;
+          }
+        }
+      });
+
+      return {
+        sum,
+        count,
+        latestTimestamp: latestTimestamp ? new Date(latestTimestamp).toISOString() : null,
+        success: true
+      };
+    } catch (err) {
+      console.error("Error fetching from POS Supabase:", err);
+      // Fall through to Firebase fallback if available
+    }
+  }
+
+  // 2. Fallback to Firebase POS App if Supabase is not yet configured or errored
   try {
+    const posApp = getApps().find(app => app.name === 'posApp') || initializeApp(posConfig, 'posApp');
+    const posDb = getFirestore(posApp);
     const posAuth = getAuth(posApp);
 
-    // IMPORTANT: Replace these with your actual POS Admin login details!
     const POS_EMAIL = "admin@desh.lk";
     const POS_PASSWORD = "Desh@1998";
 
@@ -29,22 +88,17 @@ export const fetchNewSalesSum = async (lastSyncDateStr) => {
     }
 
     const salesRef = collection(posDb, 'daily_sales');
-    // Fetch all sales ordered by latest first
     const q = query(salesRef, orderBy('timestamp', 'desc'));
     const snapshot = await getDocs(q);
 
     let sum = 0;
     let count = 0;
     let latestTimestamp = null;
-    const lastSyncTime = lastSyncDateStr ? new Date(lastSyncDateStr).getTime() : 0;
 
     snapshot.forEach((doc) => {
       const data = doc.data();
       const rawTimestamp = data.timestamp || data.createdAt || data.date;
-      if (!rawTimestamp) {
-        console.warn("Skipping record with no timestamp", doc.id);
-        return;
-      }
+      if (!rawTimestamp) return;
 
       let saleTime;
       if (typeof rawTimestamp.toDate === 'function') {
@@ -53,8 +107,6 @@ export const fetchNewSalesSum = async (lastSyncDateStr) => {
         saleTime = new Date(rawTimestamp).getTime();
       }
 
-      // Only count sales that happened strictly after the last sync
-      console.log(`Checking POS Record ${doc.id}: saleTime=${saleTime} vs lastSyncTime=${lastSyncTime} (${new Date(saleTime).toISOString()})`);
       if (saleTime > lastSyncTime) {
         let income = 0;
         const saleAmount = Number(data.amount || data.totalAmount || data.total || 0);
@@ -71,10 +123,8 @@ export const fetchNewSalesSum = async (lastSyncDateStr) => {
           income = saleAmount - totalCost;
         }
 
-        console.log(`Included POS Record ${doc.id}: Income=${income}`);
         sum += income;
         count++;
-        // Keep track of the very latest timestamp we process
         if (!latestTimestamp || saleTime > latestTimestamp) {
           latestTimestamp = saleTime;
         }
@@ -88,7 +138,7 @@ export const fetchNewSalesSum = async (lastSyncDateStr) => {
       success: true
     };
   } catch (error) {
-    console.error("Error fetching POS sales:", error);
+    console.error("Error fetching POS sales from Firebase fallback:", error);
     return { success: false, error: error.message };
   }
 };

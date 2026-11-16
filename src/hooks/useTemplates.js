@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { supabase } from '../supabase';
 import toast from 'react-hot-toast';
 import { playSuccessSound, playErrorSound } from '../utils/sounds';
 
@@ -8,40 +7,109 @@ export const useTemplates = (user) => {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchTemplates = useCallback(async () => {
     if (!user) {
       setTemplates([]);
       setLoading(false);
       return;
     }
 
-    const qTpl = query(collection(db, 'templates'), orderBy('createdAt', 'desc'));
-    const unsubTpl = onSnapshot(qTpl, (snapshot) => {
-      const tplData = [];
-      snapshot.forEach((document) => {
-        tplData.push({ id: document.id, ...document.data() });
-      });
-      setTemplates(tplData);
-      setLoading(false);
-    });
+    try {
+      const { data, error } = await supabase
+        .from('v_templates')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    return () => unsubTpl();
+      if (error) throw error;
+
+      if (data) {
+        const formatted = data.map(tpl => ({
+          ...tpl,
+          category: tpl.category_name || '',
+          subcategory: tpl.subcategory_name || '',
+          trackCycle: Boolean(tpl.cycle_days),
+          cycleDays: tpl.cycle_days,
+          lastPaidDate: tpl.last_used,
+          cycleBreakCount: tpl.breaks_count || 0
+        }));
+        setTemplates(formatted);
+      }
+    } catch (err) {
+      console.error("Error fetching templates:", err);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    fetchTemplates();
+
+    if (!user) return;
+
+    const channel = supabase
+      .channel('templates-channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'templates' }, () => {
+        fetchTemplates();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, fetchTemplates]);
+
+  const resolveCategoryIds = async (categoryName, subcategoryName) => {
+    let category_id = null;
+    let subcategory_id = null;
+
+    if (categoryName) {
+      const { data: cat } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('name', categoryName.trim())
+        .maybeSingle();
+
+      if (cat) {
+        category_id = cat.id;
+
+        if (subcategoryName) {
+          const { data: sub } = await supabase
+            .from('subcategories')
+            .select('id')
+            .eq('category_id', category_id)
+            .eq('name', subcategoryName.trim())
+            .maybeSingle();
+
+          if (sub) {
+            subcategory_id = sub.id;
+          }
+        }
+      }
+    }
+
+    return { category_id, subcategory_id };
+  };
 
   const addTemplate = useCallback(async (data) => {
     try {
-      await addDoc(collection(db, 'templates'), {
-        name: data.name,
-        amount: data.amount,
-        category: data.category,
-        subcategory: data.subcategory || '',
-        description: data.description || '',
-        trackCycle: Boolean(data.trackCycle),
-        cycleDays: data.cycleDays ? Number(data.cycleDays) : null,
-        lastPaidDate: data.lastPaidDate || null,
-        cycleBreakCount: Number(data.cycleBreakCount) || 0,
-        createdAt: serverTimestamp()
-      });
+      const { category_id, subcategory_id } = await resolveCategoryIds(data.category, data.subcategory);
+
+      const { error } = await supabase
+        .from('templates')
+        .insert([{
+          name: data.name,
+          amount: parseFloat(data.amount),
+          type: data.type || 'Expense',
+          category_id,
+          subcategory_id,
+          description: data.description || '',
+          cycle_days: data.trackCycle && data.cycleDays ? Number(data.cycleDays) : null,
+          last_used: data.lastPaidDate || null,
+          breaks_count: Number(data.cycleBreakCount) || 0
+        }]);
+
+      if (error) throw error;
+
       toast.success(`Template "${data.name}" saved!`);
       playSuccessSound();
       return true;
@@ -55,7 +123,13 @@ export const useTemplates = (user) => {
 
   const deleteTemplate = useCallback(async (id) => {
     try {
-      await deleteDoc(doc(db, 'templates', id));
+      const { error } = await supabase
+        .from('templates')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
       toast.success("Template deleted.");
       playSuccessSound();
       return true;
@@ -71,16 +145,27 @@ export const useTemplates = (user) => {
     try {
       const updateData = {};
       if (data.name !== undefined) updateData.name = data.name;
-      if (data.amount !== undefined) updateData.amount = data.amount;
-      if (data.category !== undefined) updateData.category = data.category;
-      if (data.subcategory !== undefined) updateData.subcategory = data.subcategory || '';
+      if (data.amount !== undefined) updateData.amount = parseFloat(data.amount);
       if (data.description !== undefined) updateData.description = data.description || '';
-      if (data.trackCycle !== undefined) updateData.trackCycle = Boolean(data.trackCycle);
-      if (data.cycleDays !== undefined) updateData.cycleDays = data.cycleDays ? Number(data.cycleDays) : null;
-      if (data.lastPaidDate !== undefined) updateData.lastPaidDate = data.lastPaidDate;
-      if (data.cycleBreakCount !== undefined) updateData.cycleBreakCount = Number(data.cycleBreakCount) || 0;
+      if (data.trackCycle !== undefined || data.cycleDays !== undefined) {
+        updateData.cycle_days = (data.trackCycle ?? true) && data.cycleDays ? Number(data.cycleDays) : null;
+      }
+      if (data.lastPaidDate !== undefined) updateData.last_used = data.lastPaidDate;
+      if (data.cycleBreakCount !== undefined) updateData.breaks_count = Number(data.cycleBreakCount) || 0;
 
-      await updateDoc(doc(db, 'templates', id), updateData);
+      if (data.category !== undefined) {
+        const { category_id, subcategory_id } = await resolveCategoryIds(data.category, data.subcategory);
+        updateData.category_id = category_id;
+        updateData.subcategory_id = subcategory_id;
+      }
+
+      const { error } = await supabase
+        .from('templates')
+        .update(updateData)
+        .eq('id', id);
+
+      if (error) throw error;
+
       return true;
     } catch (error) {
       console.error("Error updating template: ", error);

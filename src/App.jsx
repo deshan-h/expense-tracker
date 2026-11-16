@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
 import { PlusCircle, LayoutDashboard, List, FolderTree, Handshake, TrendingUp, MoreVertical, LogOut, PiggyBank, CalendarClock, Settings, Target, Bell } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
-import { signOut } from 'firebase/auth';
-import { auth } from './firebase';
+import { supabase } from './supabase';
 
 // Auth Component
 import Login from './components/Login';
@@ -718,7 +717,7 @@ function App() {
               <button 
                 onClick={() => {
                   setShowSignOutModal(false);
-                  signOut(auth);
+                  supabase.auth.signOut();
                 }}
                 className="flex-1 py-3 px-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-xl font-bold transition-all shadow-[0_0_15px_-3px_rgba(225,29,72,0.5)] active:scale-95 text-sm uppercase tracking-wider"
               >
