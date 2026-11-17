@@ -1,8 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { 
-  Target, CheckCircle, PlusCircle, Trash2, X, DollarSign, ListTodo, 
-  Activity, ArrowRight, Check, Plus, ChevronDown, ChevronUp, Sparkles, 
-  TrendingUp, ArrowUpRight, Award, Compass
+  Target, CheckCircle, PlusCircle, Trash2, X, ListTodo, 
+  ArrowRight, Check, Plus, ChevronDown, ChevronUp, Award
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 

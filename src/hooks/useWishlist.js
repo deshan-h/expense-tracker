@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { supabase } from '../supabase';
 import toast from 'react-hot-toast';
 import { playSuccessSound, playErrorSound } from '../utils/sounds';
 
@@ -8,37 +7,89 @@ export const useWishlist = (user, addExpense) => {
   const [wishlistItems, setWishlistItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchWishlist = useCallback(async () => {
     if (!user) {
       setWishlistItems([]);
       setLoading(false);
       return;
     }
 
-    const qWishlist = query(collection(db, 'wishlist'), orderBy('dateAdded', 'desc'));
-    const unsubWishlist = onSnapshot(qWishlist, (snapshot) => {
-      const data = [];
-      snapshot.forEach((document) => {
-        data.push({ id: document.id, ...document.data() });
-      });
-      setWishlistItems(data);
-      setLoading(false);
-    });
+    try {
+      const { data, error } = await supabase
+        .from('wishlist')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    return () => unsubWishlist();
+      if (error) throw error;
+
+      if (data) {
+        const formatted = data.map(w => {
+          let parsedNotes = {};
+          try {
+            if (typeof w.notes === 'string') {
+              parsedNotes = JSON.parse(w.notes || '{}');
+            } else if (w.notes) {
+              parsedNotes = w.notes;
+            }
+          } catch {
+            parsedNotes = {};
+          }
+
+          return {
+            ...w,
+            name: w.title,
+            estimatedCost: w.amount,
+            subItems: parsedNotes.subItems || [],
+            actualCost: parsedNotes.actualCost || null,
+            dateAdded: w.created_at,
+            dateCompleted: w.purchased_at
+          };
+        });
+        setWishlistItems(formatted);
+      }
+    } catch (err) {
+      console.error("Error fetching wishlist:", err);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    fetchWishlist();
+
+    if (!user) return;
+
+    const channel = supabase
+      .channel('wishlist-channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wishlist' }, () => {
+        fetchWishlist();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, fetchWishlist]);
 
   const addWishlistItem = useCallback(async (data) => {
     try {
-      await addDoc(collection(db, 'wishlist'), {
-        name: data.name,
-        estimatedCost: data.estimatedCost,
+      const notesObj = {
         subItems: data.subItems || [],
-        status: 'pending',
-        actualCost: null,
-        dateAdded: new Date().toISOString(),
-        dateCompleted: null
-      });
+        actualCost: null
+      };
+
+      const { error } = await supabase
+        .from('wishlist')
+        .insert([{
+          title: data.name,
+          amount: parseFloat(data.estimatedCost || 0),
+          priority: 'Medium',
+          status: 'pending',
+          notes: JSON.stringify(notesObj)
+        }]);
+
+      if (error) throw error;
+
       toast.success("Added to Wishlist!");
       playSuccessSound();
       return true;
@@ -52,14 +103,26 @@ export const useWishlist = (user, addExpense) => {
 
   const completeWishlistItem = useCallback(async (id, item, actualCost, category, subcategory) => {
     try {
-      // 1. Mark as completed in Wishlist
-      await updateDoc(doc(db, 'wishlist', id), {
-        status: 'completed',
-        actualCost: actualCost,
-        dateCompleted: new Date().toISOString()
-      });
+      let currentNotes = {};
+      try {
+        currentNotes = typeof item.notes === 'string' ? JSON.parse(item.notes || '{}') : (item.notes || {});
+      } catch {
+        currentNotes = {};
+      }
 
-      // 2. Add as an actual expense
+      currentNotes.actualCost = actualCost;
+
+      const { error } = await supabase
+        .from('wishlist')
+        .update({
+          status: 'completed',
+          purchased_at: new Date().toISOString(),
+          notes: JSON.stringify(currentNotes)
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
       if (addExpense) {
         const fullDate = new Date().toLocaleDateString('en-CA') + 'T' + new Date().toTimeString().slice(0, 5);
         await addExpense({
@@ -85,7 +148,13 @@ export const useWishlist = (user, addExpense) => {
 
   const deleteWishlistItem = useCallback(async (id) => {
     try {
-      await deleteDoc(doc(db, 'wishlist', id));
+      const { error } = await supabase
+        .from('wishlist')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
       toast.success("Wishlist item deleted.");
       playSuccessSound();
       return true;
@@ -106,10 +175,21 @@ export const useWishlist = (user, addExpense) => {
       
       const newTotalEstimatedCost = updatedSubItems.reduce((acc, curr) => acc + (curr.estimatedCost || 0), 0);
 
-      await updateDoc(doc(db, 'wishlist', id), {
+      const notesObj = {
         subItems: updatedSubItems,
-        estimatedCost: newTotalEstimatedCost
-      });
+        actualCost: null
+      };
+
+      const { error } = await supabase
+        .from('wishlist')
+        .update({
+          amount: newTotalEstimatedCost,
+          notes: JSON.stringify(notesObj)
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
       toast.success("Sub-item added!");
       return true;
     } catch (error) {

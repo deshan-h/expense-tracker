@@ -1,10 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { 
   Trash2, 
   Search, 
   Filter, 
   ChevronDown, 
-  ChevronUp, 
   ChevronLeft, 
   ChevronRight, 
   ChevronsUpDown,
@@ -14,9 +13,7 @@ import {
   ArrowRightLeft, 
   Handshake, 
   PiggyBank, 
-  CalendarClock, 
   History, 
-  FileText, 
   Pencil, 
   X, 
   Plus, 
@@ -26,7 +23,6 @@ import {
   LayoutGrid, 
   Tag, 
   Info,
-  Calendar,
   RotateCcw,
   Check
 } from 'lucide-react';
@@ -35,12 +31,10 @@ const HistoryTab = ({
   transactions, 
   lentMoney,
   savings,
-  schedules,
   formatLKR, 
   handleDeleteTransaction,
   handleDeleteLentHistoryEntry,
   deleteSaving,
-  deleteSchedule,
   updateTransaction,
   updateSaving,
   addExpense,
@@ -69,7 +63,7 @@ const HistoryTab = ({
   const [savedPresets, setSavedPresets] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('expense_tracker_record_filters') || '[]');
-    } catch (e) {
+    } catch {
       return [];
     }
   });
@@ -83,10 +77,13 @@ const HistoryTab = ({
   // Edit / Add Modal State
   const [editingRecord, setEditingRecord] = useState(null);
 
-  // Reset pagination on filter changes
-  React.useEffect(() => {
+  // Reset pagination on filter changes (React state adjustment pattern)
+  const filterKey = `${searchQuery}_${filterSource}_${recordType}_${sortBy}_${filterCategory}_${filterSubcategory}_${amountRange}_${selectedYear}_${selectedMonth}_${isAllTime}`;
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
     setCurrentPage(1);
-  }, [searchQuery, filterSource, recordType, sortBy, filterCategory, filterSubcategory, amountRange, selectedYear, selectedMonth, isAllTime]);
+  }
 
   // Handle Preset Save
   const handleSavePreset = () => {

@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
 import { useAppContext } from '../../context/AppContext';
 
 // Custom Tooltip for AreaChart
-const CustomAreaTooltip = ({ active, payload, label, formatLKR }) => {
+const CustomAreaTooltip = ({ active, payload, formatLKR }) => {
   if (active && payload && payload.length) {
     const dateStr = payload[0].payload.date;
     return (
@@ -126,22 +126,8 @@ export default function CashFlowChart({ formatCompact, formatLKR }) {
   startOfWeek.setDate(diffToMonday);
   startOfWeek.setHours(0, 0, 0, 0);
 
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(endOfWeek.getDate() + 6);
-  endOfWeek.setHours(23, 59, 59, 999);
-
-  let thisWeekIncome = 0;
-  let thisWeekExpense = 0;
-  let thisWeekLent = 0;
-  let thisWeekPlanned = 0;
-
   // Generate Cash Flow Data based on filter
   const cashFlowArray = [];
-  
-  let lastMonthIncome = 0;
-  let lastMonthExpense = 0;
-  let lastMonthLent = 0;
-  let lastMonthPlanned = 0;
   
   if (cashFlowFilter === 'month' || cashFlowFilter === 'lastMonth') {
     const isLastMonth = cashFlowFilter === 'lastMonth';
@@ -232,11 +218,6 @@ export default function CashFlowChart({ formatCompact, formatLKR }) {
           }
         });
 
-        lastMonthIncome += dayIncome;
-        lastMonthExpense += dayExpense;
-        lastMonthLent += dayLent;
-        lastMonthPlanned += dayPlanned;
-        
         cashFlowArray.push({
           date: dateStr,
           day: dayStr,
@@ -317,11 +298,6 @@ export default function CashFlowChart({ formatCompact, formatLKR }) {
         }
       });
       
-      thisWeekIncome += dayIncome;
-      thisWeekExpense += dayExpense;
-      thisWeekLent += dayLent;
-      thisWeekPlanned += dayPlanned;
-      
       cashFlowArray.push({
         date: dateStr,
         day: dayStr,
@@ -337,64 +313,6 @@ export default function CashFlowChart({ formatCompact, formatLKR }) {
     }
   }
 
-  // We need to calculate thisWeek sums for the UI if week is selected but filter isn't week
-  if (cashFlowFilter !== 'week') {
-    transactions.forEach(t => {
-      const d = new Date(t.date);
-      if (d >= startOfWeek && d <= endOfWeek) {
-        if (t.type === 'Income' || t.type === 'POS Income') thisWeekIncome += t.amount;
-        else if (t.type === 'Expense') thisWeekExpense += t.amount;
-      }
-    });
-    
-    lentMoney.forEach(person => {
-      if (person.history) {
-        person.history.forEach(item => {
-          const d = new Date(item.date);
-          if (d >= startOfWeek && d <= endOfWeek) {
-            if (item.entryType === 'borrow') {
-              thisWeekLent += item.amount;
-            }
-          }
-        });
-      }
-    });
-    
-    activeSchedules.forEach(schedule => {
-      let d = new Date(schedule.nextDate);
-      let safetyCounter = 0; 
-      while (d <= endOfWeek && safetyCounter < 100) {
-        safetyCounter++;
-        if (d >= startOfWeek && d <= endOfWeek) {
-          thisWeekPlanned += schedule.amount;
-        }
-        if (schedule.frequency === 'Once') break;
-        else if (schedule.frequency === 'Daily') d.setDate(d.getDate() + 1);
-        else if (schedule.frequency === 'Weekly') d.setDate(d.getDate() + 7);
-        else if (schedule.frequency === 'Monthly') d.setMonth(d.getMonth() + 1);
-        else if (schedule.frequency === 'Yearly') d.setFullYear(d.getFullYear() + 1);
-        else break;
-      }
-    });
-  }
-
-  // Calculate This Month totals
-  let thisMonthIncome = 0;
-  let thisMonthLentSum = 0;
-  let thisMonthExpenses = 0;
-  let thisMonthPlanned = 0;
-  Object.values(groupedFlow).forEach(dayData => {
-    thisMonthIncome += dayData.Income;
-    thisMonthLentSum += dayData.Lent;
-    thisMonthExpenses += dayData.Expense || 0;
-    thisMonthPlanned += dayData.Planned || 0;
-  });
-
-  const displayedIncome = cashFlowFilter === 'week' ? thisWeekIncome : (cashFlowFilter === 'lastMonth' ? lastMonthIncome : thisMonthIncome);
-  const displayedExpense = cashFlowFilter === 'week' ? thisWeekExpense : (cashFlowFilter === 'lastMonth' ? lastMonthExpense : thisMonthExpenses);
-  const displayedLent = cashFlowFilter === 'week' ? thisWeekLent : (cashFlowFilter === 'lastMonth' ? lastMonthLent : thisMonthLentSum);
-  const displayedPlanned = cashFlowFilter === 'week' ? thisWeekPlanned : (cashFlowFilter === 'lastMonth' ? lastMonthPlanned : thisMonthPlanned);
-
   let todayReferenceX = null;
   if (cashFlowFilter === 'week') {
     todayReferenceX = today.toLocaleDateString(undefined, { weekday: 'short' });
@@ -406,6 +324,7 @@ export default function CashFlowChart({ formatCompact, formatLKR }) {
   const chartTotalExpense = cashFlowArray.reduce((acc, curr) => acc + (curr.Expense || 0), 0);
   const chartTotalLent = cashFlowArray.reduce((acc, curr) => acc + (curr.Lent || 0), 0);
   const chartTotalSavings = cashFlowArray.reduce((acc, curr) => acc + (curr.Savings || 0), 0);
+  const chartTotalPlanned = cashFlowArray.reduce((acc, curr) => acc + (curr.Planned || 0), 0);
 
   return (
     <motion.div 
@@ -460,7 +379,7 @@ export default function CashFlowChart({ formatCompact, formatLKR }) {
         </div>
         <div className="bg-gray-900/40 border border-gray-800/60 rounded-xl p-2.5 backdrop-blur-sm col-span-2 sm:col-span-1">
           <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider block">Scheduled</span>
-          <span className="text-sm font-black font-mono text-sky-300">Rs. {formatCompact(displayedPlanned)}</span>
+          <span className="text-sm font-black font-mono text-sky-300">Rs. {formatCompact(chartTotalPlanned)}</span>
         </div>
       </div>
 

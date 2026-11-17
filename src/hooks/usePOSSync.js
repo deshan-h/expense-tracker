@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { doc, onSnapshot, setDoc, addDoc, collection } from 'firebase/firestore';
-import { db } from '../firebase';
+import { supabase } from '../supabase';
 import { fetchNewSalesSum } from '../utils/posSync';
 import toast from 'react-hot-toast';
 
@@ -16,20 +15,42 @@ export const usePOSSync = (user) => {
   const [isSyncing, setIsSyncing] = useState(false);
   const isSyncingRef = useRef(false);
 
-  useEffect(() => {
+  const fetchMetadata = useCallback(async () => {
     if (!user) {
       setSyncMetadata(null);
       return;
     }
 
-    const unsubMetadata = onSnapshot(doc(db, 'metadata', 'posSync'), (docSnap) => {
-      if (docSnap.exists()) {
-        setSyncMetadata(docSnap.data());
-      }
-    });
+    try {
+      const { data, error } = await supabase
+        .from('metadata')
+        .select('*')
+        .eq('key', 'posSync')
+        .maybeSingle();
 
-    return () => unsubMetadata();
+      if (error) throw error;
+      setSyncMetadata(data?.data || null);
+    } catch (err) {
+      console.error("Error fetching POS sync metadata:", err);
+    }
   }, [user]);
+
+  useEffect(() => {
+    fetchMetadata();
+
+    if (!user) return;
+
+    const channel = supabase
+      .channel('pos-metadata-channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'metadata', filter: 'key=eq.posSync' }, () => {
+        fetchMetadata();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, fetchMetadata]);
 
   const handleSyncPOS = useCallback(async (options = {}) => {
     const isAuto = typeof options === 'object' && options?.isAuto === true;
@@ -43,22 +64,82 @@ export const usePOSSync = (user) => {
     try {
       toast.loading(isAuto ? '⏰ Daily 8:00 PM Auto-syncing POS sales...' : 'Fetching new POS sales...', { id: 'sync' });
       
-      const result = await fetchNewSalesSum(syncMetadata?.posLatestTimestamp || null);
-      let newPosTimestamp = result?.latestTimestamp || syncMetadata?.posLatestTimestamp || null;
+      // 1. Resolve the latest synced timestamp reliably (state -> metadata table -> latest transaction)
+      let lastTimestamp = syncMetadata?.posLatestTimestamp;
+
+      if (!lastTimestamp) {
+        const { data: meta } = await supabase
+          .from('metadata')
+          .select('data')
+          .eq('key', 'posSync')
+          .maybeSingle();
+        if (meta?.data?.posLatestTimestamp) {
+          lastTimestamp = meta.data.posLatestTimestamp;
+        }
+      }
+
+      if (!lastTimestamp) {
+        const { data: latestTx } = await supabase
+          .from('transactions')
+          .select('pos_latest_timestamp')
+          .not('pos_latest_timestamp', 'is', null)
+          .order('pos_latest_timestamp', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (latestTx?.pos_latest_timestamp) {
+          lastTimestamp = latestTx.pos_latest_timestamp;
+        }
+      }
+
+      if (!lastTimestamp) {
+        // Fallback to start of today so historical sales are never pulled en masse
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        lastTimestamp = todayStart.toISOString();
+      }
+
+      const result = await fetchNewSalesSum(lastTimestamp);
+      let newPosTimestamp = result?.latestTimestamp || lastTimestamp;
       
       if (result.success) {
         if (result.count === 0 || result.sum === 0) {
           toast.success(isAuto ? '⏰ 8:00 PM Auto-sync: All POS sales up to date!' : 'No new sales to sync!', { id: 'sync' });
         } else {
-          await addDoc(collection(db, 'transactions'), {
-            type: 'Income',
-            category: 'Business',
-            amount: parseFloat(result.sum),
-            description: 'DESH Digital Hub POS Income',
-            date: new Date().toISOString(),
-            posLatestTimestamp: newPosTimestamp,
-            isTracked: true
-          });
+          // Find Business category and POS Batch Sync subcategory
+          let category_id = null;
+          let subcategory_id = null;
+
+          const { data: cat } = await supabase
+            .from('categories')
+            .select('id')
+            .eq('name', 'Business')
+            .maybeSingle();
+
+          if (cat) {
+            category_id = cat.id;
+            const { data: sub } = await supabase
+              .from('subcategories')
+              .select('id')
+              .eq('category_id', cat.id)
+              .eq('name', 'POS Batch Sync')
+              .maybeSingle();
+            if (sub) subcategory_id = sub.id;
+          }
+
+          const { error: txError } = await supabase
+            .from('transactions')
+            .insert([{
+              type: 'Income',
+              category_id,
+              subcategory_id,
+              amount: parseFloat(result.sum),
+              description: 'DESH Digital Hub POS Income',
+              date: new Date().toISOString(),
+              pos_latest_timestamp: newPosTimestamp,
+              is_tracked: true
+            }]);
+
+          if (txError) throw txError;
           
           toast.success(
             isAuto 
@@ -71,11 +152,21 @@ export const usePOSSync = (user) => {
         toast.error('Failed to connect to POS database', { id: 'sync' });
       }
 
-      await setDoc(doc(db, 'metadata', 'posSync'), {
+      const updatedData = {
         lastRunTime: runTime,
         posLatestTimestamp: newPosTimestamp,
         lastAutoSyncDate: todayStr
-      }, { merge: true });
+      };
+
+      await supabase
+        .from('metadata')
+        .upsert({
+          key: 'posSync',
+          data: updatedData,
+          updated_at: new Date().toISOString()
+        });
+
+      setSyncMetadata(updatedData);
 
     } catch (error) {
       console.error(error);
@@ -88,34 +179,30 @@ export const usePOSSync = (user) => {
 
   // Automatic Daily 8:00 PM Trigger & Catch-up
   useEffect(() => {
-    if (!user || !syncMetadata) return;
+    if (!user) return;
 
     const checkAndTrigger = () => {
       const now = new Date();
       const currentHour = now.getHours();
       const todayStr = getLocalDateString(now);
 
-      // Check if sync already ran today at or after 20:00 (8:00 PM)
-      let alreadyRanTodayAfter8PM = syncMetadata.lastAutoSyncDate === todayStr;
+      let alreadyRanTodayAfter8PM = syncMetadata?.lastAutoSyncDate === todayStr;
 
-      if (!alreadyRanTodayAfter8PM && syncMetadata.lastRunTime) {
+      if (!alreadyRanTodayAfter8PM && syncMetadata?.lastRunTime) {
         const lastRun = new Date(syncMetadata.lastRunTime);
         if (getLocalDateString(lastRun) === todayStr && lastRun.getHours() >= 20) {
           alreadyRanTodayAfter8PM = true;
         }
       }
 
-      // If current time is 8:00 PM (20:00) or later, and today's 8 PM sync hasn't run yet
       if (currentHour >= 20 && !alreadyRanTodayAfter8PM && !isSyncingRef.current) {
         console.log(`[usePOSSync] Triggering daily 8:00 PM auto-sync for ${todayStr}`);
         handleSyncPOS({ isAuto: true });
       }
     };
 
-    // 1. Check immediately when hook/metadata initializes
     checkAndTrigger();
 
-    // 2. Schedule precise timer for 8:00 PM today if app is open before 20:00
     const now = new Date();
     const target8PM = new Date();
     target8PM.setHours(20, 0, 0, 0);
@@ -128,7 +215,6 @@ export const usePOSSync = (user) => {
       }, msUntil8PM);
     }
 
-    // 3. Periodic safety check every 60s (handles sleep / tab suspension wakeups)
     const intervalId = setInterval(checkAndTrigger, 60000);
 
     return () => {

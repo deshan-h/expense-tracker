@@ -1,4 +1,3 @@
-import React from 'react';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar } from 'recharts';
 import { Activity } from 'lucide-react';
 import { motion } from 'framer-motion';

@@ -1,8 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { 
   PiggyBank, PlusCircle, ArrowUpCircle, ArrowDownCircle, Trash2, 
-  List, ChevronDown, ChevronUp, ArrowUpRight, ArrowDownLeft, Wallet, 
-  TrendingUp, TrendingDown, Sparkles 
+  List, ChevronDown, ChevronUp, ArrowUpRight, ArrowDownLeft 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DateTimePicker from '../components/ui/DateTimePicker';
@@ -401,7 +400,6 @@ const SavingsTab = ({
                     const isToday = d.toDateString() === new Date().toDateString();
                     const isDeposit = record.type === 'Deposit';
                     const isWithdrawal = record.type === 'Withdrawal';
-                    const isInitial = record.type === 'Initial';
                     
                     return (
                       <div key={record.id} className="relative flex items-center group">

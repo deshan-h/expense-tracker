@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { supabase } from '../supabase';
 import toast from 'react-hot-toast';
 import { playSuccessSound, playErrorSound } from '../utils/sounds';
 
@@ -18,39 +17,72 @@ const DEFAULT_CATEGORIES = [
 export const useCategories = (user, setCategory) => {
   const [categories, setCategories] = useState([]);
 
-  useEffect(() => {
+  const fetchCategories = useCallback(async () => {
     if (!user) {
       setCategories([]);
       return;
     }
 
-    const qCat = query(collection(db, 'categories'), orderBy('createdAt', 'asc'));
-    const unsubCat = onSnapshot(qCat, (snapshot) => {
-      const catData = [];
-      snapshot.forEach((document) => {
-        catData.push({ id: document.id, ...document.data() });
-      });
-      setCategories(catData);
-    });
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*, subcategories(*)')
+        .order('created_at', { ascending: true });
 
-    return () => unsubCat();
-  }, [user, setCategory]);
+      if (error) throw error;
+
+      if (data) {
+        const formatted = data.map(cat => ({
+          ...cat,
+          subcategories: (cat.subcategories || []).map(s => s.name),
+          subcategoriesList: cat.subcategories || []
+        }));
+        setCategories(formatted);
+      }
+    } catch (err) {
+      console.error("Error fetching categories:", err);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchCategories();
+
+    if (!user) return;
+
+    // Realtime listeners for categories and subcategories
+    const channel = supabase
+      .channel('categories-channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
+        fetchCategories();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'subcategories' }, () => {
+        fetchCategories();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, fetchCategories, setCategory]);
 
   const addCategory = useCallback(async (name, icon, type = 'Expense') => {
     try {
-      await addDoc(collection(db, 'categories'), {
-        name: name,
-        icon: icon,
-        type: type,
-        subcategories: [],
-        createdAt: serverTimestamp()
-      });
+      const { error } = await supabase
+        .from('categories')
+        .insert([{
+          name: name.trim(),
+          icon: icon || 'Tag',
+          type: type || 'Expense',
+          target: 0
+        }]);
+
+      if (error) throw error;
       toast.success("Category added!");
       playSuccessSound();
       return true;
     } catch (error) {
       console.error("Error adding category: ", error);
-      toast.error("Failed to add category.");
+      toast.error(error.message || "Failed to add category.");
       playErrorSound();
       return false;
     }
@@ -58,7 +90,12 @@ export const useCategories = (user, setCategory) => {
 
   const deleteCategory = useCallback(async (id) => {
     try {
-      await deleteDoc(doc(db, 'categories', id));
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
       toast.success("Category deleted.");
       playSuccessSound();
       return true;
@@ -72,15 +109,20 @@ export const useCategories = (user, setCategory) => {
 
   const addSubcategory = useCallback(async (catId, subName) => {
     try {
-      await updateDoc(doc(db, 'categories', catId), {
-        subcategories: arrayUnion(subName)
-      });
+      const { error } = await supabase
+        .from('subcategories')
+        .insert([{
+          category_id: catId,
+          name: subName.trim()
+        }]);
+
+      if (error) throw error;
       toast.success(`Subcategory "${subName}" added!`);
       playSuccessSound();
       return true;
     } catch (error) {
       console.error("Error adding subcategory: ", error);
-      toast.error("Failed to add subcategory.");
+      toast.error(error.message || "Failed to add subcategory.");
       playErrorSound();
       return false;
     }
@@ -88,9 +130,13 @@ export const useCategories = (user, setCategory) => {
 
   const deleteSubcategory = useCallback(async (catId, subName) => {
     try {
-      await updateDoc(doc(db, 'categories', catId), {
-        subcategories: arrayRemove(subName)
-      });
+      const { error } = await supabase
+        .from('subcategories')
+        .delete()
+        .eq('category_id', catId)
+        .eq('name', subName);
+
+      if (error) throw error;
       toast.success("Subcategory deleted.");
       playSuccessSound();
       return true;
@@ -105,13 +151,14 @@ export const useCategories = (user, setCategory) => {
   const seedDefaultCategories = useCallback(async () => {
     try {
       for (const cat of DEFAULT_CATEGORIES) {
-        await addDoc(collection(db, 'categories'), {
-          name: cat.name,
-          icon: cat.icon,
-          type: 'Expense',
-          subcategories: [],
-          createdAt: serverTimestamp()
-        });
+        await supabase
+          .from('categories')
+          .insert([{
+            name: cat.name,
+            icon: cat.icon,
+            type: 'Expense',
+            target: 0
+          }]);
       }
       toast.success("Default categories seeded!");
       playSuccessSound();
@@ -126,9 +173,14 @@ export const useCategories = (user, setCategory) => {
 
   const updateCategoryTarget = useCallback(async (catId, targetAmount) => {
     try {
-      await updateDoc(doc(db, 'categories', catId), {
-        target: targetAmount ? Number(targetAmount) : null
-      });
+      const { error } = await supabase
+        .from('categories')
+        .update({
+          target: targetAmount ? Number(targetAmount) : 0
+        })
+        .eq('id', catId);
+
+      if (error) throw error;
       toast.success("Category target updated!");
       playSuccessSound();
       return true;
@@ -140,5 +192,14 @@ export const useCategories = (user, setCategory) => {
     }
   }, []);
 
-  return { categories, addCategory, deleteCategory, addSubcategory, deleteSubcategory, seedDefaultCategories, DEFAULT_CATEGORIES, updateCategoryTarget };
+  return { 
+    categories, 
+    addCategory, 
+    deleteCategory, 
+    addSubcategory, 
+    deleteSubcategory, 
+    seedDefaultCategories, 
+    DEFAULT_CATEGORIES, 
+    updateCategoryTarget 
+  };
 };

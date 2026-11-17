@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import SummaryCards from '../components/dashboard/SummaryCards';
 import CashFlowChart from '../components/dashboard/CashFlowChart';
 import CategoryTracker from '../components/dashboard/CategoryTracker';
@@ -10,24 +10,12 @@ import TemplateRenewalsWidget from '../components/dashboard/TemplateRenewalsWidg
 import CycleBreaksWidget from '../components/dashboard/CycleBreaksWidget';
 
 const DashboardTab = ({ 
-  transactions, 
-  totalIncome, 
-  totalExpense, 
-  netBalance, 
-  totalPendingLent, 
-  totalSavings, 
-  thisMonthWithdrawals, 
-  thisMonthPlanned, 
   schedules, 
-  lentMoney, 
-  savings, 
-  wishlistItems, 
   formatLKR, 
-  chartData,
   templates = []
 }) => {
 
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 60000); // refresh every minute

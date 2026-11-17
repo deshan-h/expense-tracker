@@ -1,8 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { 
   CalendarClock, Trash2, CheckCircle2, Clock, Folder, ChevronDown, 
-  ChevronUp, Plus, X, Bookmark, TrendingUp, Sparkles, ArrowUpRight, 
-  List, Check
+  ChevronUp, Plus, X, Bookmark, TrendingUp, Sparkles 
 } from 'lucide-react';
 import { getIconComponent, getIconColor } from '../utils/icons';
 import DateTimePicker from '../components/ui/DateTimePicker';
@@ -24,7 +23,6 @@ export default function SchedulesTab({
   const [scheduleToDelete, setScheduleToDelete] = useState(null);
   
   const [date, setDate] = useState(() => new Date().toLocaleDateString('en-CA'));
-  const [time, setTime] = useState(() => new Date().toTimeString().split(' ')[0].substring(0, 5));
   const [frequency, setFrequency] = useState('Daily');
   const [askBeforeAdding, setAskBeforeAdding] = useState(false);
   const [expiryDate, setExpiryDate] = useState('');

@@ -1,15 +1,14 @@
-import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
-import { PlusCircle, LayoutDashboard, List, FolderTree, Handshake, TrendingUp, MoreVertical, LogOut, PiggyBank, CalendarClock, Settings, Target, Bell } from 'lucide-react';
+import { useState, useMemo, useCallback, Suspense, lazy } from 'react';
+import { PlusCircle, LayoutDashboard, List, Handshake, MoreVertical, LogOut, PiggyBank, CalendarClock, Settings, Target, Bell } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
-import { signOut } from 'firebase/auth';
-import { auth } from './firebase';
+import { supabase } from './supabase';
 
 // Auth Component
 import Login from './components/Login';
 
 // Utils
 import { formatLKR } from './utils/formatters';
-import toast, { Toaster } from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast';
 
 // Custom Hooks
 import { useAuth } from './hooks/useAuth';
@@ -29,7 +28,6 @@ import { AppProvider } from './context/AppContext';
 // Lazy Loaded Pages (Performance Optimization)
 const DashboardTab = lazy(() => import('./pages/DashboardTab'));
 const AddExpenseTab = lazy(() => import('./pages/AddExpenseTab'));
-const IncomeTab = lazy(() => import('./pages/IncomeTab'));
 const HistoryTab = lazy(() => import('./pages/HistoryTab'));
 const MoneyLentTab = lazy(() => import('./pages/MoneyLentTab'));
 const SettingsTab = lazy(() => import('./pages/SettingsTab'));
@@ -37,66 +35,9 @@ const SavingsTab = lazy(() => import('./pages/SavingsTab'));
 const WishlistTab = lazy(() => import('./pages/WishlistTab'));
 const SchedulesTab = lazy(() => import('./pages/SchedulesTab'));
 
+import { NotificationItem, TabFallback } from './components/ui/NotificationItem';
+
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
-
-const TabFallback = () => (
-  <div className="w-full flex items-center justify-center p-12">
-    <div className="w-8 h-8 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
-  </div>
-);
-
-const NotificationItem = ({ schedule, skipSchedule, approveSchedule }) => {
-  const [editableAmount, setEditableAmount] = useState(schedule.amount ? schedule.amount.toString() : '');
-
-  const handleApprove = async () => {
-    const finalAmount = parseFloat(editableAmount);
-    if (isNaN(finalAmount) || finalAmount <= 0) {
-      toast.error("Please enter a valid amount");
-      return;
-    }
-    await approveSchedule({ ...schedule, amount: finalAmount });
-  };
-
-  return (
-    <div className="bg-gray-800/60 p-4 rounded-2xl border border-gray-700/50 flex flex-col gap-3 relative overflow-hidden group hover:border-gray-600 transition-all">
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 pointer-events-none"></div>
-      
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start z-10 gap-3">
-        <div>
-          <h4 className="font-bold text-gray-100">{schedule.description || schedule.category}</h4>
-          <div className="text-xs text-gray-400 flex gap-2 mt-1">
-            <span className="bg-gray-700/50 px-2 py-0.5 rounded-full">{schedule.category}</span>
-            <span className="bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded-full">{schedule.frequency}</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 bg-gray-900/80 px-3 py-1.5 rounded-xl border border-gray-700 focus-within:border-blue-500 transition-all shrink-0">
-          <span className="text-gray-400 text-sm font-bold">LKR</span>
-          <input 
-            type="number"
-            value={editableAmount}
-            onChange={(e) => setEditableAmount(e.target.value)}
-            className="w-20 bg-transparent text-right text-rose-400 font-black focus:outline-none"
-          />
-        </div>
-      </div>
-
-      <div className="flex gap-2 w-full mt-2 z-10">
-        <button 
-          onClick={async () => await skipSchedule(schedule)}
-          className="flex-1 py-2 px-3 bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 rounded-xl font-bold transition-all border border-gray-600 active:scale-95 text-xs text-center"
-        >
-          Skip
-        </button>
-        <button 
-          onClick={handleApprove}
-          className="flex-[2] py-2 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold transition-all shadow-md active:scale-95 text-xs text-center uppercase tracking-wide"
-        >
-          Verify & Add
-        </button>
-      </div>
-    </div>
-  );
-};
 
 function App() {
   const { user, authLoading } = useAuth();
@@ -133,7 +74,6 @@ function App() {
     return d.toLocaleDateString('en-CA');
   });
   const [activeLentTab, setActiveLentTab] = useState('Family');
-  const [showPaid, setShowPaid] = useState(false);
 
   // Modal States
   const [showSignOutModal, setShowSignOutModal] = useState(false);
@@ -158,7 +98,7 @@ function App() {
           finalAmount = String(Function('"use strict";return (' + expression + ')')());
           setAmount(finalAmount);
         }
-      } catch (err) {
+      } catch {
         console.error("Invalid expression");
       }
     }
@@ -188,7 +128,7 @@ function App() {
           finalAmount = String(Function('"use strict";return (' + expression + ')')());
           setAmount(finalAmount);
         }
-      } catch (err) {
+      } catch {
         console.error("Invalid expression");
       }
     }
@@ -357,7 +297,7 @@ function App() {
     return (
       <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col items-center justify-center font-sans">
         <div className="w-10 h-10 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin mb-4"></div>
-        <p className="text-emerald-400/80 text-sm animate-pulse">Loading Firebase data...</p>
+        <p className="text-emerald-400/80 text-sm animate-pulse">Loading Expense Tracker...</p>
       </div>
     );
   }
@@ -718,7 +658,7 @@ function App() {
               <button 
                 onClick={() => {
                   setShowSignOutModal(false);
-                  signOut(auth);
+                  supabase.auth.signOut();
                 }}
                 className="flex-1 py-3 px-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-xl font-bold transition-all shadow-[0_0_15px_-3px_rgba(225,29,72,0.5)] active:scale-95 text-sm uppercase tracking-wider"
               >

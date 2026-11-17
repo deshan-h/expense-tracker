@@ -1,15 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Bookmark, RotateCw, AlertCircle, CheckCircle2, Calendar, Clock, Bell, ArrowRight } from 'lucide-react';
+import { Bookmark, RotateCw, Calendar, Bell } from 'lucide-react';
 
 export default function TemplateRenewalsWidget({ templates = [], formatLKR }) {
   const trackedTemplates = useMemo(() => {
     return (templates || []).filter(tpl => tpl.trackCycle && tpl.cycleDays);
   }, [templates]);
-
-  if (trackedTemplates.length === 0) {
-    return null;
-  }
 
   const templatesWithStats = useMemo(() => {
     return trackedTemplates.map(tpl => {
@@ -59,6 +55,10 @@ export default function TemplateRenewalsWidget({ templates = [], formatLKR }) {
 
   const dueSoonCount = sortedTemplates.filter(t => t.daysLeft <= 7).length;
   const totalUpcomingAmount = sortedTemplates.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+  if (trackedTemplates.length === 0) {
+    return null;
+  }
 
   return (
     <motion.div 
